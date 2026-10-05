@@ -1,0 +1,59 @@
+# Pyra — un clon de Fireworks para la web (2026)
+
+## Tesis
+
+Reconstruir lo que Fireworks hacía y nadie ha vuelto a hacer: **bitmap y vector en el
+mismo lienzo, capas simples, maquetación sin fricción, efectos vivos no destructivos**,
+como app web rápida de verdad. No un Figma-lite: un Fireworks con 25 años de mejoras.
+
+## Principios de diseño (heredados de Fireworks)
+
+1. **Un lienzo, dos naturalezas.** Objetos bitmap y objetos vector coexisten; la misma
+   selección, transformación y edición aplica a ambos.
+2. **Capas primero.** Panel de capas visible siempre: visibilidad, bloqueo, opacidad,
+   blending, reorden. La maquetación es el flujo principal, no un extra.
+3. **No destructivo siempre.** Efectos (sombra, glow, bevel, blur) como atributos del
+   objeto, editables en cualquier momento, sobre bitmap, vector y texto.
+4. **Property Inspector contextual.** Las propiedades del objeto seleccionado, a mano,
+   siempre. Sin cavar menús ni diálogos modales.
+5. **Páginas.** Un documento = varias pantallas navegables al instante.
+6. **Rápido.** "Súper optimizado" es un requisito, no un deseo (ver arquitectura).
+
+## Diferencias conscientes con la UI original
+
+- No replicamos los paneles flotantes de 1998. Layout fijo moderno: toolbar izquierda,
+  inspector derecho (propiedades + capas + páginas en columnas), canvas central.
+- Look 2026: tema oscuro denso, iconografía lineal, tipografía limpia, HiDPI nativo,
+  atajos de teclado primero.
+- Nada de slices/HTML export (el usuario lo descarta): export de imágenes (PNG con
+  fuente editable embebida, como Fireworks) + export de assets por selección.
+
+## Arquitectura (optimización como requisito)
+
+- **TypeScript estricto, sin framework de UI.** DOM mínimo para paneles; canvas para todo
+  lo demás. Cero dependencias de render (no React). Vite como bundler.
+- **Scene graph propio**: documentos → páginas → capas → objetos. Modelo plano con
+  índices; sin clones por frame.
+- **Render Canvas2D con dirty-rects + cache por capa**: solo se repinta lo que cambia;
+  capas estáticas a offscreen canvas. Objetivo: 60fps con miles de objetos.
+- **Undo/redo por comandos** (no snapshots de documento).
+- **Persistencia**: IndexedDB para sesiones; archivo `.pyra` (PNG con la fuente editable
+  en metadatos — el truco de Fireworks, igual que él) para export/import.
+- **Sin servidor, sin cuenta, sin colaboración** (por ahora). Local-first.
+
+## Fases
+
+- **M0 — Núcleo**: scene graph, canvas con pan/zoom, selección, transformación,
+  undo/redo, persistencia IndexedDB.
+- **M1 — Capas y maquetación**: panel de capas completo, smart guides, snapping,
+  alineación/distribución, páginas.
+- **M2 — Vector**: formas (rect, elipse, polígono, línea), pen tool simplificado,
+  relleno/borde, unión booleana básica.
+- **M3 — Bitmap**: importar imágenes como objetos, recorte, filtros básicos
+  (blur, niveles, saturación) como efectos vivos.
+- **M4 — Texto**: text tool, tipografía en inspector, texto como objeto editable.
+- **M5 — Live effects**: sombra, glow, bevel, blur como atributos no destructivos
+  sobre cualquier objeto.
+- **M6 — Archivo**: `.pyra` PNG-embedded, export de assets, import de PNG con fuente.
+
+Cada fase: usable de verdad antes de pasar a la siguiente.
