@@ -37,8 +37,9 @@ como app web rápida de verdad. No un Figma-lite: un Fireworks con 25 años de m
 - **Render Canvas2D con dirty-rects + cache por capa**: solo se repinta lo que cambia;
   capas estáticas a offscreen canvas. Objetivo: 60fps con miles de objetos.
 - **Undo/redo por comandos** (no snapshots de documento).
-- **Persistencia**: IndexedDB para sesiones; archivo `.pyra` (PNG con la fuente editable
-  en metadatos — el truco de Fireworks, igual que él) para export/import.
+- **Persistencia**: IndexedDB para sesiones; archivo `.f.png` (PNG normal con la fuente
+  editable embebida en metadatos — el truco de Fireworks con `.fw.png`, igual que él)
+  para export/import.
 - **Sin servidor, sin cuenta, sin colaboración** (por ahora). Local-first.
 
 ## Fases
@@ -54,6 +55,7 @@ como app web rápida de verdad. No un Figma-lite: un Fireworks con 25 años de m
 - **M4 — Texto**: text tool, tipografía en inspector, texto como objeto editable.
 - **M5 — Live effects**: sombra, glow, bevel, blur como atributos no destructivos
   sobre cualquier objeto.
-- **M6 — Archivo**: `.pyra` PNG-embedded, export de assets, import de PNG con fuente.
+- **M6 — Archivo**: `.f.png` (PNG + fuente embebida), export de assets, import de PNG
+  con fuente.
 
 Cada fase: usable de verdad antes de pasar a la siguiente.
