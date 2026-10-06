@@ -28,6 +28,9 @@ function fixture(): { doc: Doc; view: View; api: PanelApi; calls: string[] } {
     selectPage: vi.fn((_id) => calls.push('selectPage')),
     addPage: vi.fn(() => calls.push('addPage')),
     removePage: vi.fn(() => calls.push('removePage')),
+    saveStyle: vi.fn((o) => calls.push(`saveStyle:${o.name}`)),
+    applyStyle: vi.fn((id) => calls.push(`applyStyle:${id}`)),
+    removeStyle: vi.fn((id) => calls.push(`removeStyle:${id}`)),
   };
   return { doc, view, api, calls };
 }
@@ -328,4 +331,20 @@ describe('renderPanels: robustez', () => {
 
 beforeEach(() => {
   document.body.innerHTML = '';
+});
+
+describe('inspector: Estilos (M5)', () => {
+  it('muestra Guardar estilo y los estilos del documento con swatch', () => {
+    const { doc, view, api, calls } = fixture();
+    doc.styles = [{ id: 's1', name: 'Mi estilo', fill: '#ff0000', stroke: null, strokeWidth: 0 }];
+    const objA = activePage(doc).layers[0].objects.find((o) => o.name === 'A')!;
+    mount(doc, objA.id, null, [], view, api);
+    const insp = document.getElementById('inspector-body')!;
+    expect(insp.textContent).toContain('Estilos');
+    expect(insp.textContent).toContain('Guardar estilo');
+    expect(insp.textContent).toContain('Mi estilo');
+    const row = [...insp.querySelectorAll('.row')].find((r) => r.textContent!.includes('Mi estilo'))!;
+    row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(calls).toContain('applyStyle:s1');
+  });
 });

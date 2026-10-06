@@ -1,4 +1,4 @@
-import { activePage, newDoc, uid, type BitmapObj, type Doc, type Obj, type ShapeKind, type ShapeObj, type TextObj } from './model';
+import { activePage, newDoc, uid, type BitmapObj, type Doc, type Obj, type ShapeKind, type ShapeObj, type Style, type TextObj } from './model';
 import { History, type Command } from './history';
 import { fitAll, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
@@ -610,6 +610,57 @@ const panelApi = {
     selectedLayerId = null;
     persist();
     invalidate();
+  },
+  saveStyle(obj: Obj): void {
+    doc.styles ??= [];
+    const shape = obj as Partial<ShapeObj>;
+    const style: Style = {
+      id: uid(),
+      name: `Estilo ${doc.styles.length + 1}`,
+      fill: shape.fill ?? '#000000',
+      stroke: shape.stroke ?? null,
+      strokeWidth: shape.strokeWidth ?? 0,
+      gradient: shape.gradient ?? null,
+      fx: obj.fx ? structuredClone(obj.fx) : undefined,
+    };
+    doc.styles.push(style);
+    persist();
+    invalidate();
+  },
+  applyStyle(styleId: string): void {
+    const style = (doc.styles ?? []).find((s) => s.id === styleId);
+    const objs = selectedObjs();
+    if (!style || !objs.length) return;
+    const before = objs.map((o) => ({
+      o,
+      state: { fill: (o as Partial<ShapeObj>).fill, stroke: (o as Partial<ShapeObj>).stroke, strokeWidth: (o as Partial<ShapeObj>).strokeWidth, gradient: (o as Partial<ShapeObj>).gradient, fx: o.fx },
+    }));
+    history.run({
+      label: 'aplicar estilo',
+      do: () => {
+        for (const o of objs) {
+          const patch: Partial<ShapeObj> = { fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, gradient: style.gradient ?? null };
+          if (o.shape !== 'line') Object.assign(o, patch);
+          o.fx = style.fx ? structuredClone(style.fx) : undefined;
+        }
+      },
+      undo: () => {
+        for (const { o, state } of before) {
+          Object.assign(o, { fill: state.fill, stroke: state.stroke, strokeWidth: state.strokeWidth, gradient: state.gradient });
+          o.fx = state.fx;
+        }
+      },
+    });
+    persist();
+    invalidate();
+  },
+  removeStyle(styleId: string): void {
+    const i = (doc.styles ?? []).findIndex((s) => s.id === styleId);
+    if (i >= 0) {
+      doc.styles!.splice(i, 1);
+      persist();
+      invalidate();
+    }
   },
 };
 

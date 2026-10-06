@@ -144,6 +144,30 @@ test('degradado: añadir desde el inspector y editar sus colores', async ({ page
   await expect(page.locator('#inspector-body')).not.toContainText('Degradado desde');
 });
 
+test('estilos: guardar desde un objeto y aplicar a otro', async ({ page }) => {
+  await openApp(page);
+  // dibujar dos rectángulos
+  await page.keyboard.press('r');
+  await drag(page, [60, 60], [140, 120]);
+  await page.keyboard.press('r');
+  await drag(page, [200, 60], [280, 120]);
+  // cambiar el relleno del primero y guardar estilo
+  await page.keyboard.press('Escape');
+  const box = await canvas(page).boundingBox();
+  await page.mouse.click(box!.x + 100, box!.y + 90); // centro del primer rect
+  const colorInput = page.locator('#inspector-body input[type=color]').first();
+  await colorInput.fill('#ff0000');
+  await page.locator('#inspector-body button', { hasText: 'Guardar estilo' }).click();
+  await expect(page.locator('#inspector-body')).toContainText('Estilo 1');
+  // seleccionar el segundo y aplicar el estilo
+  await page.mouse.click(box!.x + 240, box!.y + 90);
+  await page.locator('#inspector-body .row', { hasText: 'Estilo 1' }).first().dispatchEvent('click');
+  await expect(page.locator('#inspector-body input[type=color]').first()).toHaveValue('#ff0000');
+  // undo deshace la aplicación del estilo
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('#inspector-body input[type=color]').first()).not.toHaveValue('#ff0000');
+});
+
 test('exportar .f.png y reimportarlo restaura el documento', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);

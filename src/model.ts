@@ -94,6 +94,19 @@ export interface Doc {
   name: string;
   activePageId: string;
   pages: Page[];
+  /** Estilos reutilizables (como los Styles de Fireworks): paquetes de aspecto aplicables a cualquier objeto. */
+  styles?: Style[];
+}
+
+/** Paquete de aspecto: fill/stroke/degradado/efectos. Sin geometría: se aplica a lo que sea. */
+export interface Style {
+  id: string;
+  name: string;
+  fill: string;
+  stroke: string | null;
+  strokeWidth: number;
+  gradient?: Gradient | null;
+  fx?: Fx;
 }
 
 export const uid = (): string => crypto.randomUUID();

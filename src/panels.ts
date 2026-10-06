@@ -14,6 +14,9 @@ export interface PanelApi {
   selectPage(pageId: string): void;
   addPage(): void;
   removePage(pageId: string): void;
+  saveStyle(obj: Obj): void;
+  applyStyle(styleId: string): void;
+  removeStyle(styleId: string): void;
 }
 
 const $ = (id: string): HTMLElement => document.getElementById(id)!;
@@ -265,6 +268,23 @@ export function renderPanels(
     if (fx.glow) {
       numField('Glow desenfoque', fx.glow.blur, (v) => editFx({ glow: { ...fx.glow!, blur: Math.max(0, v) } }));
       colorField('Glow color', fx.glow.color.slice(0, 7), (v) => editFx({ glow: { ...fx.glow!, color: v } }));
+    }
+
+    // ---- Styles (M5): paquetes reutilizables de aspecto, como Fireworks ----
+    insp.insertAdjacentHTML('beforeend', '<span class="hint">Estilos</span>');
+    insp.appendChild(btn('', 'Guardar estilo', 'Guardar el aspecto de este objeto como estilo reutilizable', false, () => api.saveStyle(obj)));
+    for (const s of doc.styles ?? []) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const swatch = document.createElement('span');
+      swatch.style.cssText = `width:14px;height:14px;border-radius:3px;flex:none;background:${s.gradient ? `linear-gradient(90deg, ${s.gradient.from}, ${s.gradient.to})` : s.fill}`;
+      const name = document.createElement('span');
+      name.className = 'row-name';
+      name.textContent = s.name;
+      row.append(swatch, name);
+      row.addEventListener('click', () => api.applyStyle(s.id));
+      row.appendChild(btn('danger', '×', 'Eliminar estilo', false, () => api.removeStyle(s.id)));
+      insp.appendChild(row);
     }
   }
 
