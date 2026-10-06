@@ -351,12 +351,30 @@ function resizeCanvas(): void {
   invalidate();
 }
 
+const RESIZE_CURSORS: Record<HandleRole, string> = {
+  nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize',
+  n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize', rot: 'grab',
+};
+
+// ponytail: hit-test por pointermove, O(objetos) por movimiento; vale para documentos de tamaño normal
+function hoverCursor(px: number, py: number, wx: number, wy: number): string {
+  if (tool !== 'select') return 'crosshair';
+  const page = activePage(doc);
+  if ((page.guides ?? []).some((g) => Math.abs((g.axis === 'v' ? wx : wy) - g.pos) <= 5 / view.zoom)) return 'grab';
+  const sel = findObj(page, selectedId);
+  const h = sel ? hitHandle(px, py, handles(sel, view)) : null;
+  if (h) return RESIZE_CURSORS[h.role];
+  if (hitTest(page, wx, wy, 4 / view.zoom)) return 'move';
+  return 'default';
+}
+
 canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
   const page = activePage(doc);
 
   if (e.button === 1 || e.altKey) {
     drag = { mode: 'pan', sx: e.clientX, sy: e.clientY, panX: view.panX, panY: view.panY };
+    canvas.style.cursor = 'grabbing';
     return;
   }
 
@@ -378,6 +396,7 @@ canvas.addEventListener('pointerdown', (e) => {
   const gi = (page.guides ?? []).findIndex((g) => Math.abs((g.axis === 'v' ? wx : wy) - g.pos) <= 5 / view.zoom);
   if (gi >= 0) {
     drag = { mode: 'guide', index: gi };
+    canvas.style.cursor = 'grabbing';
     return;
   }
 
@@ -386,6 +405,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (h && sel && h.role === 'rot') {
     const cx = sel.x + sel.w / 2, cy = sel.y + sel.h / 2;
     drag = { mode: 'rotate', obj: sel, startRot: sel.rot ?? 0, grabAngle: Math.atan2(wy - cy, wx - cx) };
+    canvas.style.cursor = 'grab';
     invalidate();
     return;
   }
@@ -397,6 +417,7 @@ canvas.addEventListener('pointerdown', (e) => {
       start: { x: sel.x, y: sel.y, w: sel.w, h: sel.h, size: sel.shape === 'text' ? sel.size : undefined },
       grab: { x: wx, y: wy },
     };
+    canvas.style.cursor = RESIZE_CURSORS[h.role];
     return;
   }
 
@@ -410,6 +431,7 @@ canvas.addEventListener('pointerdown', (e) => {
       grab: { x: wx, y: wy },
       moved: false,
     };
+    canvas.style.cursor = 'move';
     invalidate();
     return;
   }
@@ -420,7 +442,11 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 
 canvas.addEventListener('pointermove', (e) => {
-  if (!drag) return;
+  if (!drag) {
+    const { px, py, wx, wy } = localXY(e);
+    canvas.style.cursor = hoverCursor(px, py, wx, wy);
+    return;
+  }
 
   if (drag.mode === 'pan') {
     view.panX = drag.panX + (e.clientX - drag.sx);
@@ -524,9 +550,10 @@ canvas.addEventListener('contextmenu', (e) => {
   invalidate();
 });
 
-canvas.addEventListener('pointerup', () => {
+canvas.addEventListener('pointerup', (e) => {
   if (!drag) return;
   const page = activePage(doc);
+  { const { px, py, wx, wy } = localXY(e); canvas.style.cursor = hoverCursor(px, py, wx, wy); }
 
   if (drag.mode === 'guide') {
     persist();
