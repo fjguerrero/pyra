@@ -1,10 +1,10 @@
-import { activePage, type BitmapObj, type Doc, type Obj, type ShapeObj } from './model';
+import { activePage, type BitmapObj, type Doc, type Obj, type ShapeObj, type TextObj } from './model';
 import { findObj } from './hit';
 import type { View } from './view';
 import type { AlignKind } from './align';
 
 export interface PanelApi {
-  editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj>): void;
+  editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj> | Partial<TextObj>): void;
   editLayer(layerId: string, patch: { visible?: boolean; locked?: boolean; opacity?: number; name?: string }): void;
   selectLayer(layerId: string | null): void;
   addLayer(): void;
@@ -142,6 +142,40 @@ export function renderPanels(
         insp.appendChild(wrap);
       }
       insp.appendChild(btn('', 'Quitar recorte', 'Mostrar la imagen completa', false, () => api.editObj(obj, { crop: null })));
+    } else if (obj.shape === 'text') {
+      const taWrap = document.createElement('label');
+      taWrap.className = 'field';
+      taWrap.innerHTML = '<span>Texto</span>';
+      const ta = document.createElement('textarea');
+      ta.value = obj.text;
+      ta.rows = 3;
+      ta.addEventListener('change', () => api.editObj(obj, { text: ta.value }));
+      taWrap.appendChild(ta);
+      insp.appendChild(taWrap);
+
+      const sizeWrap = document.createElement('label');
+      sizeWrap.className = 'field';
+      sizeWrap.innerHTML = '<span>Tamaño</span>';
+      const size = document.createElement('input');
+      size.type = 'number';
+      size.min = '1';
+      size.value = String(obj.size);
+      size.addEventListener('change', () => {
+        const v = Number(size.value);
+        if (Number.isFinite(v) && v >= 1) api.editObj(obj, { size: v });
+      });
+      sizeWrap.appendChild(size);
+      insp.appendChild(sizeWrap);
+
+      const colorWrap = document.createElement('label');
+      colorWrap.className = 'field';
+      colorWrap.innerHTML = '<span>Color</span>';
+      const color = document.createElement('input');
+      color.type = 'color';
+      color.value = obj.fill;
+      color.addEventListener('change', () => api.editObj(obj, { fill: color.value }));
+      colorWrap.appendChild(color);
+      insp.appendChild(colorWrap);
     } else {
       // una línea no se rellena: su color es el trazo
       const colorKey = obj.shape === 'line' ? 'stroke' : 'fill';

@@ -1,4 +1,4 @@
-import { activePage, newDoc, uid, type BitmapObj, type Doc, type Obj, type ShapeKind, type ShapeObj } from './model';
+import { activePage, newDoc, uid, type BitmapObj, type Doc, type Obj, type ShapeKind, type ShapeObj, type TextObj } from './model';
 import { History, type Command } from './history';
 import { fitAll, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
@@ -6,6 +6,7 @@ import { addLayer, moveLayer } from './layers';
 import { snapBox, type Guide } from './guides';
 import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
+import { measureText } from './text';
 import { loadDoc, saveDoc } from './store';
 import { renderPanels } from './panels';
 
@@ -15,7 +16,7 @@ const view: View = { zoom: 1, panX: 0, panY: 0 };
 let selectedId: string | null = null;
 let selectedIds: string[] = [];
 let selectedLayerId: string | null = null;
-let tool: 'select' | ShapeKind = 'select';
+let tool: 'select' | ShapeKind | 'text' = 'select';
 let draft: { x: number; y: number; w: number; h: number; shape: ShapeKind } | null = null;
 let guides: Guide[] = [];
 
@@ -67,14 +68,14 @@ type Drag =
   | { mode: 'pan'; sx: number; sy: number; panX: number; panY: number }
   | { mode: 'create'; ox: number; oy: number }
   | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
-  | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number }; grab: { x: number; y: number } };
+  | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number; size?: number }; grab: { x: number; y: number } };
 
 const NAMES: Record<ShapeKind, string> = { rect: 'Rectángulo', ellipse: 'Elipse', line: 'Línea' };
 
 let drag: Drag | null = null;
 
 // Modelo de herramientas de Fireworks: la herramienta define qué hace el arrastre.
-function setTool(t: 'select' | ShapeKind): void {
+function setTool(t: 'select' | ShapeKind | 'text'): void {
   tool = t;
   document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) => {
     const on = el.dataset.tool === t;
@@ -84,7 +85,7 @@ function setTool(t: 'select' | ShapeKind): void {
   canvas.style.cursor = t === 'select' ? 'default' : 'crosshair';
 }
 document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) =>
-  el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | ShapeKind)),
+  el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | ShapeKind | 'text')),
 );
 document.querySelector<HTMLElement>('#toolbar .tool[data-fit]')?.addEventListener('click', () => {
   fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
@@ -142,6 +143,81 @@ importFile.addEventListener('change', () => {
 });
 renderer.onImgReady = invalidate;
 
+// ---- Texto (M4): clic con la herramienta → objeto editable en el acto ----
+const DEFAULT_FONT = 'system-ui, sans-serif';
+
+function remeasureText(o: TextObj): void {
+  const m = measureText(canvas.getContext('2d')!, o.text, o.font, o.size);
+  o.w = m.w;
+  o.h = m.h;
+}
+
+function createTextObj(wx: number, wy: number): void {
+  const page = activePage(doc);
+  const layer =
+    (selectedLayerId ? page.layers.find((l) => l.id === selectedLayerId && !l.locked) : null) ??
+    page.layers.find((l) => l.visible && !l.locked);
+  if (!layer) return;
+  const obj: TextObj = {
+    id: uid(),
+    shape: 'text',
+    name: 'Texto',
+    x: Math.round(wx),
+    y: Math.round(wy),
+    w: 1,
+    h: 1,
+    text: 'Texto',
+    font: DEFAULT_FONT,
+    size: 24,
+    fill: '#111111',
+  };
+  remeasureText(obj);
+  const cmd: Command = {
+    label: 'crear texto',
+    do: () => layer.objects.push(obj),
+    undo: () => {
+      const i = layer.objects.indexOf(obj);
+      if (i >= 0) layer.objects.splice(i, 1);
+      if (selectedId === obj.id) select(null);
+    },
+  };
+  history.run(cmd);
+  select(obj.id);
+  setTool('select'); // como Fireworks: tras crear, vuelve a la selección
+  persist();
+  invalidate();
+}
+
+/** Redimensionar texto = escalar la fuente; el bbox se recalcula midiendo. */
+function resizeText(obj: TextObj, start: { x: number; y: number; w: number; h: number; size: number }, role: HandleRole): void {
+  const s = Math.max(0.1, role.includes('e') || role.includes('w') ? obj.w / start.w : obj.h / start.h);
+  obj.size = Math.max(1, Math.round(start.size * s));
+  remeasureText(obj);
+  if (role.includes('w')) obj.x = start.x + start.w - obj.w;
+  if (role.includes('n')) obj.y = start.y + start.h - obj.h;
+}
+
+// doble clic sobre un texto → editarlo (como el rename de capas)
+canvas.addEventListener('dblclick', (e) => {
+  const { wx, wy } = localXY(e);
+  const hit = hitTest(activePage(doc), wx, wy, 4 / view.zoom);
+  if (!hit || hit.shape !== 'text') return;
+  const newText = window.prompt('Texto', hit.text);
+  if (newText === null) return;
+  const before = { text: hit.text, w: hit.w, h: hit.h };
+  const after = { text: newText };
+  history.run({
+    label: 'editar texto',
+    do: () => {
+      hit.text = after.text;
+      remeasureText(hit);
+    },
+    undo: () => Object.assign(hit, before),
+  });
+  persist();
+  invalidate();
+});
+
 function localXY(e: { clientX: number; clientY: number }): { px: number; py: number; wx: number; wy: number } {
   const rect = canvas.getBoundingClientRect();
   const px = e.clientX - rect.left;
@@ -166,6 +242,11 @@ canvas.addEventListener('pointerdown', (e) => {
 
   const { px, py, wx, wy } = localXY(e);
 
+  if (tool === 'text') {
+    createTextObj(wx, wy); // como Fireworks: clic y a editar
+    return;
+  }
+
   if (tool !== 'select') {
     drag = { mode: 'create', ox: wx, oy: wy };
     draft = { x: wx, y: wy, w: 0, h: 0, shape: tool };
@@ -180,7 +261,7 @@ canvas.addEventListener('pointerdown', (e) => {
       mode: 'resize',
       obj: sel,
       role: h.role,
-      start: { x: sel.x, y: sel.y, w: sel.w, h: sel.h },
+      start: { x: sel.x, y: sel.y, w: sel.w, h: sel.h, size: sel.shape === 'text' ? sel.size : undefined },
       grab: { x: wx, y: wy },
     };
     return;
@@ -258,6 +339,7 @@ canvas.addEventListener('pointermove', (e) => {
 
   if (drag.mode === 'resize') {
     applyResize(drag.obj, drag.start, drag.role, wx - drag.grab.x, wy - drag.grab.y);
+    if (drag.obj.shape === 'text') resizeText(drag.obj, { ...drag.start, size: drag.start.size ?? drag.obj.size } as { x: number; y: number; w: number; h: number; size: number }, drag.role); // escalar la fuente, no estirar glifos
     invalidate();
   }
 });
@@ -525,6 +607,8 @@ window.addEventListener('keydown', (e) => {
     setTool('ellipse');
   } else if (e.key === 'l' || e.key === 'L') {
     setTool('line');
+  } else if (e.key === 't' || e.key === 'T') {
+    setTool('text');
   }
 });
 

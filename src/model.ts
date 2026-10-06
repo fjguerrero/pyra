@@ -33,7 +33,22 @@ export interface BitmapObj {
   bri: number; // 1 = original
 }
 
-export type Obj = ShapeObj | BitmapObj;
+export type Obj = ShapeObj | BitmapObj | TextObj;
+
+/** Texto: bbox medido desde el contenido; se edita como objeto normal. */
+export interface TextObj {
+  id: string;
+  shape: 'text';
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  text: string;
+  font: string; // CSS font-family
+  size: number; // px
+  fill: string;
+}
 
 export interface Layer {
   id: string;

@@ -99,6 +99,23 @@ test('persistencia: el documento sobrevive a una recarga', async ({ page }) => {
   await expect(layerCount(page)).toContainText('· 1');
 });
 
+test('texto: crear con la herramienta T y editar con doble clic', async ({ page }) => {
+  await page.keyboard.press('t');
+  await page.locator('#canvas').click({ position: { x: 200, y: 150 } });
+  await expect(layerCount(page)).toContainText('· 1');
+  // el inspector de un texto: contenido, tamaño y color
+  await expect(page.locator('#inspector-body textarea')).toHaveValue('Texto');
+  await expect(page.locator('#inspector-body')).toContainText('Tamaño');
+
+  page.once('dialog', (d) => void d.accept('Hola Pyra'));
+  await page.locator('#canvas').dblclick({ position: { x: 210, y: 160 } });
+  await expect(page.locator('#inspector-body textarea')).toHaveValue('Hola Pyra');
+
+  // undo deshace la edición de texto
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('#inspector-body textarea')).toHaveValue('Texto');
+});
+
 test('páginas: crear y cambiar', async ({ page }) => {
   await page.getByText('＋ Nueva página').click();
   await expect(page.locator('#pages-body .row')).toHaveCount(2);

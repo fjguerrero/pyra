@@ -2,6 +2,7 @@ import type { Obj, Page, ShapeKind } from './model';
 import type { View } from './view';
 import type { Guide } from './guides';
 import { findObj, handles } from './hit';
+import { drawTextObj } from './text';
 export interface Draft {
   x: number;
   y: number;
@@ -178,6 +179,10 @@ export class Renderer {
       if (filters.length) ctx.filter = filters.join(' ');
       ctx.drawImage(im.el, c.x, c.y, c.w, c.h, o.x * v.zoom + v.panX, o.y * v.zoom + v.panY, o.w * v.zoom, o.h * v.zoom);
       if (filters.length) ctx.filter = 'none';
+      return;
+    }
+    if (o.shape === 'text') {
+      drawTextObj(ctx, o, v.zoom, v.panX, v.panY);
       return;
     }
     this.path(o, v);
