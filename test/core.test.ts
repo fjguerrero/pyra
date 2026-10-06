@@ -491,23 +491,25 @@ describe('persistencia: nunca lanza, y no acepta documentos inválidos', () => {
   });
 });
 
-// ================= UI: invariante reportada por el usuario =================
-describe('UI: la banda del inspector no cambia de altura al seleccionar', () => {
+// ================= UI: paneles laterales =================
+describe('UI: las propiedades van en el panel derecho, debajo de las páginas', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
-  it('la fila del inspector tiene altura fija (no auto)', () => {
-    const rows = /#app\s*{[^}]*grid-template-rows:\s*([^;]+);/.exec(css);
-    expect(rows).not.toBeNull();
-    const first = rows![1].trim().split(/\s+/)[0];
-    expect(first).not.toBe('auto');
-    expect(first).toMatch(/^\d+px$/);
+  it('#inspector-body está en #side, después de pages-body', () => {
+    const side = /<div id="side">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/.exec(html);
+    expect(side).not.toBeNull();
+    expect(side![1]).toContain('id="pages-body"');
+    expect(side![1]).toContain('id="inspector-body"');
+    expect(side![1].indexOf('id="pages-body"')).toBeLessThan(side![1].indexOf('id="inspector-body"'));
   });
 
-  it('#inspector declara una altura fija idéntica a la fila', () => {
-    const rows = /#app\s*{[^}]*grid-template-rows:\s*(\d+)px/.exec(css);
-    const height = /#inspector\s*{[^}]*?height:\s*(\d+)px/.exec(css);
-    expect(height).not.toBeNull();
-    expect(height![1]).toBe(rows![1]);
+  it('cada panel es colapsable y arrastrable', () => {
+    expect(css).toContain('.panel.collapsed');
+    expect(css).toContain('.panel.dragging');
+    const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
+    expect(main).toContain('data-panel');
+    expect(main).toContain('draggable = true');
   });
 
   it('las herramientas de la barra son botones reales, no divs', () => {

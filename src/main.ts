@@ -167,6 +167,52 @@ document.querySelector<HTMLElement>('#toolbar .tool[data-export]')?.addEventList
 
 renderer.onImgReady = invalidate;
 
+// ---- Paneles laterales: colapsables y reordenables con drag ----
+{
+  const side = document.getElementById('side')!;
+  const KEY = 'pyra:side';
+  type SideState = { order: string[]; collapsed: Record<string, boolean> };
+  const state: SideState = (() => {
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY) ?? '');
+      if (Array.isArray(s.order) && s.collapsed) return s;
+    } catch { /* sin estado previo */ }
+    return { order: [], collapsed: {} };
+  })();
+  const save = (): void => localStorage.setItem(KEY, JSON.stringify(state));
+
+  const panels = [...side.querySelectorAll<HTMLElement>('.panel[data-panel]')];
+  for (const p of panels) {
+    const id = p.dataset.panel!;
+    if (state.collapsed[id]) p.classList.add('collapsed');
+    p.querySelector('.panel-title')!.addEventListener('click', () => {
+      p.classList.toggle('collapsed');
+      state.collapsed[id] = p.classList.contains('collapsed');
+      save();
+    });
+    p.draggable = true;
+    p.addEventListener('dragstart', () => p.classList.add('dragging'));
+    p.addEventListener('dragend', () => {
+      p.classList.remove('dragging');
+      state.order = [...side.querySelectorAll<HTMLElement>('.panel[data-panel]')].map((el) => el.dataset.panel!);
+      save();
+    });
+  }
+  side.addEventListener('dragover', (e) => {
+    const dragging = side.querySelector('.panel.dragging');
+    if (!dragging) return;
+    const after = [...side.querySelectorAll<HTMLElement>('.panel:not(.dragging)')]
+      .find((p) => { const r = p.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
+    if (after) side.insertBefore(dragging, after);
+    else side.appendChild(dragging);
+  });
+  // restaurar el orden guardado
+  for (const id of state.order) {
+    const p = panels.find((el) => el.dataset.panel === id);
+    if (p) side.appendChild(p);
+  }
+}
+
 // ---- Texto (M4): clic con la herramienta → objeto editable en el acto ----
 const DEFAULT_FONT = 'system-ui, sans-serif';
 
