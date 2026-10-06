@@ -2,20 +2,31 @@ import type { Doc } from './model';
 
 const DB_NAME = 'pyra';
 const STORE = 'documents';
-const KEY = '***';
+const KEY = 'doc';
 
 // Una sola conexión reutilizada: abrir por cada save bloqueaba opens posteriores.
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-function db(): Promise<IDBDatabase> {
-  dbPromise ??= new Promise((resolve, reject) => {
+function openDb(): Promise<IDBDatabase> {
+  return new Promise<IDBDatabase>((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
     req.onupgradeneeded = () => {
       if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = () => reject(req.error ?? new Error('no se pudo abrir IndexedDB'));
+    req.onblocked = () => reject(req.error ?? new Error('IndexedDB bloqueado'));
   });
+}
+
+function db(): Promise<IDBDatabase> {
+  if (!dbPromise) {
+    // un open fallido no puede envenenar la sesión: la próxima llamada reintenta
+    dbPromise = openDb().catch((e) => {
+      dbPromise = null;
+      throw e;
+    });
+  }
   return dbPromise;
 }
 

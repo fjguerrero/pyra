@@ -92,7 +92,8 @@ export function renderPanels(
       input.value = String(Math.round(obj[key]));
       input.addEventListener('change', () => {
         const val = Number(input.value);
-        if (Number.isFinite(val)) api.editObj(obj, { [key]: val } as Partial<RectObj>);
+        // campo vacío o no numérico: no mueve el objeto a 0
+        if (input.value.trim() !== '' && Number.isFinite(val)) api.editObj(obj, { [key]: val } as Partial<RectObj>);
       });
       wrap.appendChild(input);
       insp.appendChild(wrap);
