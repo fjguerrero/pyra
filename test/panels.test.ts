@@ -26,6 +26,7 @@ function fixture(): { doc: Doc; view: View; api: PanelApi; calls: string[] } {
     moveLayer: vi.fn((_id, d) => calls.push(`moveLayer:${d}`)),
     align: vi.fn((k) => calls.push(`align:${k}`)),
     selectPage: vi.fn((_id) => calls.push('selectPage')),
+    editPage: vi.fn(),
     addPage: vi.fn(() => calls.push('addPage')),
     removePage: vi.fn(() => calls.push('removePage')),
     saveStyle: vi.fn((o) => calls.push(`saveStyle:${o.name}`)),
@@ -224,7 +225,8 @@ describe('Property Inspector: campos según lo seleccionado', () => {
     const text = document.getElementById('inspector-body')!.textContent!;
     expect(text).toContain('panel-test');
     expect(text).toContain('Página 1');
-    expect(text).toContain('1280×800');
+    const nums = [...document.querySelectorAll('#inspector-body input[type=number]')] as HTMLInputElement[];
+    expect(nums.map((n) => (n as HTMLInputElement).value)).toEqual(['1280', '800']);
   });
 
   it('con un objeto seleccionado expone X, Y, ancho y alto con sus valores', () => {

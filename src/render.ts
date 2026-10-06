@@ -98,6 +98,25 @@ export class Renderer {
     }
     ctx.globalAlpha = 1;
 
+    // guías manuales de la página
+    if (scene.page.guides?.length) {
+      ctx.strokeStyle = '#00b0ff';
+      ctx.lineWidth = 1;
+      for (const g of scene.page.guides) {
+        ctx.beginPath();
+        if (g.axis === 'v') {
+          const x = g.pos * v.zoom + v.panX;
+          ctx.moveTo(x, v.panY);
+          ctx.lineTo(x, v.panY + scene.page.height * v.zoom);
+        } else {
+          const y = g.pos * v.zoom + v.panY;
+          ctx.moveTo(v.panX, y);
+          ctx.lineTo(v.panX + scene.page.width * v.zoom, y);
+        }
+        ctx.stroke();
+      }
+    }
+
     if (scene.draft) {
       ctx.strokeStyle = ACCENT;
       ctx.setLineDash([4, 3]);

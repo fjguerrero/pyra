@@ -59,3 +59,23 @@ como app web rápida de verdad. No un Figma-lite: un Fireworks con 25 años de m
   con fuente.
 
 Cada fase: usable de verdad antes de pasar a la siguiente.
+
+## Estado v1 (2026-10-06)
+
+M0–M6 completados, más lo que hace que se sienta como Fireworks:
+
+- Tools: V (selección + marquee), R, E, L, T. Tras dibujar vuelve a V (como FW).
+- Capas, páginas, smart guides (bordes/centros/página/guías manuales), align, undo/redo por comandos, IndexedDB.
+- Objetos: rect, elipse, línea, bitmap (import, recorte, saturación/brillo/blur), texto editable.
+- Rotación con manija (Shift=pasos 15°), grupos (Ctrl+G), duplicar/pegar, z-order, nudge.
+- Relleno con degradado lineal; Styles reutilizables (la idea clave de FW).
+- Live effects: sombra, glow, blur no destructivos.
+- Guías manuales de página (clic derecho crea, clic sobre ella borra, arrastrable; el snap las usa).
+- Tamaño de página desde el inspector. Paneles derechos colapsables/reordenables.
+- Archivo: `.f.png` (PNG con fuente embebida) + export PNG plano.
+
+Verificación: `tsc --noEmit` limpio, 172 tests unitarios, 17 e2e Playwright (×2 pasadas sin flakies).
+
+Fuera de v1 (candidatos v1.1): pen tool, unión booleana, bevel, distribución de objetos,
+multi-selección con asas de grupo, export de assets individuales, dirty-rects/offscreen
+(para miles de objetos), "igual distancia" en smart guides.

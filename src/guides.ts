@@ -36,11 +36,12 @@ function bestDelta(from: number[], targets: number[], tol: number): { d: number;
 export function snapBox(
   box: Box,
   others: Box[],
-  page: { width: number; height: number },
+  page: { width: number; height: number; guides?: { axis: 'v' | 'h'; pos: number }[] },
   tol: number,
 ): Snap {
   const xTargets = [0, page.width / 2, page.width];
   const yTargets = [0, page.height / 2, page.height];
+  for (const g of page.guides ?? []) (g.axis === 'v' ? xTargets : yTargets).push(g.pos);
   for (const o of others) {
     xTargets.push(...anchors(o.x, o.x + o.w));
     yTargets.push(...anchors(o.y, o.y + o.h));

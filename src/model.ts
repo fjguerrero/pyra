@@ -91,12 +91,19 @@ export interface Layer {
   objects: Obj[];
 }
 
+/** Guía manual de página (arrastrable; Alt+clic la borra). */
+export interface PageGuide {
+  axis: 'v' | 'h';
+  pos: number; // coordenada de mundo
+}
+
 export interface Page {
   id: string;
   name: string;
   width: number;
   height: number;
   layers: Layer[];
+  guides?: PageGuide[];
 }
 
 export interface Doc {

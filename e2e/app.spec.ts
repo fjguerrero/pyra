@@ -261,3 +261,13 @@ test('exportar PNG plano descarga un .png', async ({ page }) => {
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#toolbar .tool[data-export-png]')]);
   expect(dl.suggestedFilename()).toMatch(/\.png$/);
 });
+
+test('guías manuales: clic derecho crea, clic derecho sobre ella borra', async ({ page }) => {
+  const box = await canvas(page).boundingBox();
+  await page.mouse.click(box!.x + 300, box!.y + 200, { button: 'right' });
+  await page.mouse.click(box!.x + 300, box!.y + 200, { button: 'right' }); // borrar
+  // tamaño de página desde el inspector sin selección
+  await page.locator('#inspector-body input[type=number]').nth(0).fill('900');
+  await page.locator('#inspector-body input[type=number]').nth(0).dispatchEvent('change');
+  await expect(page.locator('#inspector-body input[type=number]').nth(0)).toHaveValue('900');
+});

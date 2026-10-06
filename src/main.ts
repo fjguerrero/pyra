@@ -85,7 +85,8 @@ type Drag =
   | { mode: 'marquee'; ox: number; oy: number; additive: boolean }
   | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
   | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number; size?: number }; grab: { x: number; y: number } }
-  | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number };
+  | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number }
+  | { mode: 'guide'; index: number };
 
 const NAMES: Record<ShapeKind, string> = { rect: 'Rectángulo', ellipse: 'Elipse', line: 'Línea' };
 
@@ -344,6 +345,13 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
 
+  // guías manuales: arrastrar con V para mover
+  const gi = (page.guides ?? []).findIndex((g) => Math.abs((g.axis === 'v' ? wx : wy) - g.pos) <= 5 / view.zoom);
+  if (gi >= 0) {
+    drag = { mode: 'guide', index: gi };
+    return;
+  }
+
   const sel = findObj(page, selectedId);
   const h = sel ? hitHandle(px, py, handles(sel, view)) : null;
   if (h && sel && h.role === 'rot') {
@@ -392,6 +400,15 @@ canvas.addEventListener('pointermove', (e) => {
     return;
   }
 
+  if (drag.mode === 'guide') {
+    const page = activePage(doc);
+    const g = page.guides![drag.index];
+    const { wx, wy } = localXY(e);
+    g.pos = Math.round(g.axis === 'v' ? wx : wy);
+    invalidate();
+    return;
+  }
+
   const { wx, wy } = localXY(e);
 
   if (drag.mode === 'create' && draft) {
@@ -433,7 +450,7 @@ canvas.addEventListener('pointermove', (e) => {
     const snap = snapBox(
       { x: primary.start.x + dx, y: primary.start.y + dy, w: primary.obj.w, h: primary.obj.h },
       others,
-      { width: page.width, height: page.height },
+      { width: page.width, height: page.height, guides: page.guides },
       6 / view.zoom, // tolerancia constante en pantalla
     );
     guides = snap.guides;
@@ -463,9 +480,29 @@ canvas.addEventListener('pointermove', (e) => {
   }
 });
 
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const page = activePage(doc);
+  const { wx, wy } = localXY(e);
+  const gi = (page.guides ?? []).findIndex((g) => Math.abs((g.axis === 'v' ? wx : wy) - g.pos) <= 5 / view.zoom);
+  if (gi >= 0) {
+    page.guides!.splice(gi, 1);
+  } else {
+    const axis = Math.abs(wx - page.width / 2) < Math.abs(wy - page.height / 2) ? 'v' : 'h';
+    (page.guides ??= []).push({ axis, pos: Math.round(axis === 'v' ? wx : wy) });
+  }
+  persist();
+  invalidate();
+});
+
 canvas.addEventListener('pointerup', () => {
   if (!drag) return;
   const page = activePage(doc);
+
+  if (drag.mode === 'guide') {
+    persist();
+    return;
+  }
 
   if (drag.mode === 'create' && draft) {
     const d = draft;
@@ -648,6 +685,17 @@ const panelApi = {
       });
       persist();
     }
+    invalidate();
+  },
+  editPage(patch: { width?: number; height?: number }): void {
+    const page = activePage(doc);
+    const before = { width: page.width, height: page.height };
+    history.run({
+      label: 'tamaño de página',
+      do: () => Object.assign(page, patch),
+      undo: () => Object.assign(page, before),
+    });
+    persist();
     invalidate();
   },
   selectPage(pageId: string): void {

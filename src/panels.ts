@@ -12,6 +12,7 @@ export interface PanelApi {
   moveLayer(layerId: string, delta: number): void;
   align(kind: AlignKind): void;
   selectPage(pageId: string): void;
+  editPage(patch: { width?: number; height?: number }): void;
   addPage(): void;
   removePage(pageId: string): void;
   saveStyle(obj: Obj): void;
@@ -82,8 +83,24 @@ export function renderPanels(
     } else {
       insp.insertAdjacentHTML(
         'beforeend',
-        `<span class="hint">${esc(doc.name)} · ${page.name} · ${page.width}×${page.height} px</span>`,
+        `<span class="hint">${esc(doc.name)} · ${page.name}</span>`,
       );
+      const num = (key: 'width' | 'height', label: string) => {
+        const wrap = document.createElement('label');
+        wrap.className = 'field';
+        wrap.innerHTML = `<span>${label}</span>`;
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.value = String(page[key]);
+        input.addEventListener('change', () => {
+          const val = Number(input.value);
+          if (input.value.trim() !== '' && Number.isFinite(val) && val > 0) api.editPage({ [key]: Math.round(val) });
+        });
+        wrap.appendChild(input);
+        insp.appendChild(wrap);
+      };
+      num('width', 'Ancho página');
+      num('height', 'Alto página');
     }
   } else {
     const num = (key: 'x' | 'y' | 'w' | 'h', label: string) => {
