@@ -293,14 +293,14 @@ describe('Barra de estado: zoom y selección', () => {
     const f = fixture();
     const obj = activePage(f.doc).layers[0].objects[0];
     mount(f.doc, obj.id, null, [obj.id], f.view, f.api);
-    expect(document.getElementById('status')!.textContent).toContain('selección 30×40');
+    expect(document.getElementById('status')!.textContent).toContain('selection 30×40');
   });
 
   it('con selección múltiple indica cuántos objetos hay', () => {
     const f = fixture();
     const objs = activePage(f.doc).layers[0].objects;
     mount(f.doc, objs[1].id, null, objs.map((o) => o.id), f.view, f.api);
-    expect(document.getElementById('status')!.textContent).toContain('(2 objetos)');
+    expect(document.getElementById('status')!.textContent).toContain('(2 objects)');
   });
 });
 
@@ -342,8 +342,8 @@ describe('inspector: Estilos (M5)', () => {
     const objA = activePage(doc).layers[0].objects.find((o) => o.name === 'A')!;
     mount(doc, objA.id, null, [], view, api);
     const insp = document.getElementById('inspector-body')!;
-    expect(insp.textContent).toContain('Estilos');
-    expect(insp.textContent).toContain('Guardar estilo');
+    expect(insp.textContent).toContain('Styles');
+    expect(insp.textContent).toContain('Save style');
     expect(insp.textContent).toContain('Mi estilo');
     const row = [...insp.querySelectorAll('.row')].find((r) => r.textContent!.includes('Mi estilo'))!;
     row.dispatchEvent(new MouseEvent('click', { bubbles: true }));

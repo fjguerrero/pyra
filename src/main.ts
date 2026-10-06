@@ -11,6 +11,7 @@ import { duplicateCmd, groupCmd, pasteCmd, zOrderCmd } from './commands';
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
 import { renderPanels } from './panels';
+import { LANGS, currentLang, setLang, t } from './i18n';
 
 const doc: Doc = (await loadDoc()) ?? newDoc();
 const history = new History();
@@ -88,7 +89,7 @@ type Drag =
   | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number }
   | { mode: 'guide'; index: number };
 
-const NAMES: Record<ShapeKind, string> = { rect: 'Rectángulo', ellipse: 'Elipse', line: 'Línea' };
+const NAMES: Record<ShapeKind, string> = { rect: t('obj_rect'), ellipse: t('obj_ellipse'), line: t('obj_line') };
 
 let drag: Drag | null = null;
 
@@ -102,6 +103,25 @@ function setTool(t: 'select' | ShapeKind | 'text'): void {
   });
   canvas.style.cursor = t === 'select' ? 'default' : 'crosshair';
 }
+// ---- i18n: textos estáticos del HTML + selector de idioma ----
+function applyStaticI18n(): void {
+  document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
+    el.textContent = t(el.dataset.i18n as never);
+  });
+  document.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach((el) => {
+    el.title = t(el.dataset.i18nTitle as never);
+  });
+}
+const langSel = document.getElementById('lang') as HTMLSelectElement;
+langSel.innerHTML = LANGS.map((l) => `<option value="${l.code}">${l.label}</option>`).join('');
+langSel.value = currentLang();
+langSel.addEventListener('change', () => {
+  setLang(langSel.value as never);
+  applyStaticI18n();
+  invalidate();
+});
+applyStaticI18n();
+
 document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) =>
   el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | ShapeKind | 'text')),
 );
@@ -252,12 +272,12 @@ function createTextObj(wx: number, wy: number): void {
   const obj: TextObj = {
     id: uid(),
     shape: 'text',
-    name: 'Texto',
+    name: t('obj_text'),
     x: Math.round(wx),
     y: Math.round(wy),
     w: 1,
     h: 1,
-    text: 'Texto',
+    text: t('obj_text'),
     font: DEFAULT_FONT,
     size: 24,
     fill: '#111111',
@@ -293,7 +313,7 @@ canvas.addEventListener('dblclick', (e) => {
   const { wx, wy } = localXY(e);
   const hit = hitTest(activePage(doc), wx, wy, 4 / view.zoom);
   if (!hit || hit.shape !== 'text') return;
-  const newText = window.prompt('Texto', hit.text);
+  const newText = window.prompt(t('text'), hit.text);
   if (newText === null) return;
   const before = { text: hit.text, w: hit.w, h: hit.h };
   const after = { text: newText };
@@ -710,10 +730,10 @@ const panelApi = {
     const base = activePage(doc);
     const page = {
       id: uid(),
-      name: `Página ${doc.pages.length + 1}`,
+      name: `${t('default_page')} ${doc.pages.length + 1}`,
       width: base.width,
       height: base.height,
-      layers: [{ id: uid(), name: 'Capa 1', visible: true, locked: false, opacity: 1, objects: [] }],
+      layers: [{ id: uid(), name: t('default_layer'), visible: true, locked: false, opacity: 1, objects: [] }],
     };
     doc.pages.push(page);
     doc.activePageId = page.id;

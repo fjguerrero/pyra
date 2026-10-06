@@ -41,7 +41,7 @@ test('dibujar un rectángulo con la herramienta: aparece en capas y se seleccion
   // tras dibujar vuelve a selección (como Fireworks) y el inspector muestra el objeto
   await expect(page.locator('#toolbar .tool[data-tool="select"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(inspNum(page)).not.toHaveValue('');
-  await expect(page.locator('#status')).toContainText('selección');
+  await expect(page.locator('#status')).toContainText('selection');
 });
 
 test('seleccionar y mover un objeto con el ratón', async ({ page }) => {
@@ -85,7 +85,7 @@ test('importar una imagen crea un bitmap seleccionable y movible', async ({ page
   await page.setInputFiles('#import-file', { name: 'rojo.png', mimeType: 'image/png', buffer: Buffer.from(dataUrl.split(',')[1], 'base64') });
   await expect(layerCount(page)).toContainText('· 1');
   // el inspector de un bitmap: filtros vivos y recorte
-  await expect(page.locator('#inspector-body')).toContainText('Desenfoque');
+  await expect(page.locator('#inspector-body')).toContainText('Blur');
   await expect(page.locator('#inspector-body')).toContainText('Recorte ancho');
 
   // moverlo con el ratón (hit-test por bbox): fitAll centra la página y el bitmap
@@ -112,8 +112,8 @@ test('texto: crear con la herramienta T y editar con doble clic', async ({ page 
   await page.locator('#canvas').click({ position: { x: 200, y: 150 } });
   await expect(layerCount(page)).toContainText('· 1');
   // el inspector de un texto: contenido, tamaño y color
-  await expect(page.locator('#inspector-body textarea')).toHaveValue('Texto');
-  await expect(page.locator('#inspector-body')).toContainText('Tamaño');
+  await expect(page.locator('#inspector-body textarea')).toHaveValue('Text');
+  await expect(page.locator('#inspector-body')).toContainText('Size');
 
   page.once('dialog', (d) => void d.accept('Hola Pyra'));
   await page.locator('#canvas').dblclick({ position: { x: 210, y: 160 } });
@@ -121,7 +121,7 @@ test('texto: crear con la herramienta T y editar con doble clic', async ({ page 
 
   // undo deshace la edición de texto
   await page.keyboard.press('Control+z');
-  await expect(page.locator('#inspector-body textarea')).toHaveValue('Texto');
+  await expect(page.locator('#inspector-body textarea')).toHaveValue('Text');
 });
 
 test('duplicar con Ctrl+D y mover con flechas', async ({ page }) => {
@@ -145,11 +145,11 @@ test('duplicar con Ctrl+D y mover con flechas', async ({ page }) => {
 test('degradado: añadir desde el inspector y editar sus colores', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);
-  await page.locator('#inspector-body button', { hasText: 'Añadir degradado' }).click();
-  await expect(page.locator('#inspector-body')).toContainText('Degradado desde');
-  await expect(page.locator('#inspector-body')).toContainText('Ángulo');
-  await page.locator('#inspector-body button', { hasText: 'Quitar degradado' }).click();
-  await expect(page.locator('#inspector-body')).not.toContainText('Degradado desde');
+  await page.locator('#inspector-body button', { hasText: 'Add gradient' }).click();
+  await expect(page.locator('#inspector-body')).toContainText('Gradient from');
+  await expect(page.locator('#inspector-body')).toContainText('Angle');
+  await page.locator('#inspector-body button', { hasText: 'Remove gradient' }).click();
+  await expect(page.locator('#inspector-body')).not.toContainText('Gradient from');
 });
 
 test('estilos: guardar desde un objeto y aplicar a otro', async ({ page }) => {
@@ -165,7 +165,7 @@ test('estilos: guardar desde un objeto y aplicar a otro', async ({ page }) => {
   await page.mouse.click(box!.x + 100, box!.y + 90); // centro del primer rect
   const colorInput = page.locator('#inspector-body input[type=color]').first();
   await colorInput.fill('#ff0000');
-  await page.locator('#inspector-body button', { hasText: 'Guardar estilo' }).click();
+  await page.locator('#inspector-body button', { hasText: 'Save style' }).click();
   await expect(page.locator('#inspector-body')).toContainText('Estilo 1');
   // seleccionar el segundo y aplicar el estilo
   await page.mouse.click(box!.x + 240, box!.y + 90);
@@ -184,7 +184,7 @@ test('selección por marco: arrastrar en vacío selecciona lo que intersecta', a
   await page.keyboard.press('Escape'); // herramienta de selección
   // marco que cubre ambos rectángulos
   await drag(page, [40, 40], [260, 140]);
-  await expect(page.locator('#status')).toContainText('(2 objetos)');
+  await expect(page.locator('#status')).toContainText('(2 objects)');
   // mover con flechas afecta a ambos (x de ambos cambia)
   const x0 = Number(await inspNum(page, 0).inputValue());
   await page.keyboard.press('ArrowRight');
@@ -212,7 +212,7 @@ test('exportar .f.png y reimportarlo restaura el documento', async ({ page }) =>
 test('páginas: crear y cambiar', async ({ page }) => {
   await page.getByText('＋ Nueva página').click();
   await expect(page.locator('#pages-body .row')).toHaveCount(2);
-  await expect(page.locator('#pages-body .row.active')).toContainText('Página 2');
+  await expect(page.locator('#pages-body .row.active')).toContainText('Page 2');
   await page.locator('#pages-body .row').first().click();
   await expect(page.locator('#pages-body .row.active')).toContainText('Página 1');
 });
@@ -247,12 +247,12 @@ test('agrupar: Ctrl+G selecciona el grupo entero al tocar un miembro', async ({ 
   // clic en uno selecciona los dos
   await page.keyboard.press('Escape');
   await page.mouse.click(box!.x + 100, box!.y + 90);
-  await expect(page.locator('#status')).toContainText('(2 objetos)');
+  await expect(page.locator('#status')).toContainText('(2 objects)');
   // desagrupar
   await page.keyboard.press('Control+Shift+G');
   await page.keyboard.press('Escape');
   await page.mouse.click(box!.x + 100, box!.y + 90);
-  await expect(page.locator('#status')).not.toContainText('(2 objetos)');
+  await expect(page.locator('#status')).not.toContainText('(2 objects)');
 });
 
 test('exportar PNG plano descarga un .png', async ({ page }) => {
@@ -270,4 +270,15 @@ test('guías manuales: clic derecho crea, clic derecho sobre ella borra', async 
   await page.locator('#inspector-body input[type=number]').nth(0).fill('900');
   await page.locator('#inspector-body input[type=number]').nth(0).dispatchEvent('change');
   await expect(page.locator('#inspector-body input[type=number]').nth(0)).toHaveValue('900');
+});
+
+test('i18n: el idioma guardado cambia la UI (es) y hay selector con 15 idiomas', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('pyra:lang', 'es'));
+  await page.goto('/');
+  await expect(page.locator('.panel-title').first()).toContainText('Capas');
+  const langSel = page.locator('#lang');
+  await expect(langSel.locator('option')).toHaveCount(15);
+  await langSel.selectOption('de');
+  await expect(page.locator('.panel-title').first()).toContainText('Ebenen');
+  await expect(langSel).toHaveValue('de');
 });

@@ -10,32 +10,33 @@
     <div id="app">
       <div id="main">
         <div id="toolbar">
-          <button type="button" class="tool active" data-tool="select" aria-pressed="true" title="Selección (V)">V</button>
-          <button type="button" class="tool" data-tool="rect" aria-pressed="false" title="Rectángulo (R)">▭</button>
-          <button type="button" class="tool" data-tool="ellipse" aria-pressed="false" title="Elipse (E)">◯</button>
-          <button type="button" class="tool" data-tool="line" aria-pressed="false" title="Línea (L)">╱</button>
-          <button type="button" class="tool" data-tool="text" aria-pressed="false" title="Texto (T)">T</button>
-          <button type="button" class="tool" data-import title="Importar imagen">🖼</button>
-          <button type="button" class="tool" data-export title="Exportar .f.png">⬇</button>
-          <button type="button" class="tool" data-export-png title="Exportar PNG plano">🖼</button>
-          <button type="button" class="tool" data-fit title="Zoom ajustar (0)">⤢</button>
+          <button type="button" class="tool active" data-tool="select" aria-pressed="true" data-i18n-title="tool_select">V</button>
+          <button type="button" class="tool" data-tool="rect" aria-pressed="false" data-i18n-title="tool_rect">▭</button>
+          <button type="button" class="tool" data-tool="ellipse" aria-pressed="false" data-i18n-title="tool_ellipse">◯</button>
+          <button type="button" class="tool" data-tool="line" aria-pressed="false" data-i18n-title="tool_line">╱</button>
+          <button type="button" class="tool" data-tool="text" aria-pressed="false" data-i18n-title="tool_text">T</button>
+          <button type="button" class="tool" data-import data-i18n-title="import_image">🖼</button>
+          <button type="button" class="tool" data-export data-i18n-title="export_fpng">⬇</button>
+          <button type="button" class="tool" data-export-png data-i18n-title="export_png">🖼</button>
+          <button type="button" class="tool" data-fit data-i18n-title="fit_zoom">⤢</button>
+          <select id="lang" title="Idioma"></select>
         </div>
         <div id="canvas-wrap"><canvas id="canvas"></canvas></div>
         <div id="side">
           <div class="panel" data-panel="layers">
-            <div class="panel-title">Capas</div>
+            <div class="panel-title" data-i18n="panel_layers">Capas</div>
             <div id="layers-body"></div>
           </div>
           <div class="panel" data-panel="pages">
-            <div class="panel-title">Páginas</div>
+            <div class="panel-title" data-i18n="panel_pages">Páginas</div>
             <div id="pages-body"></div>
           </div>
           <div class="panel" data-panel="inspector">
-            <div class="panel-title">Propiedades</div>
+            <div class="panel-title" data-i18n="panel_inspector">Propiedades</div>
             <div id="inspector-body"></div>
           </div>
           <div class="panel" data-panel="align">
-            <div class="panel-title">Alinear</div>
+            <div class="panel-title" data-i18n="panel_align">Alinear</div>
             <div id="align-body"></div>
           </div>
         </div>

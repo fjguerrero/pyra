@@ -1,6 +1,7 @@
 import { activePage, NO_FX, type BitmapObj, type Doc, type Fx, type Obj, type ShapeObj, type TextObj } from './model';
 import { findObj } from './hit';
 import type { View } from './view';
+import { statusText, t } from './i18n';
 import type { AlignKind } from './align';
 
 export interface PanelApi {
@@ -39,15 +40,15 @@ function btn(cls: string, label: string, title: string, on: boolean, onClick: ()
   return b;
 }
 
-const ALIGN_BUTTONS: [AlignKind, string, string][] = [
-  ['left', '⇤', 'Alinear a la izquierda'],
-  ['hcenter', '↔', 'Centrar horizontalmente'],
-  ['right', '⇥', 'Alinear a la derecha'],
-  ['top', '⤒', 'Alinear arriba'],
-  ['vcenter', '↕', 'Centrar verticalmente'],
-  ['bottom', '⤓', 'Alinear abajo'],
-  ['hdist', '⇱', 'Distribuir horizontalmente'],
-  ['vdist', '⇲', 'Distribuir verticalmente'],
+const ALIGN_BUTTONS: [AlignKind, string, 'align_left' | 'align_hcenter' | 'align_right' | 'align_top' | 'align_vcenter' | 'align_bottom' | 'dist_h' | 'dist_v'][] = [
+  ['left', '⇤', 'align_left'],
+  ['hcenter', '↔', 'align_hcenter'],
+  ['right', '⇥', 'align_right'],
+  ['top', '⤒', 'align_top'],
+  ['vcenter', '↕', 'align_vcenter'],
+  ['bottom', '⤓', 'align_bottom'],
+  ['hdist', '⇱', 'dist_h'],
+  ['vdist', '⇲', 'dist_v'],
 ];
 
 export function renderPanels(
@@ -69,7 +70,7 @@ export function renderPanels(
     if (layer) {
       const op = document.createElement('label');
       op.className = 'field';
-      op.innerHTML = '<span>Opacidad capa</span>';
+      op.innerHTML = `<span>${t('layer_opacity')}</span>`;
       const rng = document.createElement('input');
       rng.type = 'range';
       rng.min = '0';
@@ -99,8 +100,8 @@ export function renderPanels(
         wrap.appendChild(input);
         insp.appendChild(wrap);
       };
-      num('width', 'Ancho página');
-      num('height', 'Alto página');
+      num('width', t('page_width'));
+      num('height', t('page_height'));
     }
   } else {
     const num = (key: 'x' | 'y' | 'w' | 'h', label: string) => {
@@ -120,8 +121,8 @@ export function renderPanels(
     };
     num('x', 'X');
     num('y', 'Y');
-    num('w', 'Ancho');
-    num('h', 'Alto');
+    num('w', t('width'));
+    num('h', t('height'));
 
     if (obj.shape === 'bitmap') {
       const slider = (label: string, key: 'sat' | 'bri', min: number, max: number, step: number) => {
@@ -138,8 +139,8 @@ export function renderPanels(
         wrap.appendChild(rng);
         insp.appendChild(wrap);
       };
-      slider('Saturación', 'sat', 0, 2, 0.05);
-      slider('Brillo', 'bri', 0, 2, 0.05);
+      slider(t('saturation'), 'sat', 0, 2, 0.05);
+      slider(t('brightness'), 'bri', 0, 2, 0.05);
 
       // recorte en píxeles de la fuente original; campos vacíos = imagen completa
       const cropInputs: Record<'x' | 'y' | 'w' | 'h', HTMLInputElement> = { x: null!, y: null!, w: null!, h: null! };
@@ -147,24 +148,24 @@ export function renderPanels(
         const c = { x: Number(cropInputs.x.value), y: Number(cropInputs.y.value), w: Number(cropInputs.w.value), h: Number(cropInputs.h.value) };
         if (Object.values(c).every(Number.isFinite) && c.w > 0 && c.h > 0) api.editObj(obj, { crop: c });
       };
-      for (const [key, label] of [['x', 'Recorte X'], ['y', 'Recorte Y'], ['w', 'Recorte ancho'], ['h', 'Recorte alto']] as const) {
+      for (const [key, label] of [['x', t('crop_x')], ['y', t('crop_y')], ['w', t('crop_w')], ['h', t('crop_h')]] as const) {
         const wrap = document.createElement('label');
         wrap.className = 'field';
         wrap.innerHTML = `<span>${label}</span>`;
         const input = document.createElement('input');
         input.type = 'number';
         input.value = obj.crop ? String(obj.crop[key]) : '';
-        input.placeholder = 'imagen completa';
+        input.placeholder = t('show_full_image');
         input.addEventListener('change', applyCrop);
         cropInputs[key] = input;
         wrap.appendChild(input);
         insp.appendChild(wrap);
       }
-      insp.appendChild(btn('', 'Quitar recorte', 'Mostrar la imagen completa', false, () => api.editObj(obj, { crop: null })));
+      insp.appendChild(btn('', t('remove_crop'), t('show_full_image'), false, () => api.editObj(obj, { crop: null })));
     } else if (obj.shape === 'text') {
       const taWrap = document.createElement('label');
       taWrap.className = 'field';
-      taWrap.innerHTML = '<span>Texto</span>';
+      taWrap.innerHTML = `<span>${t('text')}</span>`;
       const ta = document.createElement('textarea');
       ta.value = obj.text;
       ta.rows = 3;
@@ -174,7 +175,7 @@ export function renderPanels(
 
       const sizeWrap = document.createElement('label');
       sizeWrap.className = 'field';
-      sizeWrap.innerHTML = '<span>Tamaño</span>';
+      sizeWrap.innerHTML = `<span>${t('size')}</span>`;
       const size = document.createElement('input');
       size.type = 'number';
       size.min = '1';
@@ -188,7 +189,7 @@ export function renderPanels(
 
       const colorWrap = document.createElement('label');
       colorWrap.className = 'field';
-      colorWrap.innerHTML = '<span>Color</span>';
+      colorWrap.innerHTML = `<span>${t('color')}</span>`;
       const color = document.createElement('input');
       color.type = 'color';
       color.value = obj.fill;
@@ -200,7 +201,7 @@ export function renderPanels(
       const colorKey = obj.shape === 'line' ? 'stroke' : 'fill';
       const wrap = document.createElement('label');
       wrap.className = 'field';
-      wrap.innerHTML = `<span>${obj.shape === 'line' ? 'Color trazo' : 'Relleno'}</span>`;
+      wrap.innerHTML = `<span>${obj.shape === 'line' ? t('stroke_color') : t('fill')}</span>`;
       const color = document.createElement('input');
       color.type = 'color';
       color.value = (obj[colorKey] as string) || '#000000';
@@ -209,7 +210,7 @@ export function renderPanels(
       insp.appendChild(wrap);
       const rotWrap = document.createElement('label');
       rotWrap.className = 'field';
-      rotWrap.innerHTML = '<span>Rotación</span>';
+      rotWrap.innerHTML = `<span>${t('rotation')}</span>`;
       const rotInput = document.createElement('input');
       rotInput.type = 'number';
       rotInput.value = String(obj.rot ?? 0);
@@ -221,7 +222,7 @@ export function renderPanels(
       // ---- Degradado lineal (solo formas con relleno) ----
       if (obj.shape !== 'line') {
         const g = obj.gradient ?? null;
-        insp.appendChild(btn('', g ? 'Quitar degradado' : 'Añadir degradado', 'Relleno con degradado lineal', false, () =>
+        insp.appendChild(btn('', g ? t('remove_gradient') : t('add_gradient'), t('gradient_hint'), false, () =>
           api.editObj(obj, { gradient: g ? null : { from: obj.fill, to: '#ffffff', angle: 0 } })));
         if (g) {
           const gradField = (label: string, value: string, onSet: (v: string) => void) => {
@@ -235,11 +236,11 @@ export function renderPanels(
             w.appendChild(c);
             insp.appendChild(w);
           };
-          gradField('Degradado desde', g.from, (v) => api.editObj(obj, { gradient: { ...g, from: v } }));
-          gradField('Degradado hasta', g.to, (v) => api.editObj(obj, { gradient: { ...g, to: v } }));
+          gradField(t('gradient_from'), g.from, (v) => api.editObj(obj, { gradient: { ...g, from: v } }));
+          gradField(t('gradient_to'), g.to, (v) => api.editObj(obj, { gradient: { ...g, to: v } }));
           const angleWrap = document.createElement('label');
           angleWrap.className = 'field';
-          angleWrap.innerHTML = '<span>Ángulo</span>';
+          angleWrap.innerHTML = `<span>${t('angle')}</span>`;
           const angle = document.createElement('input');
           angle.type = 'number';
           angle.value = String(g.angle);
@@ -253,7 +254,7 @@ export function renderPanels(
     // ---- Efectos en vivo (M5): válidos para cualquier objeto ----
     const fx: Fx = obj.fx ?? { ...NO_FX };
     const editFx = (patch: Partial<Fx>): void => api.editObj(obj, { fx: { ...fx, ...patch } });
-    insp.insertAdjacentHTML('beforeend', '<span class="hint">Efectos en vivo</span>');
+    insp.insertAdjacentHTML('beforeend', `<span class="hint">${t('live_effects')}</span>`);
     const numField = (label: string, value: number, onSet: (v: number) => void) => {
       const wrap = document.createElement('label');
       wrap.className = 'field';
@@ -279,27 +280,27 @@ export function renderPanels(
       wrap.appendChild(input);
       insp.appendChild(wrap);
     };
-    numField('Desenfoque', fx.blur, (v) => editFx({ blur: Math.max(0, v) }));
-    insp.appendChild(btn('', fx.shadow ? 'Quitar sombra' : 'Añadir sombra', 'Sombra paralela en vivo', Boolean(fx.shadow), () =>
+    numField(t('blur'), fx.blur, (v) => editFx({ blur: Math.max(0, v) }));
+    insp.appendChild(btn('', fx.shadow ? t('remove_shadow') : t('add_shadow'), t('shadow_hint'), Boolean(fx.shadow), () =>
       editFx({ shadow: fx.shadow ? null : { x: 4, y: 4, blur: 8, color: '#00000080' } }),
     ));
     if (fx.shadow) {
-      numField('Sombra X', fx.shadow.x, (v) => editFx({ shadow: { ...fx.shadow!, x: v } }));
-      numField('Sombra Y', fx.shadow.y, (v) => editFx({ shadow: { ...fx.shadow!, y: v } }));
-      numField('Sombra desenfoque', fx.shadow.blur, (v) => editFx({ shadow: { ...fx.shadow!, blur: Math.max(0, v) } }));
-      colorField('Sombra color', fx.shadow.color.slice(0, 7), (v) => editFx({ shadow: { ...fx.shadow!, color: v } }));
+      numField(t('shadow_x'), fx.shadow.x, (v) => editFx({ shadow: { ...fx.shadow!, x: v } }));
+      numField(t('shadow_y'), fx.shadow.y, (v) => editFx({ shadow: { ...fx.shadow!, y: v } }));
+      numField(t('shadow_blur'), fx.shadow.blur, (v) => editFx({ shadow: { ...fx.shadow!, blur: Math.max(0, v) } }));
+      colorField(t('shadow_color'), fx.shadow.color.slice(0, 7), (v) => editFx({ shadow: { ...fx.shadow!, color: v } }));
     }
-    insp.appendChild(btn('', fx.glow ? 'Quitar glow' : 'Añadir glow', 'Resplandor en vivo', Boolean(fx.glow), () =>
+    insp.appendChild(btn('', fx.glow ? t('remove_glow') : t('add_glow'), t('glow_hint'), Boolean(fx.glow), () =>
       editFx({ glow: fx.glow ? null : { blur: 12, color: '#4f8cff' } }),
     ));
     if (fx.glow) {
-      numField('Glow desenfoque', fx.glow.blur, (v) => editFx({ glow: { ...fx.glow!, blur: Math.max(0, v) } }));
-      colorField('Glow color', fx.glow.color.slice(0, 7), (v) => editFx({ glow: { ...fx.glow!, color: v } }));
+      numField(t('glow_blur'), fx.glow.blur, (v) => editFx({ glow: { ...fx.glow!, blur: Math.max(0, v) } }));
+      colorField(t('glow_color'), fx.glow.color.slice(0, 7), (v) => editFx({ glow: { ...fx.glow!, color: v } }));
     }
 
     // ---- Styles (M5): paquetes reutilizables de aspecto, como Fireworks ----
-    insp.insertAdjacentHTML('beforeend', '<span class="hint">Estilos</span>');
-    insp.appendChild(btn('', 'Guardar estilo', 'Guardar el aspecto de este objeto como estilo reutilizable', false, () => api.saveStyle(obj)));
+    insp.insertAdjacentHTML('beforeend', `<span class="hint">${t('styles')}</span>`);
+    insp.appendChild(btn('', t('save_style'), t('save_style_hint'), false, () => api.saveStyle(obj)));
     for (const s of doc.styles ?? []) {
       const row = document.createElement('div');
       row.className = 'row';
@@ -310,7 +311,7 @@ export function renderPanels(
       name.textContent = s.name;
       row.append(swatch, name);
       row.addEventListener('click', () => api.applyStyle(s.id));
-      row.appendChild(btn('danger', '×', 'Eliminar estilo', false, () => api.removeStyle(s.id)));
+      row.appendChild(btn('danger', '×', t('delete_style'), false, () => api.removeStyle(s.id)));
       insp.appendChild(row);
     }
   }
@@ -320,13 +321,13 @@ export function renderPanels(
   ab.innerHTML = '';
   const grid = document.createElement('div');
   grid.className = 'aligngrid';
-  for (const [kind, glyph, title] of ALIGN_BUTTONS) {
-    grid.appendChild(btn('', glyph, title, false, () => api.align(kind)));
+  for (const [kind, glyph, titleKey] of ALIGN_BUTTONS) {
+    grid.appendChild(btn('', glyph, t(titleKey), false, () => api.align(kind)));
   }
   ab.appendChild(grid);
   const hint = document.createElement('div');
   hint.className = 'hint';
-  hint.textContent = selectedIds.length >= 3 ? 'Distribuir reparte el hueco por igual' : 'Con 1 objeto se alinea a la página; con 2+, al grupo';
+  hint.textContent = selectedIds.length >= 3 ? t('align_hint_multi') : t('align_hint_single');
   ab.appendChild(hint);
 
   // ---- Capas: completas (visibilidad, bloqueo, opacidad, orden, crear, borrar) ----
@@ -338,15 +339,15 @@ export function renderPanels(
       'row' + (l.visible ? '' : ' off') + (l.id === selectedLayerId ? ' active' : '');
     row.addEventListener('click', () => api.selectLayer(l.id === selectedLayerId ? null : l.id));
 
-    row.appendChild(btn('', l.visible ? '👁' : '–', l.visible ? 'Ocultar capa' : 'Mostrar capa', l.visible, () => api.editLayer(l.id, { visible: !l.visible })));
-    row.appendChild(btn('', l.locked ? '🔒' : '🔓', l.locked ? 'Desbloquear capa' : 'Bloquear capa', l.locked, () => api.editLayer(l.id, { locked: !l.locked })));
+    row.appendChild(btn('', l.visible ? '👁' : '–', l.visible ? t('hide_layer') : t('show_layer'), l.visible, () => api.editLayer(l.id, { visible: !l.visible })));
+    row.appendChild(btn('', l.locked ? '🔒' : '🔓', l.locked ? t('unlock_layer') : t('lock_layer'), l.locked, () => api.editLayer(l.id, { locked: !l.locked })));
 
     const name = document.createElement('span');
     name.className = 'row-name';
     name.textContent = `${l.name} · ${l.objects.length}`;
-    name.title = 'Doble clic para renombrar';
+    name.title = t('rename_hint');
     name.addEventListener('dblclick', () => {
-      const v = window.prompt('Nombre de la capa', l.name);
+      const v = window.prompt(t('layer_name'), l.name);
       if (v && v.trim()) api.editLayer(l.id, { name: v.trim() });
     });
     row.appendChild(name);
@@ -380,6 +381,5 @@ export function renderPanels(
   pb.appendChild(prow);
 
   const n = selectedIds.length;
-  const sel = obj ? ` · selección ${Math.round(obj.w)}×${Math.round(obj.h)}${n > 1 ? ` (${n} objetos)` : ''}` : '';
-  $('status').textContent = `${Math.round(view.zoom * 100)}%${sel}`;
+  $('status').textContent = statusText(Math.round(view.zoom * 100), obj ? obj.w : 0, obj ? obj.h : 0, n);
 }
