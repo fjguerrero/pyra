@@ -1,0 +1,117 @@
+import type { Obj, Page } from './model';
+import type { View } from './view';
+import { findObj, handles } from './hit';
+
+export interface Draft {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface Scene {
+  page: Page;
+  view: View;
+  selectedId: string | null;
+  draft: Draft | null;
+}
+
+const WORKSPACE = '#0e1013';
+const PAGE_BG = '#ffffff';
+const ACCENT = '#4f8cff';
+
+export class Renderer {
+  private ctx: CanvasRenderingContext2D;
+
+  constructor(private canvas: HTMLCanvasElement) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('canvas 2d no disponible');
+    this.ctx = ctx;
+  }
+
+  resize(cssW: number, cssH: number): void {
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = Math.max(1, Math.round(cssW * dpr));
+    this.canvas.height = Math.max(1, Math.round(cssH * dpr));
+  }
+
+  draw(scene: Scene): void {
+    // ponytail: redraw completo por cambio, agrupado con rAF. Dirty-rects +
+    // caché offscreen por capa en M1, cuando los documentos crezcan.
+    const { ctx, canvas } = this;
+    const dpr = window.devicePixelRatio || 1;
+    const cw = canvas.width / dpr;
+    const ch = canvas.height / dpr;
+    const v = scene.view;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = WORKSPACE;
+    ctx.fillRect(0, 0, cw, ch);
+
+    const px = v.panX;
+    const py = v.panY;
+    const pw = scene.page.width * v.zoom;
+    const ph = scene.page.height * v.zoom;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = PAGE_BG;
+    ctx.fillRect(px, py, pw, ph);
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(px, py, pw, ph);
+    ctx.clip();
+
+    for (const layer of scene.page.layers) {
+      if (!layer.visible) continue;
+      ctx.globalAlpha = layer.opacity;
+      for (const o of layer.objects) this.drawObj(o, v);
+    }
+    ctx.globalAlpha = 1;
+
+    if (scene.draft) {
+      const d = scene.draft;
+      ctx.strokeStyle = ACCENT;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(d.x * v.zoom + v.panX, d.y * v.zoom + v.panY, d.w * v.zoom, d.h * v.zoom);
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+
+    const sel = findObj(scene.page, scene.selectedId);
+    if (sel) {
+      const x = sel.x * v.zoom + v.panX;
+      const y = sel.y * v.zoom + v.panY;
+      const w = sel.w * v.zoom;
+      const h = sel.h * v.zoom;
+      ctx.strokeStyle = ACCENT;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
+      for (const hd of handles(sel, v)) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
+        ctx.strokeRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
+      }
+    }
+  }
+
+  private drawObj(o: Obj, v: View): void {
+    const ctx = this.ctx;
+    const x = o.x * v.zoom + v.panX;
+    const y = o.y * v.zoom + v.panY;
+    const w = o.w * v.zoom;
+    const h = o.h * v.zoom;
+    if (o.fill) {
+      ctx.fillStyle = o.fill;
+      ctx.fillRect(x, y, w, h);
+    }
+    if (o.stroke && o.strokeWidth > 0) {
+      ctx.strokeStyle = o.stroke;
+      ctx.lineWidth = o.strokeWidth * v.zoom;
+      ctx.strokeRect(x, y, w, h);
+    }
+  }
+}
