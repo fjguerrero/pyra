@@ -45,7 +45,15 @@ export async function loadDoc(): Promise<Doc | null> {
     // normalización: objetos guardados antes de las formas vectoriales (M0/M1) eran rectángulos
     for (const p of doc.pages)
       for (const l of p.layers)
-        for (const o of l.objects) if (!('shape' in o)) (o as { shape: string }).shape = 'rect';
+        for (const o of l.objects) {
+          if (!('shape' in o)) (o as { shape: string }).shape = 'rect';
+          if (o.shape === 'bitmap') {
+            o.crop ??= null;
+            o.blur ??= 0;
+            o.sat ??= 1;
+            o.bri ??= 1;
+          }
+        }
     return doc;
   } catch {
     return null;

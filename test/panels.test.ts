@@ -254,7 +254,7 @@ describe('Property Inspector: campos según lo seleccionado', () => {
 
   it('el color de relleno se edita con un input de color', () => {
     const f = fixture();
-    const obj = activePage(f.doc).layers[0].objects[0];
+    const obj = activePage(f.doc).layers[0].objects[0] as ShapeObj;
     obj.fill = '#ff0000';
     mount(f.doc, obj.id, null, [obj.id], f.view, f.api);
     const color = document.querySelector<HTMLInputElement>('#inspector-body input[type=color]')!;

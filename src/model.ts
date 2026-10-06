@@ -17,7 +17,23 @@ export interface ShapeObj {
   strokeWidth: number;
 }
 
-export type Obj = ShapeObj;
+/** Bitmap: la imagen se guarda embebida (data URL); crop son píxeles de la fuente original. */
+export interface BitmapObj {
+  id: string;
+  shape: 'bitmap';
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  src: string;
+  crop: { x: number; y: number; w: number; h: number } | null;
+  blur: number; // px de desenfoque, 0 = ninguno
+  sat: number; // 1 = original
+  bri: number; // 1 = original
+}
+
+export type Obj = ShapeObj | BitmapObj;
 
 export interface Layer {
   id: string;

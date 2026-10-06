@@ -17,6 +17,7 @@
           <button type="button" class="tool" data-tool="rect" aria-pressed="false" title="Rectángulo (R)">▭</button>
           <button type="button" class="tool" data-tool="ellipse" aria-pressed="false" title="Elipse (E)">◯</button>
           <button type="button" class="tool" data-tool="line" aria-pressed="false" title="Línea (L)">╱</button>
+          <button type="button" class="tool" data-import title="Importar imagen">🖼</button>
           <button type="button" class="tool" data-fit title="Zoom ajustar (0)">⤢</button>
         </div>
         <div id="canvas-wrap"><canvas id="canvas"></canvas></div>
@@ -37,6 +38,7 @@
       </div>
       <div id="status"></div>
     </div>
+    <input type="file" id="import-file" accept="image/*" hidden />
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

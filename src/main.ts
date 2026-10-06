@@ -1,4 +1,4 @@
-import { activePage, newDoc, uid, type Doc, type ShapeKind, type ShapeObj } from './model';
+import { activePage, newDoc, uid, type BitmapObj, type Doc, type Obj, type ShapeKind, type ShapeObj } from './model';
 import { History, type Command } from './history';
 import { fitAll, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
@@ -58,16 +58,16 @@ function select(id: string | null, additive = false): void {
   selectedLayerId = null;
 }
 
-function selectedObjs(): ShapeObj[] {
+function selectedObjs(): Obj[] {
   const page = activePage(doc);
-  return selectedIds.map((id) => findObj(page, id)).filter((o): o is ShapeObj => o !== null);
+  return selectedIds.map((id) => findObj(page, id)).filter((o): o is Obj => o !== null);
 }
 
 type Drag =
   | { mode: 'pan'; sx: number; sy: number; panX: number; panY: number }
   | { mode: 'create'; ox: number; oy: number }
-  | { mode: 'move'; items: { obj: ShapeObj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
-  | { mode: 'resize'; obj: ShapeObj; role: HandleRole; start: { x: number; y: number; w: number; h: number }; grab: { x: number; y: number } };
+  | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
+  | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number }; grab: { x: number; y: number } };
 
 const NAMES: Record<ShapeKind, string> = { rect: 'Rectángulo', ellipse: 'Elipse', line: 'Línea' };
 
@@ -90,6 +90,57 @@ document.querySelector<HTMLElement>('#toolbar .tool[data-fit]')?.addEventListene
   fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
   invalidate();
 });
+
+// ---- Importar imagen (M3): archivo → data URL → objeto bitmap centrado ----
+const importFile = document.getElementById('import-file') as HTMLInputElement;
+document.querySelector<HTMLElement>('#toolbar .tool[data-import]')?.addEventListener('click', () => importFile.click());
+importFile.addEventListener('change', () => {
+  const file = importFile.files?.[0];
+  importFile.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const src = String(reader.result);
+    const probe = new Image();
+    probe.onload = () => {
+      const page = activePage(doc);
+      const layer =
+        (selectedLayerId ? page.layers.find((l) => l.id === selectedLayerId && !l.locked) : null) ??
+        page.layers.find((l) => l.visible && !l.locked);
+      if (!layer) return;
+      const obj: BitmapObj = {
+        id: uid(),
+        shape: 'bitmap',
+        name: file.name,
+        x: Math.round((page.width - probe.naturalWidth) / 2),
+        y: Math.round((page.height - probe.naturalHeight) / 2),
+        w: probe.naturalWidth,
+        h: probe.naturalHeight,
+        src,
+        crop: null,
+        blur: 0,
+        sat: 1,
+        bri: 1,
+      };
+      const cmd: Command = {
+        label: 'importar imagen',
+        do: () => layer.objects.push(obj),
+        undo: () => {
+          const i = layer.objects.indexOf(obj);
+          if (i >= 0) layer.objects.splice(i, 1);
+          if (selectedId === obj.id) select(null);
+        },
+      };
+      history.run(cmd);
+      select(obj.id);
+      persist();
+      invalidate();
+    };
+    probe.src = src;
+  };
+  reader.readAsDataURL(file);
+});
+renderer.onImgReady = invalidate;
 
 function localXY(e: { clientX: number; clientY: number }): { px: number; py: number; wx: number; wy: number } {
   const rect = canvas.getBoundingClientRect();
@@ -127,7 +178,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (h && sel) {
     drag = {
       mode: 'resize',
-      obj: sel as ShapeObj,
+      obj: sel,
       role: h.role,
       start: { x: sel.x, y: sel.y, w: sel.w, h: sel.h },
       grab: { x: wx, y: wy },
@@ -277,7 +328,7 @@ canvas.addEventListener('pointerup', () => {
 });
 
 const panelApi = {
-  editObj(obj: ShapeObj, patch: Partial<ShapeObj>): void {
+  editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj>): void {
     const before = { ...obj };
     history.run({
       label: 'editar',
@@ -437,7 +488,7 @@ window.addEventListener('keydown', (e) => {
     }
   } else if (e.key === 'Delete' || e.key === 'Backspace') {
     const page = activePage(doc);
-    const removed: { layerIndex: number; index: number; obj: ShapeObj }[] = [];
+    const removed: { layerIndex: number; index: number; obj: Obj }[] = [];
     page.layers.forEach((l, li) => {
       l.objects.forEach((o, oi) => {
         if (selectedIds.includes(o.id)) removed.push({ layerIndex: li, index: oi, obj: o });

@@ -1,10 +1,10 @@
-import { activePage, type Doc, type Obj, type ShapeObj } from './model';
+import { activePage, type BitmapObj, type Doc, type Obj, type ShapeObj } from './model';
 import { findObj } from './hit';
 import type { View } from './view';
 import type { AlignKind } from './align';
 
 export interface PanelApi {
-  editObj(obj: Obj, patch: Partial<ShapeObj>): void;
+  editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj>): void;
   editLayer(layerId: string, patch: { visible?: boolean; locked?: boolean; opacity?: number; name?: string }): void;
   selectLayer(layerId: string | null): void;
   addLayer(): void;
@@ -103,17 +103,58 @@ export function renderPanels(
     num('w', 'Ancho');
     num('h', 'Alto');
 
-    // una línea no se rellena: su color es el trazo
-    const colorKey = obj.shape === 'line' ? 'stroke' : 'fill';
-    const wrap = document.createElement('label');
-    wrap.className = 'field';
-    wrap.innerHTML = `<span>${obj.shape === 'line' ? 'Color trazo' : 'Relleno'}</span>`;
-    const color = document.createElement('input');
-    color.type = 'color';
-    color.value = (obj[colorKey] as string) || '#000000';
-    color.addEventListener('change', () => api.editObj(obj, { [colorKey]: color.value } as Partial<ShapeObj>));
-    wrap.appendChild(color);
-    insp.appendChild(wrap);
+    if (obj.shape === 'bitmap') {
+      const slider = (label: string, key: 'blur' | 'sat' | 'bri', min: number, max: number, step: number) => {
+        const wrap = document.createElement('label');
+        wrap.className = 'field';
+        wrap.innerHTML = `<span>${label}</span>`;
+        const rng = document.createElement('input');
+        rng.type = 'range';
+        rng.min = String(min);
+        rng.max = String(max);
+        rng.step = String(step);
+        rng.value = String(obj[key]);
+        rng.addEventListener('input', () => api.editObj(obj, { [key]: Number(rng.value) } as Partial<BitmapObj>));
+        wrap.appendChild(rng);
+        insp.appendChild(wrap);
+      };
+      slider('Desenfoque', 'blur', 0, 20, 1);
+      slider('Saturación', 'sat', 0, 2, 0.05);
+      slider('Brillo', 'bri', 0, 2, 0.05);
+
+      // recorte en píxeles de la fuente original; campos vacíos = imagen completa
+      const cropInputs: Record<'x' | 'y' | 'w' | 'h', HTMLInputElement> = { x: null!, y: null!, w: null!, h: null! };
+      const applyCrop = (): void => {
+        const c = { x: Number(cropInputs.x.value), y: Number(cropInputs.y.value), w: Number(cropInputs.w.value), h: Number(cropInputs.h.value) };
+        if (Object.values(c).every(Number.isFinite) && c.w > 0 && c.h > 0) api.editObj(obj, { crop: c });
+      };
+      for (const [key, label] of [['x', 'Recorte X'], ['y', 'Recorte Y'], ['w', 'Recorte ancho'], ['h', 'Recorte alto']] as const) {
+        const wrap = document.createElement('label');
+        wrap.className = 'field';
+        wrap.innerHTML = `<span>${label}</span>`;
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.value = obj.crop ? String(obj.crop[key]) : '';
+        input.placeholder = 'imagen completa';
+        input.addEventListener('change', applyCrop);
+        cropInputs[key] = input;
+        wrap.appendChild(input);
+        insp.appendChild(wrap);
+      }
+      insp.appendChild(btn('', 'Quitar recorte', 'Mostrar la imagen completa', false, () => api.editObj(obj, { crop: null })));
+    } else {
+      // una línea no se rellena: su color es el trazo
+      const colorKey = obj.shape === 'line' ? 'stroke' : 'fill';
+      const wrap = document.createElement('label');
+      wrap.className = 'field';
+      wrap.innerHTML = `<span>${obj.shape === 'line' ? 'Color trazo' : 'Relleno'}</span>`;
+      const color = document.createElement('input');
+      color.type = 'color';
+      color.value = (obj[colorKey] as string) || '#000000';
+      color.addEventListener('change', () => api.editObj(obj, { [colorKey]: color.value } as Partial<ShapeObj>));
+      wrap.appendChild(color);
+      insp.appendChild(wrap);
+    }
   }
 
   // ---- Alinear / distribuir: panel de la columna derecha (como Fireworks) ----

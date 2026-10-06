@@ -16,7 +16,7 @@ export function hitTest(page: Page, wx: number, wy: number, tol = 0): Obj | null
 /** Punto dentro del objeto según su forma. `tol` es un margen en unidades de mundo. */
 export function hitObj(o: Obj, wx: number, wy: number, tol = 0): boolean {
   if (wx < o.x - tol || wx > o.x + o.w + tol || wy < o.y - tol || wy > o.y + o.h + tol) return false;
-  if (o.shape === 'rect') return true;
+  if (o.shape === 'rect' || o.shape === 'bitmap') return true;
 
   const cx = o.x + o.w / 2;
   const cy = o.y + o.h / 2;

@@ -2,7 +2,6 @@ import type { Obj, Page, ShapeKind } from './model';
 import type { View } from './view';
 import type { Guide } from './guides';
 import { findObj, handles } from './hit';
-
 export interface Draft {
   x: number;
   y: number;
@@ -26,12 +25,31 @@ const ACCENT = '#4f8cff';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
+  private imgs = new Map<string, { el: HTMLImageElement; ready: boolean }>();
 
   constructor(private canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('canvas 2d no disponible');
     this.ctx = ctx;
   }
+
+  /** Caché de imágenes decodificadas; `onReady` pide redraw cuando llegan. */
+  private img(src: string): { el: HTMLImageElement; ready: boolean } | null {
+    let e = this.imgs.get(src);
+    if (!e) {
+      const el = new Image();
+      e = { el, ready: false };
+      this.imgs.set(src, e);
+      el.onload = () => {
+        e!.ready = true;
+        this.onImgReady?.();
+      };
+      el.src = src;
+    }
+    return e;
+  }
+
+  onImgReady: (() => void) | null = null;
 
   resize(cssW: number, cssH: number): void {
     const dpr = window.devicePixelRatio || 1;
@@ -149,6 +167,19 @@ export class Renderer {
 
   private drawObj(o: Obj, v: View): void {
     const ctx = this.ctx;
+    if (o.shape === 'bitmap') {
+      const im = this.img(o.src);
+      if (!im || !im.ready) return;
+      const c = o.crop ?? { x: 0, y: 0, w: im.el.naturalWidth, h: im.el.naturalHeight };
+      const filters = [];
+      if (o.blur > 0) filters.push(`blur(${o.blur}px)`);
+      if (o.sat !== 1) filters.push(`saturate(${o.sat})`);
+      if (o.bri !== 1) filters.push(`brightness(${o.bri})`);
+      if (filters.length) ctx.filter = filters.join(' ');
+      ctx.drawImage(im.el, c.x, c.y, c.w, c.h, o.x * v.zoom + v.panX, o.y * v.zoom + v.panY, o.w * v.zoom, o.h * v.zoom);
+      if (filters.length) ctx.filter = 'none';
+      return;
+    }
     this.path(o, v);
     if (o.fill) {
       ctx.fillStyle = o.fill;
