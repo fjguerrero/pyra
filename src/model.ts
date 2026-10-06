@@ -36,6 +36,8 @@ export interface ShapeObj {
   /** Relleno con degradado lineal; si está, sustituye a `fill` (que sigue guardando el color base). */
   gradient?: Gradient | null;
   fx?: Fx;
+  /** Rotación en grados alrededor del centro del bbox. */
+  rot?: number;
 }
 
 /** Bitmap: la imagen se guarda embebida (data URL); crop son píxeles de la fuente original. */
@@ -52,6 +54,7 @@ export interface BitmapObj {
   sat: number; // 1 = original
   bri: number; // 1 = original
   fx?: Fx;
+  rot?: number;
 }
 
 export type Obj = ShapeObj | BitmapObj | TextObj;
@@ -70,6 +73,7 @@ export interface TextObj {
   size: number; // px
   fill: string;
   fx?: Fx;
+  rot?: number;
 }
 
 export interface Layer {

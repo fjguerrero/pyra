@@ -146,8 +146,30 @@ export class Renderer {
       const h = sel.h * v.zoom;
       ctx.strokeStyle = ACCENT;
       ctx.lineWidth = 1;
+      const srot = sel.rot ?? 0;
+      if (srot) {
+        ctx.save();
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.rotate((srot * Math.PI) / 180);
+        ctx.translate(-(x + w / 2), -(y + h / 2));
+      }
       ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
+      if (srot) ctx.restore();
       for (const hd of handles(sel, v)) {
+        if (hd.role === 'rot') {
+          // línea del centro a la manija + círculo
+          const cx = x + w / 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, y);
+          ctx.lineTo(hd.x, hd.y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(hd.x, hd.y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.stroke();
+          continue;
+        }
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
         ctx.strokeRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
@@ -254,6 +276,21 @@ export class Renderer {
   }
 
   private drawObj(o: Obj, v: View): void {
+    const rot = o.rot ?? 0;
+    if (!rot) return this.drawObjRaw(o, v);
+    // rotación visual alrededor del centro del bbox
+    const ctx = this.ctx;
+    const cx = (o.x + o.w / 2) * v.zoom + v.panX;
+    const cy = (o.y + o.h / 2) * v.zoom + v.panY;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((rot * Math.PI) / 180);
+    ctx.translate(-cx, -cy);
+    this.drawObjRaw(o, v);
+    ctx.restore();
+  }
+
+  private drawObjRaw(o: Obj, v: View): void {
     const ctx = this.ctx;
     if (o.shape === 'bitmap') {
       const im = this.img(o.src);

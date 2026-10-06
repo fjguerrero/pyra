@@ -15,6 +15,15 @@ export function hitTest(page: Page, wx: number, wy: number, tol = 0): Obj | null
 
 /** Punto dentro del objeto según su forma. `tol` es un margen en unidades de mundo. */
 export function hitObj(o: Obj, wx: number, wy: number, tol = 0): boolean {
+  const rot = o.rot ?? 0;
+  if (rot) {
+    // llevar el punto al espacio local del objeto (deshacer la rotación)
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    const a = (-rot * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a);
+    const dx = wx - cx, dy = wy - cy;
+    wx = cx + dx * c - dy * sn;
+    wy = cy + dx * sn + dy * c;
+  }
   if (wx < o.x - tol || wx > o.x + o.w + tol || wy < o.y - tol || wy > o.y + o.h + tol) return false;
   if (o.shape === 'rect' || o.shape === 'bitmap' || o.shape === 'text') return true;
 
@@ -52,7 +61,7 @@ export function findLayer(page: Page, obj: Obj): Layer | null {
   return page.layers.find((l) => l.objects.includes(obj)) ?? null;
 }
 
-export type HandleRole = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+export type HandleRole = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'rot';
 
 export interface Handle {
   role: HandleRole;
@@ -68,16 +77,22 @@ export function handles(obj: Obj, v: View): Handle[] {
   const y1 = (obj.y + obj.h) * v.zoom + v.panY;
   const mx = (x0 + x1) / 2;
   const my = (y0 + y1) / 2;
-  return [
-    { role: 'nw', x: x0, y: y0 },
-    { role: 'n', x: mx, y: y0 },
-    { role: 'ne', x: x1, y: y0 },
-    { role: 'e', x: x1, y: my },
-    { role: 'se', x: x1, y: y1 },
-    { role: 's', x: mx, y: y1 },
-    { role: 'sw', x: x0, y: y1 },
-    { role: 'w', x: x0, y: my },
+  const pts: [HandleRole, number, number][] = [
+    ['nw', x0, y0], ['n', mx, y0], ['ne', x1, y0], ['e', x1, my],
+    ['se', x1, y1], ['s', mx, y1], ['sw', x0, y1], ['w', x0, my],
+    ['rot', mx, y0 - 18], // manija de rotación sobre el asa superior
   ];
+  const rot = obj.rot ?? 0;
+  if (rot) {
+    // girar las asas alrededor del centro, como el propio objeto
+    const a = (rot * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a);
+    for (const p of pts) {
+      const dx = p[1] - mx, dy = p[2] - my;
+      p[1] = mx + dx * c - dy * sn;
+      p[2] = my + dx * sn + dy * c;
+    }
+  }
+  return pts.map(([role, x, y]) => ({ role, x, y }));
 }
 
 export function hitHandle(px: number, py: number, hs: Handle[], r = 7): Handle | null {

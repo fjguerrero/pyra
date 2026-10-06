@@ -15,7 +15,7 @@ function fakeCtx(): { ctx: CanvasRenderingContext2D; ops: Op[] } {
     return undefined as never;
   };
   const ctx = {} as Record<string, unknown>;
-  for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'rect', 'ellipse', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath']) {
+  for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'rect', 'ellipse', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath', 'arc']) {
     ctx[m] = call(m);
   }
   // los estilos se asignan por propiedad, no por método: hay que interceptar el setter

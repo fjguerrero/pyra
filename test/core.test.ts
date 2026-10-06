@@ -277,7 +277,8 @@ describe('asas: 8 puntos en coordenadas de pantalla, consistentes con la vista',
       );
       const v: View = { zoom: 0.1 + rand() * 4, panX: rand() * 400 - 200, panY: rand() * 400 - 200 };
       const hs = handles(o, v);
-      expect(hs).toHaveLength(8);
+      expect(hs.filter((h) => h.role !== 'rot')).toHaveLength(8);
+      expect(hs.some((h) => h.role === 'rot')).toBe(true);
 
       const x0 = o.x, y0 = o.y, x1 = o.x + o.w, y1 = o.y + o.h;
       const expectScreen = (wx: number, wy: number) => worldToScreen(v, wx, wy);

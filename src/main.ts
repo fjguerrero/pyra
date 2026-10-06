@@ -73,7 +73,8 @@ type Drag =
   | { mode: 'create'; ox: number; oy: number }
   | { mode: 'marquee'; ox: number; oy: number; additive: boolean }
   | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
-  | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number; size?: number }; grab: { x: number; y: number } };
+  | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number; size?: number }; grab: { x: number; y: number } }
+  | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number };
 
 const NAMES: Record<ShapeKind, string> = { rect: 'Rectángulo', ellipse: 'Elipse', line: 'Línea' };
 
@@ -330,6 +331,12 @@ canvas.addEventListener('pointerdown', (e) => {
 
   const sel = findObj(page, selectedId);
   const h = sel ? hitHandle(px, py, handles(sel, view)) : null;
+  if (h && sel && h.role === 'rot') {
+    const cx = sel.x + sel.w / 2, cy = sel.y + sel.h / 2;
+    drag = { mode: 'rotate', obj: sel, startRot: sel.rot ?? 0, grabAngle: Math.atan2(wy - cy, wx - cx) };
+    invalidate();
+    return;
+  }
   if (h && sel) {
     drag = {
       mode: 'resize',
@@ -424,6 +431,16 @@ canvas.addEventListener('pointermove', (e) => {
     return;
   }
 
+  if (drag.mode === 'rotate') {
+    const o = drag.obj;
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    let delta = (Math.atan2(wy - cy, wx - cx) - drag.grabAngle) * 180 / Math.PI;
+    if (e.shiftKey) delta = Math.round(delta / 15) * 15; // Shift = pasos de 15°
+    o.rot = Math.round(((drag.startRot + delta) % 360 + 360) % 360);
+    invalidate();
+    return;
+  }
+
   if (drag.mode === 'resize') {
     applyResize(drag.obj, drag.start, drag.role, wx - drag.grab.x, wy - drag.grab.y);
     if (drag.obj.shape === 'text') resizeText(drag.obj, { ...drag.start, size: drag.start.size ?? drag.obj.size } as { x: number; y: number; w: number; h: number; size: number }, drag.role); // escalar la fuente, no estirar glifos
@@ -498,6 +515,15 @@ canvas.addEventListener('pointerup', () => {
         }
       }
     }
+  } else if (drag.mode === 'rotate') {
+    const { obj, startRot } = drag;
+    const endRot = obj.rot ?? 0;
+    history.record({
+      label: 'rotar',
+      do: () => { obj.rot = endRot; },
+      undo: () => { obj.rot = startRot; },
+    });
+    persist();
   } else if (drag.mode === 'resize') {
     const { obj, start } = drag;
     const end = { x: obj.x, y: obj.y, w: obj.w, h: obj.h };

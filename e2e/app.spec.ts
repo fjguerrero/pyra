@@ -208,3 +208,17 @@ test('páginas: crear y cambiar', async ({ page }) => {
   await page.locator('#pages-body .row').first().click();
   await expect(page.locator('#pages-body .row.active')).toContainText('Página 1');
 });
+
+test('rotación: campo en el inspector y hit-test rotado', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 140]); // rect ancho y bajo
+  // poner rotación 90 desde el inspector
+  const rotInput = page.locator('#inspector-body input[type=number]').nth(4);
+  await rotInput.fill('90');
+  await rotInput.dispatchEvent('change');
+  // el centro sigue siendo hit-testable (el rect girado pasa por ahí)
+  const box = await canvas(page).boundingBox();
+  await page.keyboard.press('Escape');
+  await page.mouse.click(box!.x + 160, box!.y + 120);
+  await expect(page.locator('#inspector-body input[type=number]').nth(4)).toHaveValue('90');
+});

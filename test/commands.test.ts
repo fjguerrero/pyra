@@ -66,3 +66,13 @@ describe('zOrderCmd', () => {
     expect(zOrderCmd(page, [], 1)).toBeNull();
   });
 });
+
+describe('rotación', () => {
+  it('hitObj deshace la rotación para el hit-test', async () => {
+    const { hitObj } = await import('../src/hit');
+    const o = { id: 'x', shape: 'rect' as const, name: 'r', x: 0, y: 0, w: 100, h: 20, fill: '#000', stroke: null, strokeWidth: 0, rot: 90 };
+    // girado 90°: ocupa verticalmente x∈[40,60], y∈[-40,60]
+    expect(hitObj(o, 50, 50)).toBe(true);
+    expect(hitObj(o, 90, 10)).toBe(false);
+  });
+});

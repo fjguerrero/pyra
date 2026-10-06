@@ -190,6 +190,16 @@ export function renderPanels(
       color.addEventListener('change', () => api.editObj(obj, { [colorKey]: color.value } as Partial<ShapeObj>));
       wrap.appendChild(color);
       insp.appendChild(wrap);
+      const rotWrap = document.createElement('label');
+      rotWrap.className = 'field';
+      rotWrap.innerHTML = '<span>Rotación</span>';
+      const rotInput = document.createElement('input');
+      rotInput.type = 'number';
+      rotInput.value = String(obj.rot ?? 0);
+      rotInput.addEventListener('change', () => api.editObj(obj, { rot: Number(rotInput.value) } as Partial<ShapeObj>));
+      rotWrap.appendChild(rotInput);
+      insp.appendChild(rotWrap);
+
 
       // ---- Degradado lineal (solo formas con relleno) ----
       if (obj.shape !== 'line') {
