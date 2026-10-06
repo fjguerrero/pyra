@@ -38,6 +38,8 @@ export interface ShapeObj {
   fx?: Fx;
   /** Rotación en grados alrededor del centro del bbox. */
   rot?: number;
+  /** Id de grupo: los objetos con el mismo id se seleccionan y mueven juntos (Ctrl+G). */
+  group?: string;
 }
 
 /** Bitmap: la imagen se guarda embebida (data URL); crop son píxeles de la fuente original. */
@@ -55,6 +57,8 @@ export interface BitmapObj {
   bri: number; // 1 = original
   fx?: Fx;
   rot?: number;
+  /** Id de grupo: los objetos con el mismo id se seleccionan y mueven juntos (Ctrl+G). */
+  group?: string;
 }
 
 export type Obj = ShapeObj | BitmapObj | TextObj;
@@ -74,6 +78,8 @@ export interface TextObj {
   fill: string;
   fx?: Fx;
   rot?: number;
+  /** Id de grupo: los objetos con el mismo id se seleccionan y mueven juntos (Ctrl+G). */
+  group?: string;
 }
 
 export interface Layer {

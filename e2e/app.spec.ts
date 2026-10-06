@@ -7,6 +7,14 @@ const layerCount = (page: Page) => page.locator('#layers-body .row-name').first(
 const inspNum = (page: Page, i = 0) => page.locator('#inspector-body input[type=number]').nth(i);
 
 async function openApp(page: Page): Promise<void> {
+  // cada test arranca con un documento limpio (solo en la primera carga, no en reloads del test)
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('pyra-test-fresh')) {
+      sessionStorage.setItem('pyra-test-fresh', '1');
+      void indexedDB.deleteDatabase('pyra');
+      localStorage.clear();
+    }
+  });
   await page.goto('/');
   await expect(canvas(page)).toBeVisible();
   await page.keyboard.press('0'); // vista determinista: ajustar a la página
@@ -221,4 +229,35 @@ test('rotación: campo en el inspector y hit-test rotado', async ({ page }) => {
   await page.keyboard.press('Escape');
   await page.mouse.click(box!.x + 160, box!.y + 120);
   await expect(page.locator('#inspector-body input[type=number]').nth(4)).toHaveValue('90');
+});
+
+test('agrupar: Ctrl+G selecciona el grupo entero al tocar un miembro', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [60, 60], [140, 120]);
+  await page.keyboard.press('r');
+  await drag(page, [160, 60], [240, 120]);
+  // seleccionar ambos y agrupar
+  const box = await canvas(page).boundingBox();
+  await page.keyboard.press('Escape');
+  await page.mouse.click(box!.x + 100, box!.y + 90);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(box!.x + 200, box!.y + 90);
+  await page.keyboard.up('Shift');
+  await page.keyboard.press('Control+g');
+  // clic en uno selecciona los dos
+  await page.keyboard.press('Escape');
+  await page.mouse.click(box!.x + 100, box!.y + 90);
+  await expect(page.locator('#status')).toContainText('(2 objetos)');
+  // desagrupar
+  await page.keyboard.press('Control+Shift+G');
+  await page.keyboard.press('Escape');
+  await page.mouse.click(box!.x + 100, box!.y + 90);
+  await expect(page.locator('#status')).not.toContainText('(2 objetos)');
+});
+
+test('exportar PNG plano descarga un .png', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#toolbar .tool[data-export-png]')]);
+  expect(dl.suggestedFilename()).toMatch(/\.png$/);
 });

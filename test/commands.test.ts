@@ -2,7 +2,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { newDoc, activePage, type ShapeObj } from '../src/model';
-import { duplicateCmd, pasteCmd, zOrderCmd } from '../src/commands';
+import { duplicateCmd, groupCmd, pasteCmd, zOrderCmd } from '../src/commands';
 import { History } from '../src/history';
 
 function docWith(objs: ShapeObj[]) {
@@ -74,5 +74,19 @@ describe('rotación', () => {
     // girado 90°: ocupa verticalmente x∈[40,60], y∈[-40,60]
     expect(hitObj(o, 50, 50)).toBe(true);
     expect(hitObj(o, 90, 10)).toBe(false);
+  });
+});
+
+describe('agrupar', () => {
+  it('groupCmd asigna grupo común y undo lo quita', () => {
+    const h = new History();
+    const a: ShapeObj = { id: 'a', shape: 'rect', name: 'a', x: 0, y: 0, w: 10, h: 10, fill: '#000', stroke: null, strokeWidth: 0 };
+    const b: ShapeObj = { ...a, id: 'b', name: 'b' };
+    h.run(groupCmd([a, b], 'g1'));
+    expect(a.group).toBe('g1');
+    expect(b.group).toBe('g1');
+    h.undo();
+    expect(a.group).toBeUndefined();
+    expect(b.group).toBeUndefined();
   });
 });

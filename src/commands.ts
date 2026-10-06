@@ -71,3 +71,13 @@ export function zOrderCmd(page: Page, objs: Obj[], dir: 1 | -1): Command | null 
     undo: () => apply(moves.map((m) => ({ ...m, from: m.to, to: m.from }))),
   };
 }
+
+/** Agrupar: asigna un id de grupo común (Ctrl+G). Desagrupar: lo quita. */
+export function groupCmd(objs: Obj[], group: string | undefined): Command {
+  const before = objs.map((o) => ({ o, group: o.group }));
+  return {
+    label: group ? 'agrupar' : 'desagrupar',
+    do: () => objs.forEach((o) => { o.group = group; }),
+    undo: () => before.forEach(({ o, group }) => { o.group = group; }),
+  };
+}

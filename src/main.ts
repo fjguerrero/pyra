@@ -7,7 +7,7 @@ import { snapBox, type Guide } from './guides';
 import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { measureText } from './text';
-import { duplicateCmd, pasteCmd, zOrderCmd } from './commands';
+import { duplicateCmd, groupCmd, pasteCmd, zOrderCmd } from './commands';
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
 import { renderPanels } from './panels';
@@ -61,6 +61,17 @@ function select(id: string | null, additive = false): void {
     selectedIds = [id];
   }
   selectedLayerId = null;
+  expandGroups();
+}
+
+/** Si un objeto seleccionado pertenece a un grupo, se selecciona el grupo entero. */
+function expandGroups(): void {
+  if (!selectedId) return;
+  const page = activePage(doc);
+  const o = findObj(page, selectedId);
+  if (!o?.group) return;
+  const members = page.layers.flatMap((l) => l.objects).filter((x) => x.group === o.group).map((x) => x.id);
+  selectedIds = [...new Set([...selectedIds, ...members])];
 }
 
 function selectedObjs(): Obj[] {
@@ -168,6 +179,10 @@ function importBitmapFile(file: File): void {
 document.querySelector<HTMLElement>('#toolbar .tool[data-export]')?.addEventListener('click', async () => {
   const blob = await exportFpng(doc, renderer);
   downloadBlob(blob, `${doc.name || 'pyra'}.f.png`);
+});
+document.querySelector<HTMLElement>('#toolbar .tool[data-export-png]')?.addEventListener('click', async () => {
+  const off = await renderer.exportPage(activePage(doc));
+  off.toBlob((b) => b && downloadBlob(b, `${doc.name || 'pyra'}.png`), 'image/png');
 });
 
 renderer.onImgReady = invalidate;
@@ -512,6 +527,7 @@ canvas.addEventListener('pointerup', () => {
           select(null);
           selectedIds = hits.map((o) => o.id);
           selectedId = selectedIds[selectedIds.length - 1] ?? null;
+          expandGroups();
         }
       }
     }
@@ -799,6 +815,15 @@ window.addEventListener('keydown', (e) => {
       persist();
       invalidate();
     }
+  } else if (mod && (e.key === 'g' || e.key === 'G')) {
+    e.preventDefault();
+    const objs = selectedObjs();
+    if (objs.length < 2) return;
+    const ungroup = e.shiftKey;
+    history.run(groupCmd(objs, ungroup ? undefined : uid()));
+    if (ungroup) selectedIds = [selectedId ?? ''].filter(Boolean);
+    persist();
+    invalidate();
   } else if (mod && (e.key === 'c' || e.key === 'C')) {
     clipboard = selectedObjs().map((o) => structuredClone(o));
   } else if (mod && (e.key === 'v' || e.key === 'V')) {
