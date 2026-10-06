@@ -1,10 +1,10 @@
-import { activePage, type BitmapObj, type Doc, type Obj, type ShapeObj, type TextObj } from './model';
+import { activePage, NO_FX, type BitmapObj, type Doc, type Fx, type Obj, type ShapeObj, type TextObj } from './model';
 import { findObj } from './hit';
 import type { View } from './view';
 import type { AlignKind } from './align';
 
 export interface PanelApi {
-  editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj> | Partial<TextObj>): void;
+  editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj> | Partial<TextObj> | { fx: Fx }): void;
   editLayer(layerId: string, patch: { visible?: boolean; locked?: boolean; opacity?: number; name?: string }): void;
   selectLayer(layerId: string | null): void;
   addLayer(): void;
@@ -104,7 +104,7 @@ export function renderPanels(
     num('h', 'Alto');
 
     if (obj.shape === 'bitmap') {
-      const slider = (label: string, key: 'blur' | 'sat' | 'bri', min: number, max: number, step: number) => {
+      const slider = (label: string, key: 'sat' | 'bri', min: number, max: number, step: number) => {
         const wrap = document.createElement('label');
         wrap.className = 'field';
         wrap.innerHTML = `<span>${label}</span>`;
@@ -118,7 +118,6 @@ export function renderPanels(
         wrap.appendChild(rng);
         insp.appendChild(wrap);
       };
-      slider('Desenfoque', 'blur', 0, 20, 1);
       slider('Saturación', 'sat', 0, 2, 0.05);
       slider('Brillo', 'bri', 0, 2, 0.05);
 
@@ -188,6 +187,53 @@ export function renderPanels(
       color.addEventListener('change', () => api.editObj(obj, { [colorKey]: color.value } as Partial<ShapeObj>));
       wrap.appendChild(color);
       insp.appendChild(wrap);
+    }
+
+    // ---- Efectos en vivo (M5): válidos para cualquier objeto ----
+    const fx: Fx = obj.fx ?? { ...NO_FX };
+    const editFx = (patch: Partial<Fx>): void => api.editObj(obj, { fx: { ...fx, ...patch } });
+    insp.insertAdjacentHTML('beforeend', '<span class="hint">Efectos en vivo</span>');
+    const numField = (label: string, value: number, onSet: (v: number) => void) => {
+      const wrap = document.createElement('label');
+      wrap.className = 'field';
+      wrap.innerHTML = `<span>${label}</span>`;
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.value = String(value);
+      input.addEventListener('change', () => {
+        const v = Number(input.value);
+        if (Number.isFinite(v)) onSet(v);
+      });
+      wrap.appendChild(input);
+      insp.appendChild(wrap);
+    };
+    const colorField = (label: string, value: string, onSet: (v: string) => void) => {
+      const wrap = document.createElement('label');
+      wrap.className = 'field';
+      wrap.innerHTML = `<span>${label}</span>`;
+      const input = document.createElement('input');
+      input.type = 'color';
+      input.value = value;
+      input.addEventListener('change', () => onSet(input.value));
+      wrap.appendChild(input);
+      insp.appendChild(wrap);
+    };
+    numField('Desenfoque', fx.blur, (v) => editFx({ blur: Math.max(0, v) }));
+    insp.appendChild(btn('', fx.shadow ? 'Quitar sombra' : 'Añadir sombra', 'Sombra paralela en vivo', Boolean(fx.shadow), () =>
+      editFx({ shadow: fx.shadow ? null : { x: 4, y: 4, blur: 8, color: '#00000080' } }),
+    ));
+    if (fx.shadow) {
+      numField('Sombra X', fx.shadow.x, (v) => editFx({ shadow: { ...fx.shadow!, x: v } }));
+      numField('Sombra Y', fx.shadow.y, (v) => editFx({ shadow: { ...fx.shadow!, y: v } }));
+      numField('Sombra desenfoque', fx.shadow.blur, (v) => editFx({ shadow: { ...fx.shadow!, blur: Math.max(0, v) } }));
+      colorField('Sombra color', fx.shadow.color.slice(0, 7), (v) => editFx({ shadow: { ...fx.shadow!, color: v } }));
+    }
+    insp.appendChild(btn('', fx.glow ? 'Quitar glow' : 'Añadir glow', 'Resplandor en vivo', Boolean(fx.glow), () =>
+      editFx({ glow: fx.glow ? null : { blur: 12, color: '#4f8cff' } }),
+    ));
+    if (fx.glow) {
+      numField('Glow desenfoque', fx.glow.blur, (v) => editFx({ glow: { ...fx.glow!, blur: Math.max(0, v) } }));
+      colorField('Glow color', fx.glow.color.slice(0, 7), (v) => editFx({ glow: { ...fx.glow!, color: v } }));
     }
   }
 

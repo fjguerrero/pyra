@@ -229,7 +229,8 @@ describe('Property Inspector: campos según lo seleccionado', () => {
     const obj = activePage(f.doc).layers[0].objects[1];
     mount(f.doc, obj.id, null, [obj.id], f.view, f.api);
     const inputs = [...document.querySelectorAll<HTMLInputElement>('#inspector-body input[type=number]')];
-    expect(inputs.map((i) => i.value)).toEqual(['100', '100', '50', '60']);
+    // los 4 primeros son X/Y/ancho/alto; después vienen los de efectos en vivo
+    expect(inputs.slice(0, 4).map((i) => i.value)).toEqual(['100', '100', '50', '60']);
   });
 
   it('cambiar X invoca editObj con solo esa propiedad', () => {

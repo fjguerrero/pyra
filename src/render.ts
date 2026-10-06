@@ -1,4 +1,4 @@
-import type { Obj, Page, ShapeKind } from './model';
+import type { Fx, Obj, Page, ShapeKind } from './model';
 import type { View } from './view';
 import type { Guide } from './guides';
 import { findObj, handles } from './hit';
@@ -149,6 +149,46 @@ export class Renderer {
     }
   }
 
+  /** Render plano de la página a un canvas aparte (para exportar PNG). */
+  async exportPage(page: Page): Promise<HTMLCanvasElement> {
+    const off = document.createElement('canvas');
+    off.width = page.width;
+    off.height = page.height;
+    const saved = this.ctx;
+    const c2 = off.getContext('2d');
+    if (!c2) throw new Error('canvas 2d no disponible');
+    this.ctx = c2;
+    try {
+      c2.fillStyle = PAGE_BG;
+      c2.fillRect(0, 0, page.width, page.height);
+      c2.save();
+      c2.beginPath();
+      c2.rect(0, 0, page.width, page.height);
+      c2.clip();
+      for (const layer of page.layers) {
+        if (!layer.visible) continue;
+        c2.globalAlpha = layer.opacity;
+        for (const o of layer.objects) this.drawObj(o, { zoom: 1, panX: 0, panY: 0 });
+      }
+      c2.globalAlpha = 1;
+      c2.restore();
+      await new Promise<void>((res) => {
+        // deja decodificar los bitmaps antes de devolver
+        if ([...this.imgs.values()].every((i) => i.ready)) return res();
+        const prev = this.onImgReady;
+        this.onImgReady = () => {
+          if ([...this.imgs.values()].every((i) => i.ready)) {
+            this.onImgReady = prev;
+            res();
+          }
+        };
+      });
+    } finally {
+      this.ctx = saved;
+    }
+    return off;
+  }
+
   private path(o: { x: number; y: number; w: number; h: number; shape: ShapeKind }, v: View): void {
     const ctx = this.ctx;
     const x = o.x * v.zoom + v.panX;
@@ -166,6 +206,38 @@ export class Renderer {
     }
   }
 
+  private applyFx(fx: Fx | undefined, zoom: number): string | null {
+    // devuelve el filtro CSS a limpiar después; sombra/glow van por ctx.shadow*
+    const ctx = this.ctx;
+    const filters: string[] = [];
+    if (fx?.blur) filters.push(`blur(${fx.blur * zoom}px)`);
+    if (fx?.shadow) {
+      ctx.shadowColor = fx.shadow.color;
+      ctx.shadowBlur = fx.shadow.blur * zoom;
+      ctx.shadowOffsetX = fx.shadow.x * zoom;
+      ctx.shadowOffsetY = fx.shadow.y * zoom;
+    }
+    if (fx?.glow) {
+      ctx.shadowColor = fx.glow.color;
+      ctx.shadowBlur = fx.glow.blur * zoom;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    }
+    if (filters.length) ctx.filter = filters.join(' ');
+    return filters.length ? 'filters' : fx?.shadow || fx?.glow ? 'shadow' : null;
+  }
+
+  private clearFx(what: string | null): void {
+    const ctx = this.ctx;
+    if (what === 'filters') ctx.filter = 'none';
+    if (what === 'shadow' || what === 'filters') {
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    }
+  }
+
   private drawObj(o: Obj, v: View): void {
     const ctx = this.ctx;
     if (o.shape === 'bitmap') {
@@ -173,16 +245,32 @@ export class Renderer {
       if (!im || !im.ready) return;
       const c = o.crop ?? { x: 0, y: 0, w: im.el.naturalWidth, h: im.el.naturalHeight };
       const filters = [];
-      if (o.blur > 0) filters.push(`blur(${o.blur}px)`);
       if (o.sat !== 1) filters.push(`saturate(${o.sat})`);
       if (o.bri !== 1) filters.push(`brightness(${o.bri})`);
+      if (o.fx?.blur) filters.push(`blur(${o.fx.blur * v.zoom}px)`);
       if (filters.length) ctx.filter = filters.join(' ');
+      const shadow = o.fx?.shadow ?? o.fx?.glow;
+      if (shadow) {
+        const s = shadow as { x?: number; y?: number; blur: number; color: string };
+        ctx.shadowColor = s.color;
+        ctx.shadowBlur = s.blur * v.zoom;
+        ctx.shadowOffsetX = (s.x ?? 0) * v.zoom;
+        ctx.shadowOffsetY = (s.y ?? 0) * v.zoom;
+      }
       ctx.drawImage(im.el, c.x, c.y, c.w, c.h, o.x * v.zoom + v.panX, o.y * v.zoom + v.panY, o.w * v.zoom, o.h * v.zoom);
       if (filters.length) ctx.filter = 'none';
+      if (shadow) {
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+      }
       return;
     }
+    const what = this.applyFx(o.fx, v.zoom);
     if (o.shape === 'text') {
       drawTextObj(ctx, o, v.zoom, v.panX, v.panY);
+      this.clearFx(what);
       return;
     }
     this.path(o, v);
@@ -195,5 +283,6 @@ export class Renderer {
       ctx.lineWidth = o.strokeWidth * v.zoom;
       ctx.stroke();
     }
+    this.clearFx(what);
   }
 }

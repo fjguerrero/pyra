@@ -116,6 +116,24 @@ test('texto: crear con la herramienta T y editar con doble clic', async ({ page 
   await expect(page.locator('#inspector-body textarea')).toHaveValue('Texto');
 });
 
+test('exportar .f.png y reimportarlo restaura el documento', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  await expect(layerCount(page)).toContainText('· 1');
+  const download = page.waitForEvent('download');
+  await page.locator('#toolbar .tool[data-export]').click();
+  const dl = await download;
+  expect(dl.suggestedFilename()).toMatch(/\.f\.png$/);
+  const path = await dl.path();
+
+  // borrar el objeto (reimportar debe restaurarlo)
+  await page.keyboard.press('Delete');
+  await expect(layerCount(page)).toContainText('· 0');
+
+  await page.setInputFiles('#import-file', path);
+  await expect(layerCount(page)).toContainText('· 1');
+});
+
 test('páginas: crear y cambiar', async ({ page }) => {
   await page.getByText('＋ Nueva página').click();
   await expect(page.locator('#pages-body .row')).toHaveCount(2);

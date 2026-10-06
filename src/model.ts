@@ -4,6 +4,17 @@
 
 export type ShapeKind = 'rect' | 'ellipse' | 'line';
 
+export interface Fx {
+  shadow: { x: number; y: number; blur: number; color: string } | null;
+  glow: { blur: number; color: string } | null;
+  blur: number; // px de desenfoque aplicado al dibujar, 0 = ninguno
+}
+
+/** Efectos en vivo no destructivos: válidos para cualquier objeto. */
+export type WithFx = { fx?: Fx };
+
+export const NO_FX: Fx = { shadow: null, glow: null, blur: 0 };
+
 export interface ShapeObj {
   id: string;
   shape: ShapeKind;
@@ -15,6 +26,7 @@ export interface ShapeObj {
   fill: string;
   stroke: string | null;
   strokeWidth: number;
+  fx?: Fx;
 }
 
 /** Bitmap: la imagen se guarda embebida (data URL); crop son píxeles de la fuente original. */
@@ -28,9 +40,9 @@ export interface BitmapObj {
   h: number;
   src: string;
   crop: { x: number; y: number; w: number; h: number } | null;
-  blur: number; // px de desenfoque, 0 = ninguno
   sat: number; // 1 = original
   bri: number; // 1 = original
+  fx?: Fx;
 }
 
 export type Obj = ShapeObj | BitmapObj | TextObj;
@@ -48,6 +60,7 @@ export interface TextObj {
   font: string; // CSS font-family
   size: number; // px
   fill: string;
+  fx?: Fx;
 }
 
 export interface Layer {

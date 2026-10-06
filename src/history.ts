@@ -8,6 +8,11 @@ export class History {
   private undoStack: Command[] = [];
   private redoStack: Command[] = [];
 
+  clear(): void {
+    this.undoStack.length = 0;
+    this.redoStack.length = 0;
+  }
+
   run(cmd: Command): void {
     cmd.do();
     this.undoStack.push(cmd);

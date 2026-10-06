@@ -49,9 +49,12 @@ export async function loadDoc(): Promise<Doc | null> {
           if (!('shape' in o)) (o as { shape: string }).shape = 'rect';
           if (o.shape === 'bitmap') {
             o.crop ??= null;
-            o.blur ??= 0;
             o.sat ??= 1;
             o.bri ??= 1;
+            // M3 guardaba el desenfoque en o.blur; desde M5 vive en fx.blur
+            const legacyBlur = (o as { blur?: number }).blur ?? 0;
+            delete (o as { blur?: number }).blur;
+            if (legacyBlur) o.fx = { shadow: null, glow: null, blur: legacyBlur };
           }
         }
     return doc;

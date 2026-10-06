@@ -8,6 +8,7 @@ import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { measureText } from './text';
 import { loadDoc, saveDoc } from './store';
+import { exportFpng, importFpng, downloadBlob } from './export';
 import { renderPanels } from './panels';
 
 const doc: Doc = (await loadDoc()) ?? newDoc();
@@ -92,13 +93,30 @@ document.querySelector<HTMLElement>('#toolbar .tool[data-fit]')?.addEventListene
   invalidate();
 });
 
-// ---- Importar imagen (M3): archivo → data URL → objeto bitmap centrado ----
+// ---- Importar imagen (M3) / importar .f.png (M6): un solo handler ----
 const importFile = document.getElementById('import-file') as HTMLInputElement;
 document.querySelector<HTMLElement>('#toolbar .tool[data-import]')?.addEventListener('click', () => importFile.click());
 importFile.addEventListener('change', () => {
   const file = importFile.files?.[0];
   importFile.value = '';
   if (!file) return;
+  void (async () => {
+    const restored = await importFpng(file); // ¿PNG con fuente Pyra? → reabrir documento
+    if (restored) {
+      doc.name = restored.name;
+      doc.pages = restored.pages;
+      doc.activePageId = restored.activePageId;
+      history.clear();
+      select(null);
+      await saveDoc(doc);
+      invalidate();
+      return;
+    }
+    importBitmapFile(file);
+  })();
+});
+
+function importBitmapFile(file: File): void {
   const reader = new FileReader();
   reader.onload = () => {
     const src = String(reader.result);
@@ -119,7 +137,6 @@ importFile.addEventListener('change', () => {
         h: probe.naturalHeight,
         src,
         crop: null,
-        blur: 0,
         sat: 1,
         bri: 1,
       };
@@ -140,7 +157,14 @@ importFile.addEventListener('change', () => {
     probe.src = src;
   };
   reader.readAsDataURL(file);
+}
+
+// ---- Exportar .f.png (M6): PNG con la fuente Pyra embebida ----
+document.querySelector<HTMLElement>('#toolbar .tool[data-export]')?.addEventListener('click', async () => {
+  const blob = await exportFpng(doc, renderer);
+  downloadBlob(blob, `${doc.name || 'pyra'}.f.png`);
 });
+
 renderer.onImgReady = invalidate;
 
 // ---- Texto (M4): clic con la herramienta → objeto editable en el acto ----

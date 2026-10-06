@@ -10,7 +10,7 @@ import { loadDoc, saveDoc } from '../src/store';
 function bitmap(x: number, y: number, w: number, h: number): BitmapObj {
   return {
     id: uid(), shape: 'bitmap', name: 'img', x, y, w, h,
-    src: 'data:image/png;base64,AAAA', crop: null, blur: 0, sat: 1, bri: 1,
+    src: 'data:image/png;base64,AAAA', crop: null, sat: 1, bri: 1,
   };
 }
 
@@ -139,7 +139,7 @@ describe('Renderer.draw: bitmap', () => {
 
   it('los filtros vivos (blur/sat/bri) se aplican como ctx.filter y se limpian', async () => {
       const o = bitmap(0, 0, 200, 100);
-      o.blur = 4;
+      o.fx = { shadow: null, glow: null, blur: 4 };
       o.sat = 0.5;
       o.bri = 1.2;
       const { ctx, ops } = fakeCtx();
@@ -149,7 +149,7 @@ describe('Renderer.draw: bitmap', () => {
       await settle();
       r.draw(s);
       const filters = ops.filter((o) => o.op === 'set:filter').map((o) => o.args[0]);
-      expect(filters).toContain('blur(4px) saturate(0.5) brightness(1.2)');
+      expect(filters).toContain('saturate(0.5) brightness(1.2) blur(4px)');
       expect(filters.at(-1)).toBe('none');
   });
 
@@ -170,9 +170,9 @@ describe('loadDoc: normaliza bitmaps antiguos', () => {
     const doc = newDoc('m3-store');
     const o = bitmap(0, 0, 10, 10);
     delete (o as Partial<BitmapObj>).crop;
-    delete (o as Partial<BitmapObj>).blur;
     delete (o as Partial<BitmapObj>).sat;
     delete (o as Partial<BitmapObj>).bri;
+    (o as { blur?: number }).blur = 7; // legado M3 → fx.blur
     activePage(doc).layers[0].objects.push(o as BitmapObj);
     await saveDoc(doc as unknown as Doc);
     const loaded = await loadDoc();
@@ -180,7 +180,7 @@ describe('loadDoc: normaliza bitmaps antiguos', () => {
     const back = activePage(loaded!).layers[0].objects[0] as BitmapObj;
     expect(back.shape).toBe('bitmap');
     expect(back.crop).toBeNull();
-    expect(back.blur).toBe(0);
+    expect(back.fx?.blur).toBe(7);
     expect(back.sat).toBe(1);
     expect(back.bri).toBe(1);
   });
