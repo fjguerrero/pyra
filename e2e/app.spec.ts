@@ -134,6 +134,16 @@ test('duplicar con Ctrl+D y mover con flechas', async ({ page }) => {
   await expect(inspNum(page, 0)).toHaveValue(String(x0 + 12));
 });
 
+test('degradado: añadir desde el inspector y editar sus colores', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  await page.locator('#inspector-body button', { hasText: 'Añadir degradado' }).click();
+  await expect(page.locator('#inspector-body')).toContainText('Degradado desde');
+  await expect(page.locator('#inspector-body')).toContainText('Ángulo');
+  await page.locator('#inspector-body button', { hasText: 'Quitar degradado' }).click();
+  await expect(page.locator('#inspector-body')).not.toContainText('Degradado desde');
+});
+
 test('exportar .f.png y reimportarlo restaura el documento', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);

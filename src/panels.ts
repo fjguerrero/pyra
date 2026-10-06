@@ -187,6 +187,37 @@ export function renderPanels(
       color.addEventListener('change', () => api.editObj(obj, { [colorKey]: color.value } as Partial<ShapeObj>));
       wrap.appendChild(color);
       insp.appendChild(wrap);
+
+      // ---- Degradado lineal (solo formas con relleno) ----
+      if (obj.shape !== 'line') {
+        const g = obj.gradient ?? null;
+        insp.appendChild(btn('', g ? 'Quitar degradado' : 'Añadir degradado', 'Relleno con degradado lineal', false, () =>
+          api.editObj(obj, { gradient: g ? null : { from: obj.fill, to: '#ffffff', angle: 0 } })));
+        if (g) {
+          const gradField = (label: string, value: string, onSet: (v: string) => void) => {
+            const w = document.createElement('label');
+            w.className = 'field';
+            w.innerHTML = `<span>${label}</span>`;
+            const c = document.createElement('input');
+            c.type = 'color';
+            c.value = value;
+            c.addEventListener('change', () => onSet(c.value));
+            w.appendChild(c);
+            insp.appendChild(w);
+          };
+          gradField('Degradado desde', g.from, (v) => api.editObj(obj, { gradient: { ...g, from: v } }));
+          gradField('Degradado hasta', g.to, (v) => api.editObj(obj, { gradient: { ...g, to: v } }));
+          const angleWrap = document.createElement('label');
+          angleWrap.className = 'field';
+          angleWrap.innerHTML = '<span>Ángulo</span>';
+          const angle = document.createElement('input');
+          angle.type = 'number';
+          angle.value = String(g.angle);
+          angle.addEventListener('change', () => api.editObj(obj, { gradient: { ...g, angle: Number(angle.value) } }));
+          angleWrap.appendChild(angle);
+          insp.appendChild(angleWrap);
+        }
+      }
     }
 
     // ---- Efectos en vivo (M5): válidos para cualquier objeto ----

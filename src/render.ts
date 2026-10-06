@@ -3,6 +3,7 @@ import type { View } from './view';
 import type { Guide } from './guides';
 import { findObj, handles } from './hit';
 import { drawTextObj } from './text';
+import { gradientFill } from './gradient';
 export interface Draft {
   x: number;
   y: number;
@@ -275,7 +276,7 @@ export class Renderer {
     }
     this.path(o, v);
     if (o.fill) {
-      ctx.fillStyle = o.fill;
+      ctx.fillStyle = o.gradient ? gradientFill(ctx, o, o.gradient, v.zoom, v.panX, v.panY) : o.fill;
       ctx.fill();
     }
     if (o.stroke && o.strokeWidth > 0) {

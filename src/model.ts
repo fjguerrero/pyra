@@ -15,6 +15,13 @@ export type WithFx = { fx?: Fx };
 
 export const NO_FX: Fx = { shadow: null, glow: null, blur: 0 };
 
+/** Relleno con degradado lineal: 0° = izquierda→derecha, 90° = arriba→abajo. */
+export interface Gradient {
+  from: string;
+  to: string;
+  angle: number;
+}
+
 export interface ShapeObj {
   id: string;
   shape: ShapeKind;
@@ -26,6 +33,8 @@ export interface ShapeObj {
   fill: string;
   stroke: string | null;
   strokeWidth: number;
+  /** Relleno con degradado lineal; si está, sustituye a `fill` (que sigue guardando el color base). */
+  gradient?: Gradient | null;
   fx?: Fx;
 }
 
