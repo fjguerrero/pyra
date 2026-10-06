@@ -11,7 +11,7 @@ function docWith(objects: number): Doc {
   const page = activePage(doc);
   for (let i = 0; i < objects; i++) {
     page.layers[0].objects.push({
-      id: uid(), type: 'rect', name: `r${i}`, x: i * 10, y: i * 20, w: 30, h: 40,
+      id: uid(), shape: 'rect', name: `r${i}`, x: i * 10, y: i * 20, w: 30, h: 40,
       fill: '#123456', stroke: null, strokeWidth: 0,
     });
   }
@@ -55,6 +55,40 @@ describe('saveDoc: guarda bajo una única clave', () => {
     await saveDoc(docWith(1));
     await saveDoc(docWith(2));
     expect(await keys()).toEqual(['doc']);
+  });
+});
+
+describe('loadDoc: documentos de versiones anteriores siguen siendo editables', () => {
+  it('un objeto guardado sin campo "shape" se recupera como rectángulo', async () => {
+    const legacy = {
+      version: 1,
+      name: 'legacy',
+      activePageId: 'p1',
+      pages: [
+        {
+          id: 'p1',
+          name: 'P',
+          width: 100,
+          height: 100,
+          layers: [
+            {
+              id: 'l1',
+              name: 'L',
+              visible: true,
+              locked: false,
+              opacity: 1,
+              objects: [
+                { id: 'o1', name: 'viejo', x: 1, y: 2, w: 3, h: 4, fill: '#000', stroke: null, strokeWidth: 0 },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    await putRaw(legacy);
+    const doc = await loadDoc();
+    expect(doc).not.toBeNull();
+    expect(activePage(doc!).layers[0].objects[0].shape).toBe('rect');
   });
 });
 

@@ -1,4 +1,4 @@
-import type { Obj, Page } from './model';
+import type { Obj, Page, ShapeKind } from './model';
 import type { View } from './view';
 import type { Guide } from './guides';
 import { findObj, handles } from './hit';
@@ -8,6 +8,7 @@ export interface Draft {
   y: number;
   w: number;
   h: number;
+  shape: ShapeKind;
 }
 
 export interface Scene {
@@ -76,10 +77,10 @@ export class Renderer {
     ctx.globalAlpha = 1;
 
     if (scene.draft) {
-      const d = scene.draft;
       ctx.strokeStyle = ACCENT;
       ctx.setLineDash([4, 3]);
-      ctx.strokeRect(d.x * v.zoom + v.panX, d.y * v.zoom + v.panY, d.w * v.zoom, d.h * v.zoom);
+      this.path(scene.draft, v);
+      ctx.stroke();
       ctx.setLineDash([]);
     }
 
@@ -129,20 +130,34 @@ export class Renderer {
     }
   }
 
-  private drawObj(o: Obj, v: View): void {
+  private path(o: { x: number; y: number; w: number; h: number; shape: ShapeKind }, v: View): void {
     const ctx = this.ctx;
     const x = o.x * v.zoom + v.panX;
     const y = o.y * v.zoom + v.panY;
     const w = o.w * v.zoom;
     const h = o.h * v.zoom;
+    ctx.beginPath();
+    if (o.shape === 'ellipse') {
+      ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+    } else if (o.shape === 'line') {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w, y + h);
+    } else {
+      ctx.rect(x, y, w, h);
+    }
+  }
+
+  private drawObj(o: Obj, v: View): void {
+    const ctx = this.ctx;
+    this.path(o, v);
     if (o.fill) {
       ctx.fillStyle = o.fill;
-      ctx.fillRect(x, y, w, h);
+      ctx.fill();
     }
     if (o.stroke && o.strokeWidth > 0) {
       ctx.strokeStyle = o.stroke;
       ctx.lineWidth = o.strokeWidth * v.zoom;
-      ctx.strokeRect(x, y, w, h);
+      ctx.stroke();
     }
   }
 }

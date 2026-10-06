@@ -1,16 +1,42 @@
 import type { Layer, Obj, Page } from './model';
 import type { View } from './view';
 
-export function hitTest(page: Page, wx: number, wy: number): Obj | null {
+export function hitTest(page: Page, wx: number, wy: number, tol = 0): Obj | null {
   for (let i = page.layers.length - 1; i >= 0; i--) {
     const l = page.layers[i];
     if (!l.visible || l.locked) continue;
     for (let j = l.objects.length - 1; j >= 0; j--) {
       const o = l.objects[j];
-      if (wx >= o.x && wx <= o.x + o.w && wy >= o.y && wy <= o.y + o.h) return o;
+      if (hitObj(o, wx, wy, tol)) return o;
     }
   }
   return null;
+}
+
+/** Punto dentro del objeto según su forma. `tol` es un margen en unidades de mundo. */
+export function hitObj(o: Obj, wx: number, wy: number, tol = 0): boolean {
+  if (wx < o.x - tol || wx > o.x + o.w + tol || wy < o.y - tol || wy > o.y + o.h + tol) return false;
+  if (o.shape === 'rect') return true;
+
+  const cx = o.x + o.w / 2;
+  const cy = o.y + o.h / 2;
+  const rx = o.w / 2 + tol;
+  const ry = o.h / 2 + tol;
+  if (rx <= 0 || ry <= 0) return false;
+
+  if (o.shape === 'ellipse') return ((wx - cx) / rx) ** 2 + ((wy - cy) / ry) ** 2 <= 1;
+
+  // línea: cerca del segmento que va de la esquina superior-izquierda a la inferior-derecha
+  const x0 = o.x;
+  const y0 = o.y;
+  const x1 = o.x + o.w;
+  const y1 = o.y + o.h;
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return Math.hypot(wx - x0, wy - y0) <= tol;
+  const t = Math.max(0, Math.min(1, ((wx - x0) * dx + (wy - y0) * dy) / len2));
+  return Math.hypot(wx - (x0 + t * dx), wy - (y0 + t * dy)) <= tol;
 }
 
 export function findObj(page: Page, id: string | null): Obj | null {

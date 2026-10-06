@@ -3,17 +3,17 @@
 // Si un test falla, el bug está en el código, no en el test.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { activePage, newDoc, uid, type Doc, type Page, type RectObj } from '../src/model';
-import { applyResize, findLayer, findObj, handles, hitHandle, hitTest } from '../src/hit';
+import { activePage, newDoc, uid, type Doc, type Page, type ShapeObj } from '../src/model';
+import { applyResize, findLayer, findObj, handles, hitHandle, hitObj, hitTest } from '../src/hit';
 import { History } from '../src/history';
 import { fitAll, screenToWorld, worldToScreen, type View } from '../src/view';
 import { loadDoc, saveDoc } from '../src/store';
 
 // ---- helpers de fixture (puros, sin estado) ----
-function rect(x: number, y: number, w: number, h: number, name = 'r'): RectObj {
+function rect(x: number, y: number, w: number, h: number, name = 'r'): ShapeObj {
   return {
     id: uid(),
-    type: 'rect',
+    shape: 'rect',
     name,
     x,
     y,
@@ -108,6 +108,70 @@ describe('selección: el punto devuelve el objeto visible más cercano a la supe
     page.layers[1].locked = true;
 
     expect(hitTest(page, 50, 50)?.id).toBe(deAbajo.id);
+  });
+});
+
+describe('hitObj: la detección sigue la forma del objeto', () => {
+  const shape = (kind: 'ellipse' | 'line', x: number, y: number, w: number, h: number): ShapeObj => ({
+    ...rect(x, y, w, h, kind),
+    shape: kind,
+  });
+
+  it('un rectángulo es sólido: cualquier punto de su bbox cuenta', () => {
+    const o = rect(100, 100, 100, 60);
+    expect(hitObj(o, 100, 100)).toBe(true);
+    expect(hitObj(o, 200, 160)).toBe(true);
+    expect(hitObj(o, 99, 130)).toBe(false);
+  });
+
+  it('una elipse deja fuera las esquinas de su bounding box', () => {
+    // bbox 100,100 → 300,200; centro 200,150; radios 100,50
+    const o = shape('ellipse', 100, 100, 200, 100);
+    expect(hitObj(o, 200, 150)).toBe(true); // centro
+    expect(hitObj(o, 200, 100)).toBe(true); // tangente superior
+    expect(hitObj(o, 100, 100)).toBe(false); // esquina del bbox: fuera de la elipse
+    expect(hitObj(o, 300, 200)).toBe(false); // otra esquina
+    expect(hitObj(o, 110, 105)).toBe(false); // cerca de la esquina, sigue fuera
+  });
+
+  it('una línea solo capta su trazo, no el área que lo rodea', () => {
+    // bbox 0,0 → 100,100: la va de (0,0) a (100,100)
+    const o = shape('line', 0, 0, 100, 100);
+    expect(hitObj(o, 50, 50)).toBe(true); // sobre el trazo
+    expect(hitObj(o, 0, 0)).toBe(true); // extremo
+    expect(hitObj(o, 100, 100)).toBe(true); // otro extremo
+    expect(hitObj(o, 90, 10)).toBe(false); // dentro del bbox pero lejos del trazo
+    expect(hitObj(o, 10, 90)).toBe(false);
+  });
+
+  it('una línea no se prolonga más allá de sus extremos', () => {
+    // bbox 0,0 → 100,10: la va de (0,0) a (100,10), recta y = 0.1x
+    const o = shape('line', 0, 0, 100, 10);
+    // (110,20) cae sobre la RECTA prolongada (a ~9 con margen 12) pero no sobre el segmento:
+    // el extremo (100,10) está a 14.1
+    expect(hitObj(o, 110, 20, 12)).toBe(false);
+    expect(hitObj(o, 105, 10.5, 12)).toBe(true); // junto al extremo sí
+  });
+
+  it('la tolerancia amplía la zona capturable sin volverla sólida', () => {
+    const o = shape('line', 0, 0, 100, 100);
+    // (90,84) está a ~4.2 del trazo y=x
+    expect(hitObj(o, 90, 84, 1)).toBe(false); // lejos con margen pequeño
+    expect(hitObj(o, 90, 84, 15)).toBe(true); // dentro con margen 15
+    expect(hitObj(o, 90, 10, 15)).toBe(false); // a 56 del trazo: sigue fuera
+    const e = shape('ellipse', 100, 100, 200, 100);
+    expect(hitObj(e, 100, 100, 2)).toBe(false);
+    expect(hitObj(e, 100, 100, 60)).toBe(true); // la esquina entra al agrandar los radios
+  });
+
+  it('hitTest usa la forma: un punto en la esquina de una elipse selecciona lo que hay debajo', () => {
+    const { page } = docWithLayers(1);
+    const bajo = rect(0, 0, 300, 300, 'bajo');
+    const elipse = shape('ellipse', 100, 100, 200, 100);
+    page.layers[0].objects.push(bajo, elipse);
+
+    expect(hitTest(page, 200, 150)?.id).toBe(elipse.id); // dentro de la elipse
+    expect(hitTest(page, 100, 100)?.id).toBe(bajo.id); // esquina: atraviesa la elipse
   });
 });
 

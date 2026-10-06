@@ -1,12 +1,12 @@
 // Tests de M1 escritos desde la especificación de comportamiento, no desde la implementación.
 import { describe, expect, it } from 'vitest';
-import { activePage, newDoc, uid, type RectObj } from '../src/model';
+import { activePage, newDoc, uid, type ShapeObj } from '../src/model';
 import { addLayer, moveLayer, moveObjToLayer, removeLayer } from '../src/layers';
 import { snapBox } from '../src/guides';
 import { bbox, computeAlign } from '../src/align';
 
-function rect(x: number, y: number, w: number, h: number): RectObj {
-  return { id: uid(), type: 'rect', name: 'r', x, y, w, h, fill: '#000000', stroke: null, strokeWidth: 0 };
+function rect(x: number, y: number, w: number, h: number): ShapeObj {
+  return { id: uid(), shape: 'rect', name: 'r', x, y, w, h, fill: '#000000', stroke: null, strokeWidth: 0 };
 }
 
 function pageWith(nLayers: number) {

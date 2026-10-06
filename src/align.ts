@@ -1,15 +1,15 @@
 // Alinear y distribuir. Con 1 objeto, respecto a la página; con varios, respecto a su bounding box.
-import type { RectObj } from './model';
+import type { ShapeObj } from './model';
 
 export type AlignKind = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom' | 'hdist' | 'vdist';
 
 export interface Move {
-  obj: RectObj;
+  obj: ShapeObj;
   from: { x: number; y: number };
   to: { x: number; y: number };
 }
 
-export function bbox(objs: RectObj[]): { x: number; y: number; w: number; h: number } {
+export function bbox(objs: ShapeObj[]): { x: number; y: number; w: number; h: number } {
   const x0 = Math.min(...objs.map((o) => o.x));
   const y0 = Math.min(...objs.map((o) => o.y));
   const x1 = Math.max(...objs.map((o) => o.x + o.w));
@@ -18,7 +18,7 @@ export function bbox(objs: RectObj[]): { x: number; y: number; w: number; h: num
 }
 
 export function computeAlign(
-  objs: RectObj[],
+  objs: ShapeObj[],
   kind: AlignKind,
   page: { width: number; height: number },
 ): Move[] {

@@ -4,7 +4,7 @@
 // salen. Escritos desde la especificación visual, no desde el cuerpo de render.ts.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Renderer, type Scene } from '../src/render';
-import { activePage, newDoc, uid, type RectObj } from '../src/model';
+import { activePage, newDoc, uid, type ShapeObj } from '../src/model';
 
 type Op = { op: string; args: unknown[] };
 
@@ -15,7 +15,7 @@ function fakeCtx(): { ctx: CanvasRenderingContext2D; ops: Op[] } {
     return undefined as never;
   };
   const ctx = {} as Record<string, unknown>;
-  for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'rect', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath']) {
+  for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'rect', 'ellipse', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath']) {
     ctx[m] = call(m);
   }
   // los estilos se asignan por propiedad, no por método: hay que interceptar el setter
@@ -34,13 +34,19 @@ const filled = (ops: Op[]) => ops.filter((o) => o.op === 'fillRect').map((o) => 
 const strokes = (ops: Op[]) => ops.filter((o) => o.op === 'strokeRect').map((o) => o.args);
 const lines = (ops: Op[]) => ops.filter((o) => o.op === 'moveTo' || o.op === 'lineTo').map((o) => o.args);
 const styleOrder = (ops: Op[], prop: string) => ops.filter((o) => o.op === `set:${prop}`).map((o) => o.args[0]);
+/** Caminos de forma construidos dentro del recorte de la página (lo que se pinta de los objetos). */
+function shapePaths(ops: Op[], op: string): unknown[][] {
+  const start = ops.findIndex((o) => o.op === 'clip');
+  const end = ops.findIndex((o, i) => i > start && o.op === 'restore');
+  return ops.slice(start + 1, end).filter((o) => o.op === op).map((o) => o.args);
+}
 
 function fakeCanvas(ctx: CanvasRenderingContext2D, width = 1000, height = 700): HTMLCanvasElement {
   return { width, height, getContext: () => ctx } as unknown as HTMLCanvasElement;
 }
 
-function rect(x: number, y: number, w: number, h: number, fill = '#ff0000'): RectObj {
-  return { id: uid(), type: 'rect', name: 'r', x, y, w, h, fill, stroke: null, strokeWidth: 0 };
+function rect(x: number, y: number, w: number, h: number, fill = '#ff0000'): ShapeObj {
+  return { id: uid(), shape: 'rect', name: 'r', x, y, w, h, fill, stroke: null, strokeWidth: 0 };
 }
 
 function scene(partial: Partial<Scene> = {}): Scene {
@@ -76,7 +82,7 @@ describe('Renderer.draw: workspace y página', () => {
     s.page.layers[0].objects.push(rect(10, 10, 30, 30));
     const ops = draw(s);
     const clipIdx = ops.findIndex((o) => o.op === 'clip');
-    const objIdx = ops.findIndex((o) => o.op === 'fillRect' && o.args[0] === 10);
+    const objIdx = ops.findIndex((o) => o.op === 'rect' && o.args[0] === 10);
     expect(clipIdx).toBeGreaterThan(-1);
     expect(objIdx).toBeGreaterThan(clipIdx);
   });
@@ -87,8 +93,9 @@ describe('Renderer.draw: objetos y capas', () => {
     const s = scene({ view: { zoom: 2, panX: 100, panY: 50 } });
     s.page.layers[0].objects.push(rect(10, 20, 30, 40, '#00ff00'));
     const ops = draw(s);
-    expect(filled(ops)).toContainEqual([120, 90, 60, 80]);
+    expect(ops.some((o) => o.op === 'rect' && o.args[0] === 120 && o.args[1] === 90 && o.args[2] === 60 && o.args[3] === 80)).toBe(true);
     expect(styleOrder(ops, 'fillStyle')).toContain('#00ff00');
+    expect(ops.some((o) => o.op === 'fill')).toBe(true);
   });
 
   it('la capa superior se pinta después que la inferior (la tapa)', () => {
@@ -128,17 +135,51 @@ describe('Renderer.draw: objetos y capas', () => {
     o.strokeWidth = 3;
     s.page.layers[0].objects.push(o);
     const ops = draw(s);
-    expect(strokes(ops)).toContainEqual([10, 10, 40, 40]);
+    expect(ops.some((o) => o.op === 'rect' && o.args[0] === 10 && o.args[2] === 40)).toBe(true);
+    expect(ops.some((o) => o.op === 'stroke')).toBe(true);
     expect(styleOrder(ops, 'lineWidth')).toContain(6);
     expect(styleOrder(ops, 'strokeStyle')).toContain('#000000');
   });
 });
 
+describe('Renderer.draw: formas vectoriales', () => {
+  it('una elipse se traza como elipse inscrita en su bounding box', () => {
+    const s = scene();
+    const o = rect(100, 50, 80, 40, '#ff0000');
+    o.shape = 'ellipse';
+    s.page.layers[0].objects.push(o);
+    const ops = draw(s);
+    expect(ops.some((o) => o.op === 'ellipse' && o.args[0] === 140 && o.args[1] === 70 && o.args[2] === 40 && o.args[3] === 20)).toBe(true);
+    // tras recortar a la página no queda ningún camino rectangular
+    expect(shapePaths(ops, 'rect')).toEqual([]);
+  });
+
+  it('una línea va de la esquina superior-izquierda a la inferior-derecha de su bbox', () => {
+    const s = scene();
+    const o = rect(10, 20, 100, 60, '');
+    o.shape = 'line';
+    o.stroke = '#000000';
+    o.strokeWidth = 1;
+    s.page.layers[0].objects.push(o);
+    const ops = draw(s);
+    expect(lines(ops)).toContainEqual([10, 20]);
+    expect(lines(ops)).toContainEqual([110, 80]);
+    expect(ops.some((o) => o.op === 'fill')).toBe(false); // una línea no se rellena
+  });
+
+  it('el borrador de una elipse se traza como elipse, no como rectángulo', () => {
+    const s = scene({ draft: { x: 10, y: 10, w: 40, h: 30, shape: 'ellipse' } });
+    const ops = draw(s);
+    expect(ops.some((o) => o.op === 'ellipse' && o.args[0] === 30 && o.args[2] === 20)).toBe(true);
+    expect(shapePaths(ops, 'rect')).toEqual([]);
+  });
+});
+
 describe('Renderer.draw: borrador de dibujo', () => {
   it('el borrador se dibuja como contorno discontinuo y la discontinuidad se limpia', () => {
-    const s = scene({ draft: { x: 100, y: 100, w: 60, h: 40 } });
+    const s = scene({ draft: { x: 100, y: 100, w: 60, h: 40, shape: 'rect' } });
     const ops = draw(s);
-    expect(strokes(ops)).toContainEqual([100, 100, 60, 40]);
+    expect(ops.some((o) => o.op === 'rect' && o.args[0] === 100 && o.args[2] === 60)).toBe(true);
     const dashes = ops.filter((o) => o.op === 'setLineDash').map((o) => o.args[0]);
     expect(dashes[0]).toEqual([4, 3]);
     expect(dashes.at(-1)).toEqual([]);

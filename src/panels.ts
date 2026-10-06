@@ -1,10 +1,10 @@
-import { activePage, type Doc, type Obj, type RectObj } from './model';
+import { activePage, type Doc, type Obj, type ShapeObj } from './model';
 import { findObj } from './hit';
 import type { View } from './view';
 import type { AlignKind } from './align';
 
 export interface PanelApi {
-  editObj(obj: Obj, patch: Partial<RectObj>): void;
+  editObj(obj: Obj, patch: Partial<ShapeObj>): void;
   editLayer(layerId: string, patch: { visible?: boolean; locked?: boolean; opacity?: number; name?: string }): void;
   selectLayer(layerId: string | null): void;
   addLayer(): void;
@@ -93,7 +93,7 @@ export function renderPanels(
       input.addEventListener('change', () => {
         const val = Number(input.value);
         // campo vacío o no numérico: no mueve el objeto a 0
-        if (input.value.trim() !== '' && Number.isFinite(val)) api.editObj(obj, { [key]: val } as Partial<RectObj>);
+        if (input.value.trim() !== '' && Number.isFinite(val)) api.editObj(obj, { [key]: val } as Partial<ShapeObj>);
       });
       wrap.appendChild(input);
       insp.appendChild(wrap);
@@ -103,13 +103,15 @@ export function renderPanels(
     num('w', 'Ancho');
     num('h', 'Alto');
 
+    // una línea no se rellena: su color es el trazo
+    const colorKey = obj.shape === 'line' ? 'stroke' : 'fill';
     const wrap = document.createElement('label');
     wrap.className = 'field';
-    wrap.innerHTML = '<span>Relleno</span>';
+    wrap.innerHTML = `<span>${obj.shape === 'line' ? 'Color trazo' : 'Relleno'}</span>`;
     const color = document.createElement('input');
     color.type = 'color';
-    color.value = obj.fill;
-    color.addEventListener('change', () => api.editObj(obj, { fill: color.value }));
+    color.value = (obj[colorKey] as string) || '#000000';
+    color.addEventListener('change', () => api.editObj(obj, { [colorKey]: color.value } as Partial<ShapeObj>));
     wrap.appendChild(color);
     insp.appendChild(wrap);
   }

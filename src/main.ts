@@ -1,4 +1,4 @@
-import { activePage, newDoc, uid, type Doc, type RectObj } from './model';
+import { activePage, newDoc, uid, type Doc, type ShapeKind, type ShapeObj } from './model';
 import { History, type Command } from './history';
 import { fitAll, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
@@ -15,8 +15,8 @@ const view: View = { zoom: 1, panX: 0, panY: 0 };
 let selectedId: string | null = null;
 let selectedIds: string[] = [];
 let selectedLayerId: string | null = null;
-let tool: 'select' | 'rect' = 'select';
-let draft: { x: number; y: number; w: number; h: number } | null = null;
+let tool: 'select' | ShapeKind = 'select';
+let draft: { x: number; y: number; w: number; h: number; shape: ShapeKind } | null = null;
 let guides: Guide[] = [];
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -58,31 +58,33 @@ function select(id: string | null, additive = false): void {
   selectedLayerId = null;
 }
 
-function selectedObjs(): RectObj[] {
+function selectedObjs(): ShapeObj[] {
   const page = activePage(doc);
-  return selectedIds.map((id) => findObj(page, id)).filter((o): o is RectObj => o !== null);
+  return selectedIds.map((id) => findObj(page, id)).filter((o): o is ShapeObj => o !== null);
 }
 
 type Drag =
   | { mode: 'pan'; sx: number; sy: number; panX: number; panY: number }
   | { mode: 'create'; ox: number; oy: number }
-  | { mode: 'move'; items: { obj: RectObj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
-  | { mode: 'resize'; obj: RectObj; role: HandleRole; start: { x: number; y: number; w: number; h: number }; grab: { x: number; y: number } };
+  | { mode: 'move'; items: { obj: ShapeObj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
+  | { mode: 'resize'; obj: ShapeObj; role: HandleRole; start: { x: number; y: number; w: number; h: number }; grab: { x: number; y: number } };
+
+const NAMES: Record<ShapeKind, string> = { rect: 'Rectángulo', ellipse: 'Elipse', line: 'Línea' };
 
 let drag: Drag | null = null;
 
 // Modelo de herramientas de Fireworks: la herramienta define qué hace el arrastre.
-function setTool(t: 'select' | 'rect'): void {
+function setTool(t: 'select' | ShapeKind): void {
   tool = t;
   document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) => {
     const on = el.dataset.tool === t;
     el.classList.toggle('active', on);
     el.setAttribute('aria-pressed', String(on));
   });
-  canvas.style.cursor = t === 'rect' ? 'crosshair' : 'default';
+  canvas.style.cursor = t === 'select' ? 'default' : 'crosshair';
 }
 document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) =>
-  el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | 'rect')),
+  el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | ShapeKind)),
 );
 document.querySelector<HTMLElement>('#toolbar .tool[data-fit]')?.addEventListener('click', () => {
   fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
@@ -113,9 +115,9 @@ canvas.addEventListener('pointerdown', (e) => {
 
   const { px, py, wx, wy } = localXY(e);
 
-  if (tool === 'rect') {
+  if (tool !== 'select') {
     drag = { mode: 'create', ox: wx, oy: wy };
-    draft = { x: wx, y: wy, w: 0, h: 0 };
+    draft = { x: wx, y: wy, w: 0, h: 0, shape: tool };
     invalidate();
     return;
   }
@@ -125,7 +127,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (h && sel) {
     drag = {
       mode: 'resize',
-      obj: sel as RectObj,
+      obj: sel as ShapeObj,
       role: h.role,
       start: { x: sel.x, y: sel.y, w: sel.w, h: sel.h },
       grab: { x: wx, y: wy },
@@ -133,7 +135,7 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
 
-  const hit = hitTest(page, wx, wy);
+  const hit = hitTest(page, wx, wy, 4 / view.zoom); // margen constante en pantalla
   if (hit) {
     if (e.shiftKey) select(hit.id, true);
     else if (!selectedIds.includes(hit.id)) select(hit.id);
@@ -169,6 +171,7 @@ canvas.addEventListener('pointermove', (e) => {
       y: Math.min(drag.oy, wy),
       w: Math.abs(wx - drag.ox),
       h: Math.abs(wy - drag.oy),
+      shape: draft.shape,
     };
     invalidate();
     return;
@@ -216,25 +219,26 @@ canvas.addEventListener('pointerup', () => {
     const d = draft;
     draft = null;
     guides = [];
-    if (d.w > 2 && d.h > 2) {
+    const big = d.shape === 'line' ? Math.hypot(d.w, d.h) > 2 : d.w > 2 && d.h > 2;
+    if (big) {
       const layer =
         (selectedLayerId ? page.layers.find((l) => l.id === selectedLayerId && !l.locked) : null) ??
         page.layers.find((l) => l.visible && !l.locked);
       if (layer) {
-        const obj: RectObj = {
+        const obj: ShapeObj = {
           id: uid(),
-          type: 'rect',
-          name: 'Rectángulo',
+          shape: d.shape,
+          name: NAMES[d.shape],
           x: Math.round(d.x),
           y: Math.round(d.y),
           w: Math.round(d.w),
           h: Math.round(d.h),
-          fill: '#4f8cff',
-          stroke: null,
-          strokeWidth: 0,
+          fill: d.shape === 'line' ? '' : '#4f8cff',
+          stroke: d.shape === 'line' ? '#4f8cff' : null,
+          strokeWidth: d.shape === 'line' ? 2 : 0,
         };
         const cmd: Command = {
-          label: 'crear rect',
+          label: `crear ${d.shape}`,
           do: () => layer.objects.push(obj),
           undo: () => {
             const i = layer.objects.indexOf(obj);
@@ -273,7 +277,7 @@ canvas.addEventListener('pointerup', () => {
 });
 
 const panelApi = {
-  editObj(obj: RectObj, patch: Partial<RectObj>): void {
+  editObj(obj: ShapeObj, patch: Partial<ShapeObj>): void {
     const before = { ...obj };
     history.run({
       label: 'editar',
@@ -433,7 +437,7 @@ window.addEventListener('keydown', (e) => {
     }
   } else if (e.key === 'Delete' || e.key === 'Backspace') {
     const page = activePage(doc);
-    const removed: { layerIndex: number; index: number; obj: RectObj }[] = [];
+    const removed: { layerIndex: number; index: number; obj: ShapeObj }[] = [];
     page.layers.forEach((l, li) => {
       l.objects.forEach((o, oi) => {
         if (selectedIds.includes(o.id)) removed.push({ layerIndex: li, index: oi, obj: o });
@@ -466,6 +470,10 @@ window.addEventListener('keydown', (e) => {
     setTool('select');
   } else if (e.key === 'r' || e.key === 'R') {
     setTool('rect');
+  } else if (e.key === 'e' || e.key === 'E') {
+    setTool('ellipse');
+  } else if (e.key === 'l' || e.key === 'L') {
+    setTool('line');
   }
 });
 

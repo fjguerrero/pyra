@@ -4,11 +4,11 @@
 // de la UI (Fireworks), no desde cómo está implementado panels.ts.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderPanels, type PanelApi } from '../src/panels';
-import { activePage, newDoc, uid, type Doc, type RectObj } from '../src/model';
+import { activePage, newDoc, uid, type Doc, type ShapeObj } from '../src/model';
 import type { View } from '../src/view';
 
-function rect(x: number, y: number, w: number, h: number, name = 'r'): RectObj {
-  return { id: uid(), type: 'rect', name, x, y, w, h, fill: '#000000', stroke: null, strokeWidth: 0 };
+function rect(x: number, y: number, w: number, h: number, name = 'r'): ShapeObj {
+  return { id: uid(), shape: 'rect', name, x, y, w, h, fill: '#000000', stroke: null, strokeWidth: 0 };
 }
 
 function fixture(): { doc: Doc; view: View; api: PanelApi; calls: string[] } {

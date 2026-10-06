@@ -1,9 +1,12 @@
 // Scene graph: Document → Page → Layer → objects.
-// ponytail: M0 solo tiene Rect; el union Obj crece en M2 (vector), M3 (bitmap), M4 (texto).
+// ponytail: M3 (bitmap) y M4 (texto) ampliarán el union; todo lo que consume objetos
+// (hit, asas, resize, align, guías) trabaja solo sobre el bbox x/y/w/h.
 
-export interface RectObj {
+export type ShapeKind = 'rect' | 'ellipse' | 'line';
+
+export interface ShapeObj {
   id: string;
-  type: 'rect';
+  shape: ShapeKind;
   name: string;
   x: number;
   y: number;
@@ -14,7 +17,7 @@ export interface RectObj {
   strokeWidth: number;
 }
 
-export type Obj = RectObj;
+export type Obj = ShapeObj;
 
 export interface Layer {
   id: string;

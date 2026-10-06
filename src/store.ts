@@ -42,6 +42,10 @@ export async function loadDoc(): Promise<Doc | null> {
     if (!doc || doc.version !== 1 || !Array.isArray(doc.pages) || doc.pages.length === 0) return null;
     // normalización: documentos guardados antes de las páginas múltiples
     if (!doc.pages.some((p) => p.id === doc.activePageId)) doc.activePageId = doc.pages[0].id;
+    // normalización: objetos guardados antes de las formas vectoriales (M0/M1) eran rectángulos
+    for (const p of doc.pages)
+      for (const l of p.layers)
+        for (const o of l.objects) if (!('shape' in o)) (o as { shape: string }).shape = 'rect';
     return doc;
   } catch {
     return null;
