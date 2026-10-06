@@ -116,6 +116,24 @@ test('texto: crear con la herramienta T y editar con doble clic', async ({ page 
   await expect(page.locator('#inspector-body textarea')).toHaveValue('Texto');
 });
 
+test('duplicar con Ctrl+D y mover con flechas', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  await expect(layerCount(page)).toContainText('· 1');
+  const x0 = Number(await inspNum(page, 0).inputValue());
+
+  await page.keyboard.press('Control+d');
+  await expect(layerCount(page)).toContainText('· 2');
+  // la copia queda seleccionada y desplazada +10
+  await expect(inspNum(page, 0)).toHaveValue(String(x0 + 10));
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect(inspNum(page, 0)).toHaveValue(String(x0 + 22)); // +10 duplicado +1 +1 +10 flechas
+  await page.keyboard.press('Control+z');
+  await expect(inspNum(page, 0)).toHaveValue(String(x0 + 12));
+});
+
 test('exportar .f.png y reimportarlo restaura el documento', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);

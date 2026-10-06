@@ -7,6 +7,7 @@ import { snapBox, type Guide } from './guides';
 import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { measureText } from './text';
+import { duplicateCmd, pasteCmd, zOrderCmd } from './commands';
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
 import { renderPanels } from './panels';
@@ -19,6 +20,7 @@ let selectedIds: string[] = [];
 let selectedLayerId: string | null = null;
 let tool: 'select' | ShapeKind | 'text' = 'select';
 let draft: { x: number; y: number; w: number; h: number; shape: ShapeKind } | null = null;
+let clipboard: Obj[] = [];
 let guides: Guide[] = [];
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -679,6 +681,46 @@ window.addEventListener('keydown', (e) => {
     setTool('line');
   } else if (e.key === 't' || e.key === 'T') {
     setTool('text');
+  } else if (mod && (e.key === 'd' || e.key === 'D')) {
+    e.preventDefault();
+    const dup = duplicateCmd(activePage(doc), selectedObjs());
+    if (dup) {
+      history.run(dup.cmd);
+      select(dup.clones[dup.clones.length - 1].id); // como Fireworks: la copia queda seleccionada
+      persist();
+      invalidate();
+    }
+  } else if (mod && (e.key === 'c' || e.key === 'C')) {
+    clipboard = selectedObjs().map((o) => structuredClone(o));
+  } else if (mod && (e.key === 'v' || e.key === 'V')) {
+    if (!clipboard.length) return;
+    const paste = pasteCmd(activePage(doc), clipboard);
+    if (paste) {
+      history.run(paste.cmd);
+      select(paste.clones[paste.clones.length - 1].id);
+      persist();
+      invalidate();
+    }
+  } else if (e.key === '[' || e.key === ']') {
+    const cmd = zOrderCmd(activePage(doc), selectedObjs(), e.key === ']' ? 1 : -1);
+    if (cmd) {
+      history.run(cmd);
+      persist();
+      invalidate();
+    }
+  } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    const step = e.shiftKey ? 10 : 1;
+    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+    const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+    const objs = selectedObjs();
+    if (!objs.length) return;
+    history.run({
+      label: 'mover',
+      do: () => objs.forEach((o) => { o.x += dx; o.y += dy; }),
+      undo: () => objs.forEach((o) => { o.x -= dx; o.y -= dy; }),
+    });
+    persist();
+    invalidate();
   }
 });
 
