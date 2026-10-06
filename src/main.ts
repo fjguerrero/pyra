@@ -30,13 +30,21 @@ const wrap = document.getElementById('canvas-wrap')!;
 const renderer = new Renderer(canvas);
 
 let dirty = false;
+// ponytail: mientras hay un puntero presionado dentro del inspector no se reconstruye (un slider en pleno drag se destruiría);
+// el canvas sí se actualiza en vivo. En pointerup se refresca el panel.
+let pointerDownInInspector = false;
+const inspPanel = document.querySelector<HTMLElement>('.panel[data-panel="inspector"]')!;
+inspPanel.addEventListener('pointerdown', () => { pointerDownInInspector = true; });
+window.addEventListener('pointerup', () => {
+  if (pointerDownInInspector) { pointerDownInInspector = false; invalidate(); }
+});
 function invalidate(): void {
   if (dirty) return;
   dirty = true;
   requestAnimationFrame(() => {
     dirty = false;
     renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, draft, marquee, guides });
-    renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi);
+    if (!pointerDownInInspector) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi);
   });
 }
 
@@ -231,8 +239,9 @@ renderer.onImgReady = invalidate;
       state.collapsed[id] = p.classList.contains('collapsed');
       save();
     });
-    p.draggable = true;
-    p.addEventListener('dragstart', () => p.classList.add('dragging'));
+    const title = p.querySelector<HTMLElement>('.panel-title')!;
+    title.draggable = true;
+    title.addEventListener('dragstart', () => p.classList.add('dragging'));
     p.addEventListener('dragend', () => {
       p.classList.remove('dragging');
       state.order = [...side.querySelectorAll<HTMLElement>('.panel[data-panel]')].map((el) => el.dataset.panel!);

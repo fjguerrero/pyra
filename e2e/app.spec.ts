@@ -86,7 +86,7 @@ test('importar una imagen crea un bitmap seleccionable y movible', async ({ page
   await expect(layerCount(page)).toContainText('· 1');
   // el inspector de un bitmap: filtros vivos y recorte
   await expect(page.locator('#inspector-body')).toContainText('Blur');
-  await expect(page.locator('#inspector-body')).toContainText('Recorte ancho');
+  await expect(page.locator('#inspector-body')).toContainText('Crop width');
 
   // moverlo con el ratón (hit-test por bbox): fitAll centra la página y el bitmap
   // se crea en el centro de la página → arrastrar desde el centro del lienzo
