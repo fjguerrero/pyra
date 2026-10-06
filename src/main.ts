@@ -10,6 +10,7 @@ const doc: Doc = (await loadDoc()) ?? newDoc();
 const history = new History();
 const view: View = { zoom: 1, panX: 0, panY: 0 };
 let selectedId: string | null = null;
+let tool: 'select' | 'rect' = 'select';
 let draft: { x: number; y: number; w: number; h: number } | null = null;
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -41,6 +42,22 @@ type Drag =
 
 let drag: Drag | null = null;
 
+// Modelo de herramientas de Fireworks: la herramienta define qué hace el arrastre.
+function setTool(t: 'select' | 'rect'): void {
+  tool = t;
+  document.querySelectorAll<HTMLElement>('#toolbar .tool').forEach((el) =>
+    el.classList.toggle('active', el.dataset.tool === t),
+  );
+  canvas.style.cursor = t === 'rect' ? 'crosshair' : 'default';
+}
+document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) =>
+  el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | 'rect')),
+);
+document.querySelector<HTMLElement>('#toolbar .tool[data-fit]')?.addEventListener('click', () => {
+  fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
+  invalidate();
+});
+
 function localXY(e: { clientX: number; clientY: number }): { px: number; py: number; wx: number; wy: number } {
   const rect = canvas.getBoundingClientRect();
   const px = e.clientX - rect.left;
@@ -65,7 +82,7 @@ canvas.addEventListener('pointerdown', (e) => {
 
   const { px, py, wx, wy } = localXY(e);
 
-  if (e.shiftKey) {
+  if (tool === 'rect') {
     drag = { mode: 'create', ox: wx, oy: wy };
     draft = { x: wx, y: wy, w: 0, h: 0 };
     invalidate();
@@ -168,6 +185,7 @@ canvas.addEventListener('pointerup', () => {
         };
         history.run(cmd);
         selectedId = obj.id;
+        setTool('select'); // como Fireworks: tras dibujar, vuelve a la selección
         persist();
       }
     }
@@ -255,6 +273,10 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === '0') {
     fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
     invalidate();
+  } else if (e.key === 'v' || e.key === 'V') {
+    setTool('select');
+  } else if (e.key === 'r' || e.key === 'R') {
+    setTool('rect');
   }
 });
 
