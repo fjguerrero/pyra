@@ -168,6 +168,21 @@ test('estilos: guardar desde un objeto y aplicar a otro', async ({ page }) => {
   await expect(page.locator('#inspector-body input[type=color]').first()).not.toHaveValue('#ff0000');
 });
 
+test('selección por marco: arrastrar en vacío selecciona lo que intersecta', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [60, 60], [140, 120]);
+  await page.keyboard.press('r');
+  await drag(page, [160, 60], [240, 120]);
+  await page.keyboard.press('Escape'); // herramienta de selección
+  // marco que cubre ambos rectángulos
+  await drag(page, [40, 40], [260, 140]);
+  await expect(page.locator('#status')).toContainText('(2 objetos)');
+  // mover con flechas afecta a ambos (x de ambos cambia)
+  const x0 = Number(await inspNum(page, 0).inputValue());
+  await page.keyboard.press('ArrowRight');
+  await expect(inspNum(page, 0)).toHaveValue(String(x0 + 1));
+});
+
 test('exportar .f.png y reimportarlo restaura el documento', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);

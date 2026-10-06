@@ -18,6 +18,8 @@ export interface Scene {
   selectedId: string | null;
   selectedIds: string[];
   draft: Draft | null;
+  /** Rectángulo de selección por marco (marquee) en coords de mundo. */
+  marquee?: { x: number; y: number; w: number; h: number } | null;
   guides: Guide[];
 }
 
@@ -100,6 +102,18 @@ export class Renderer {
       ctx.strokeStyle = ACCENT;
       ctx.setLineDash([4, 3]);
       this.path(scene.draft, v);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    if (scene.marquee) {
+      const m = scene.marquee;
+      ctx.strokeStyle = ACCENT;
+      ctx.fillStyle = 'rgba(79,140,255,0.08)';
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.rect(m.x * v.zoom + v.panX, m.y * v.zoom + v.panY, m.w * v.zoom, m.h * v.zoom);
+      ctx.fill();
       ctx.stroke();
       ctx.setLineDash([]);
     }

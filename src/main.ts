@@ -20,6 +20,7 @@ let selectedIds: string[] = [];
 let selectedLayerId: string | null = null;
 let tool: 'select' | ShapeKind | 'text' = 'select';
 let draft: { x: number; y: number; w: number; h: number; shape: ShapeKind } | null = null;
+let marquee: { x: number; y: number; w: number; h: number } | null = null;
 let clipboard: Obj[] = [];
 let guides: Guide[] = [];
 
@@ -33,7 +34,7 @@ function invalidate(): void {
   dirty = true;
   requestAnimationFrame(() => {
     dirty = false;
-    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, draft, guides });
+    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, draft, marquee, guides });
     renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi);
   });
 }
@@ -70,6 +71,7 @@ function selectedObjs(): Obj[] {
 type Drag =
   | { mode: 'pan'; sx: number; sy: number; panX: number; panY: number }
   | { mode: 'create'; ox: number; oy: number }
+  | { mode: 'marquee'; ox: number; oy: number; additive: boolean }
   | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
   | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number; size?: number }; grab: { x: number; y: number } };
 
@@ -354,6 +356,7 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 
   select(null);
+  drag = { mode: 'marquee', ox: wx, oy: wy, additive: e.shiftKey };
   invalidate();
 });
 
@@ -376,6 +379,18 @@ canvas.addEventListener('pointermove', (e) => {
       w: Math.abs(wx - drag.ox),
       h: Math.abs(wy - drag.oy),
       shape: draft.shape,
+    };
+    invalidate();
+    return;
+  }
+
+  if (drag.mode === 'marquee') {
+    draft = null;
+    marquee = {
+      x: Math.min(drag.ox, wx),
+      y: Math.min(drag.oy, wy),
+      w: Math.abs(wx - drag.ox),
+      h: Math.abs(wy - drag.oy),
     };
     invalidate();
     return;
@@ -466,6 +481,23 @@ canvas.addEventListener('pointerup', () => {
       undo: () => items.forEach((it) => Object.assign(it.obj, it.from)),
     });
     persist();
+  } else if (drag.mode === 'marquee') {
+    const m = marquee;
+    marquee = null;
+    if (m && (m.w > 2 || m.h > 2)) {
+      const hits = page.layers
+        .filter((l) => l.visible && !l.locked)
+        .flatMap((l) => l.objects)
+        .filter((o) => o.x < m.x + m.w && o.x + o.w > m.x && o.y < m.y + m.h && o.y + o.h > m.y);
+      if (hits.length) {
+        if (drag.additive) hits.forEach((o) => select(o.id, true));
+        else {
+          select(null);
+          selectedIds = hits.map((o) => o.id);
+          selectedId = selectedIds[selectedIds.length - 1] ?? null;
+        }
+      }
+    }
   } else if (drag.mode === 'resize') {
     const { obj, start } = drag;
     const end = { x: obj.x, y: obj.y, w: obj.w, h: obj.h };
