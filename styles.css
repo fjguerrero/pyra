@@ -18,13 +18,13 @@ body {
   overflow: hidden;
 }
 
-#app { display: grid; grid-template-rows: auto 1fr 24px; height: 100vh; }
+#app { display: grid; grid-template-rows: 92px 1fr 24px; height: 100vh; }
 #main { display: grid; grid-template-columns: 40px 1fr 232px; min-height: 0; }
 
 #inspector {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   background: var(--panel); border-bottom: 1px solid var(--line);
-  padding: 8px 12px; min-height: 40px;
+  padding: 8px 12px; height: 92px; overflow-y: auto;
 }
 
 #toolbar {

@@ -45,9 +45,11 @@ let drag: Drag | null = null;
 // Modelo de herramientas de Fireworks: la herramienta define qué hace el arrastre.
 function setTool(t: 'select' | 'rect'): void {
   tool = t;
-  document.querySelectorAll<HTMLElement>('#toolbar .tool').forEach((el) =>
-    el.classList.toggle('active', el.dataset.tool === t),
-  );
+  document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) => {
+    const on = el.dataset.tool === t;
+    el.classList.toggle('active', on);
+    el.setAttribute('aria-pressed', String(on));
+  });
   canvas.style.cursor = t === 'rect' ? 'crosshair' : 'default';
 }
 document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) =>
