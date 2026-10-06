@@ -29,6 +29,8 @@ export async function loadDoc(): Promise<Doc | null> {
     });
     // límite de confianza: un doc corrupto o de otra versión no entra al modelo
     if (!doc || doc.version !== 1 || !Array.isArray(doc.pages) || doc.pages.length === 0) return null;
+    // normalización: documentos guardados antes de las páginas múltiples
+    if (!doc.pages.some((p) => p.id === doc.activePageId)) doc.activePageId = doc.pages[0].id;
     return doc;
   } catch {
     return null;

@@ -1,5 +1,6 @@
 import type { Obj, Page } from './model';
 import type { View } from './view';
+import type { Guide } from './guides';
 import { findObj, handles } from './hit';
 
 export interface Draft {
@@ -13,7 +14,9 @@ export interface Scene {
   page: Page;
   view: View;
   selectedId: string | null;
+  selectedIds: string[];
   draft: Draft | null;
+  guides: Guide[];
 }
 
 const WORKSPACE = '#0e1013';
@@ -79,6 +82,25 @@ export class Renderer {
       ctx.strokeRect(d.x * v.zoom + v.panX, d.y * v.zoom + v.panY, d.w * v.zoom, d.h * v.zoom);
       ctx.setLineDash([]);
     }
+
+    // smart guides: líneas de imán sobre la página
+    if (scene.guides.length) {
+      ctx.strokeStyle = '#ff5fa2';
+      ctx.lineWidth = 1;
+      for (const g of scene.guides) {
+        ctx.beginPath();
+        if (g.axis === 'v') {
+          const sx = g.pos * v.zoom + v.panX;
+          ctx.moveTo(sx, py);
+          ctx.lineTo(sx, py + ph);
+        } else {
+          const sy = g.pos * v.zoom + v.panY;
+          ctx.moveTo(px, sy);
+          ctx.lineTo(px + pw, sy);
+        }
+        ctx.stroke();
+      }
+    }
     ctx.restore();
 
     const sel = findObj(scene.page, scene.selectedId);
@@ -95,6 +117,15 @@ export class Renderer {
         ctx.fillRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
         ctx.strokeRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
       }
+    }
+    // selección múltiple: contorno fino sin asas
+    for (const id of scene.selectedIds) {
+      if (id === scene.selectedId) continue;
+      const o = findObj(scene.page, id);
+      if (!o) continue;
+      ctx.strokeStyle = ACCENT;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(o.x * v.zoom + v.panX - 0.5, o.y * v.zoom + v.panY - 0.5, o.w * v.zoom + 1, o.h * v.zoom + 1);
     }
   }
 

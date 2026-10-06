@@ -2,6 +2,9 @@ import { activePage, newDoc, uid, type Doc, type RectObj } from './model';
 import { History, type Command } from './history';
 import { fitAll, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
+import { addLayer, moveLayer } from './layers';
+import { snapBox, type Guide } from './guides';
+import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { loadDoc, saveDoc } from './store';
 import { renderPanels } from './panels';
@@ -10,8 +13,11 @@ const doc: Doc = (await loadDoc()) ?? newDoc();
 const history = new History();
 const view: View = { zoom: 1, panX: 0, panY: 0 };
 let selectedId: string | null = null;
+let selectedIds: string[] = [];
+let selectedLayerId: string | null = null;
 let tool: 'select' | 'rect' = 'select';
 let draft: { x: number; y: number; w: number; h: number } | null = null;
+let guides: Guide[] = [];
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const wrap = document.getElementById('canvas-wrap')!;
@@ -23,8 +29,8 @@ function invalidate(): void {
   dirty = true;
   requestAnimationFrame(() => {
     dirty = false;
-    renderer.draw({ page: activePage(doc), view, selectedId, draft });
-    renderPanels(doc, selectedId, view, panelApi);
+    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, draft, guides });
+    renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi);
   });
 }
 
@@ -34,10 +40,33 @@ function persist(): void {
   saveTimer = window.setTimeout(() => void saveDoc(doc), 400);
 }
 
+function select(id: string | null, additive = false): void {
+  if (!id) {
+    selectedId = null;
+    selectedIds = [];
+    return;
+  }
+  if (additive) {
+    selectedIds = selectedIds.includes(id)
+      ? selectedIds.filter((x) => x !== id)
+      : [...selectedIds, id];
+    selectedId = selectedIds[selectedIds.length - 1] ?? null;
+  } else {
+    selectedId = id;
+    selectedIds = [id];
+  }
+  selectedLayerId = null;
+}
+
+function selectedObjs(): RectObj[] {
+  const page = activePage(doc);
+  return selectedIds.map((id) => findObj(page, id)).filter((o): o is RectObj => o !== null);
+}
+
 type Drag =
   | { mode: 'pan'; sx: number; sy: number; panX: number; panY: number }
   | { mode: 'create'; ox: number; oy: number }
-  | { mode: 'move'; obj: RectObj; start: { x: number; y: number }; grab: { x: number; y: number }; moved: boolean }
+  | { mode: 'move'; items: { obj: RectObj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
   | { mode: 'resize'; obj: RectObj; role: HandleRole; start: { x: number; y: number; w: number; h: number }; grab: { x: number; y: number } };
 
 let drag: Drag | null = null;
@@ -106,13 +135,19 @@ canvas.addEventListener('pointerdown', (e) => {
 
   const hit = hitTest(page, wx, wy);
   if (hit) {
-    selectedId = hit.id;
-    drag = { mode: 'move', obj: hit as RectObj, start: { x: hit.x, y: hit.y }, grab: { x: wx, y: wy }, moved: false };
+    if (e.shiftKey) select(hit.id, true);
+    else if (!selectedIds.includes(hit.id)) select(hit.id);
+    drag = {
+      mode: 'move',
+      items: selectedObjs().map((o) => ({ obj: o, start: { x: o.x, y: o.y } })),
+      grab: { x: wx, y: wy },
+      moved: false,
+    };
     invalidate();
     return;
   }
 
-  selectedId = null;
+  select(null);
   invalidate();
 });
 
@@ -140,9 +175,28 @@ canvas.addEventListener('pointermove', (e) => {
   }
 
   if (drag.mode === 'move') {
-    // posición absoluta desde el inicio del arrastre: sin deriva acumulada
-    drag.obj.x = drag.start.x + (wx - drag.grab.x);
-    drag.obj.y = drag.start.y + (wy - drag.grab.y);
+    const page = activePage(doc);
+    const dx = wx - drag.grab.x;
+    const dy = wy - drag.grab.y;
+    // smart guides: imán a bordes/centros de objetos visibles y de la página
+    const items = drag.items;
+    const primary = items[0];
+    const others = page.layers
+      .filter((l) => l.visible)
+      .flatMap((l) => l.objects)
+      .filter((o) => !items.some((i) => i.obj === o))
+      .map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h }));
+    const snap = snapBox(
+      { x: primary.start.x + dx, y: primary.start.y + dy, w: primary.obj.w, h: primary.obj.h },
+      others,
+      { width: page.width, height: page.height },
+      6 / view.zoom, // tolerancia constante en pantalla
+    );
+    guides = snap.guides;
+    for (const it of drag.items) {
+      it.obj.x = Math.round(it.start.x + dx + snap.dx);
+      it.obj.y = Math.round(it.start.y + dy + snap.dy);
+    }
     drag.moved = true;
     invalidate();
     return;
@@ -161,8 +215,11 @@ canvas.addEventListener('pointerup', () => {
   if (drag.mode === 'create' && draft) {
     const d = draft;
     draft = null;
+    guides = [];
     if (d.w > 2 && d.h > 2) {
-      const layer = page.layers.find((l) => l.visible && !l.locked);
+      const layer =
+        (selectedLayerId ? page.layers.find((l) => l.id === selectedLayerId && !l.locked) : null) ??
+        page.layers.find((l) => l.visible && !l.locked);
       if (layer) {
         const obj: RectObj = {
           id: uid(),
@@ -182,22 +239,22 @@ canvas.addEventListener('pointerup', () => {
           undo: () => {
             const i = layer.objects.indexOf(obj);
             if (i >= 0) layer.objects.splice(i, 1);
-            if (selectedId === obj.id) selectedId = null;
+            if (selectedId === obj.id) select(null);
           },
         };
         history.run(cmd);
-        selectedId = obj.id;
+        select(obj.id);
         setTool('select'); // como Fireworks: tras dibujar, vuelve a la selección
         persist();
       }
     }
   } else if (drag.mode === 'move' && drag.moved) {
-    const { obj, start } = drag;
-    const end = { x: obj.x, y: obj.y };
+    guides = [];
+    const items = drag.items.map((it) => ({ obj: it.obj, from: it.start, to: { x: it.obj.x, y: it.obj.y } }));
     history.record({
       label: 'mover',
-      do: () => Object.assign(obj, end),
-      undo: () => Object.assign(obj, start),
+      do: () => items.forEach((it) => Object.assign(it.obj, it.to)),
+      undo: () => items.forEach((it) => Object.assign(it.obj, it.from)),
     });
     persist();
   } else if (drag.mode === 'resize') {
@@ -223,6 +280,125 @@ const panelApi = {
       do: () => Object.assign(obj, patch),
       undo: () => Object.assign(obj, before),
     });
+    persist();
+    invalidate();
+  },
+  editLayer(layerId: string, patch: { visible?: boolean; locked?: boolean; opacity?: number; name?: string }): void {
+    const page = activePage(doc);
+    const layer = page.layers.find((l) => l.id === layerId);
+    if (!layer) return;
+    const before = { ...layer };
+    history.run({
+      label: 'capa',
+      do: () => Object.assign(layer, patch),
+      undo: () => Object.assign(layer, before),
+    });
+    persist();
+    invalidate();
+  },
+  selectLayer(layerId: string | null): void {
+    selectedLayerId = layerId;
+    if (layerId) select(null);
+    invalidate();
+  },
+  addLayer(): void {
+    const page = activePage(doc);
+    const above = selectedLayerId ?? page.layers[page.layers.length - 1].id;
+    const layer = addLayer(page, above);
+    const i = page.layers.indexOf(layer);
+    history.record({
+      label: 'crear capa',
+      do: () => {},
+      undo: () => {
+        const j = page.layers.indexOf(layer);
+        if (j >= 0) page.layers.splice(j, 1);
+        if (selectedLayerId === layer.id) selectedLayerId = null;
+      },
+    });
+    selectedLayerId = layer.id;
+    void i;
+    persist();
+    invalidate();
+  },
+  removeLayer(layerId: string): void {
+    const page = activePage(doc);
+    if (page.layers.length <= 1) return;
+    const i = page.layers.findIndex((l) => l.id === layerId);
+    if (i < 0) return;
+    const [layer] = page.layers.splice(i, 1);
+    history.record({
+      label: 'eliminar capa',
+      do: () => {},
+      undo: () => page.layers.splice(i, 0, layer),
+    });
+    if (selectedLayerId === layerId) selectedLayerId = null;
+    persist();
+    invalidate();
+  },
+  moveLayer(layerId: string, delta: number): void {
+    const page = activePage(doc);
+    const from = page.layers.findIndex((l) => l.id === layerId);
+    if (moveLayer(page, layerId, delta)) {
+      history.record({
+        label: 'reordenar capa',
+        do: () => {},
+        undo: () => {
+          const j = page.layers.findIndex((l) => l.id === layerId);
+          if (j >= 0) {
+            const [l] = page.layers.splice(j, 1);
+            page.layers.splice(from, 0, l);
+          }
+        },
+      });
+      persist();
+      invalidate();
+    }
+  },
+  align(kind: AlignKind): void {
+    const page = activePage(doc);
+    const moves: Move[] = computeAlign(selectedObjs(), kind, { width: page.width, height: page.height });
+    if (moves.length) {
+      history.run({
+        label: `alinear ${kind}`,
+        do: () => moves.forEach((m) => Object.assign(m.obj, m.to)),
+        undo: () => moves.forEach((m) => Object.assign(m.obj, m.from)),
+      });
+      persist();
+    }
+    invalidate();
+  },
+  selectPage(pageId: string): void {
+    doc.activePageId = pageId;
+    select(null);
+    selectedLayerId = null;
+    fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
+    persist();
+    invalidate();
+  },
+  addPage(): void {
+    const base = activePage(doc);
+    const page = {
+      id: uid(),
+      name: `Página ${doc.pages.length + 1}`,
+      width: base.width,
+      height: base.height,
+      layers: [{ id: uid(), name: 'Capa 1', visible: true, locked: false, opacity: 1, objects: [] }],
+    };
+    doc.pages.push(page);
+    doc.activePageId = page.id;
+    select(null);
+    selectedLayerId = null;
+    persist();
+    invalidate();
+  },
+  removePage(pageId: string): void {
+    if (doc.pages.length <= 1) return;
+    const i = doc.pages.findIndex((p) => p.id === pageId);
+    if (i < 0) return;
+    doc.pages.splice(i, 1);
+    if (doc.activePageId === pageId) doc.activePageId = doc.pages[Math.max(0, i - 1)].id;
+    select(null);
+    selectedLayerId = null;
     persist();
     invalidate();
   },
@@ -257,23 +433,34 @@ window.addEventListener('keydown', (e) => {
     }
   } else if (e.key === 'Delete' || e.key === 'Backspace') {
     const page = activePage(doc);
-    for (const l of page.layers) {
-      const i = l.objects.findIndex((o) => o.id === selectedId);
-      if (i >= 0) {
-        const obj = l.objects[i];
-        history.run({
-          label: 'eliminar',
-          do: () => l.objects.splice(i, 1),
-          undo: () => l.objects.splice(i, 0, obj),
-        });
-        selectedId = null;
-        persist();
-        invalidate();
-        break;
-      }
-    }
+    const removed: { layerIndex: number; index: number; obj: RectObj }[] = [];
+    page.layers.forEach((l, li) => {
+      l.objects.forEach((o, oi) => {
+        if (selectedIds.includes(o.id)) removed.push({ layerIndex: li, index: oi, obj: o });
+      });
+    });
+    if (!removed.length) return;
+    history.run({
+      label: 'eliminar',
+      do: () => {
+        for (const r of removed) {
+          const i = page.layers[r.layerIndex].objects.indexOf(r.obj);
+          if (i >= 0) page.layers[r.layerIndex].objects.splice(i, 1);
+        }
+      },
+      undo: () => {
+        for (const r of [...removed].reverse()) page.layers[r.layerIndex].objects.splice(r.index, 0, r.obj);
+      },
+    });
+    select(null);
+    persist();
+    invalidate();
   } else if (e.key === '0') {
     fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
+    invalidate();
+  } else if (e.key === 'Escape') {
+    select(null);
+    selectedLayerId = null;
     invalidate();
   } else if (e.key === 'v' || e.key === 'V') {
     setTool('select');

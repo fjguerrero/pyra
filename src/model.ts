@@ -36,28 +36,24 @@ export interface Page {
 export interface Doc {
   version: 1;
   name: string;
+  activePageId: string;
   pages: Page[];
 }
 
 export const uid = (): string => crypto.randomUUID();
 
 export function newDoc(name = 'Sin título'): Doc {
-  return {
-    version: 1,
-    name,
-    pages: [
-      {
-        id: uid(),
-        name: 'Página 1',
-        width: 1280,
-        height: 800,
-        layers: [
-          { id: uid(), name: 'Capa 1', visible: true, locked: false, opacity: 1, objects: [] },
-        ],
-      },
-    ],
+  const page: Page = {
+    id: uid(),
+    name: 'Página 1',
+    width: 1280,
+    height: 800,
+    layers: [{ id: uid(), name: 'Capa 1', visible: true, locked: false, opacity: 1, objects: [] }],
   };
+  return { version: 1, name, activePageId: page.id, pages: [page] };
 }
 
-// ponytail: página única en M0; la navegación multi-página es M1.
-export const activePage = (doc: Doc): Page => doc.pages[0];
+/** La página activa; si la referencia no existe, la primera (nunca undefined). */
+export function activePage(doc: Doc): Page {
+  return doc.pages.find((p) => p.id === doc.activePageId) ?? doc.pages[0];
+}
