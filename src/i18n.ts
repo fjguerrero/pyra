@@ -39,6 +39,10 @@ type Msg = {
   dist_h: string; dist_v: string; align_hint_multi: string; align_hint_single: string;
   status_selection: string; status_objects: string;
   obj_rect: string; obj_ellipse: string; obj_line: string; obj_text: string; default_layer: string; default_page: string;
+  settings: string; theme: string; theme_system: string; theme_light: string; theme_dark: string;
+  language: string; zoom: string; bg: string; bg_grid: string; bg_none: string;
+  alpha: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
+  export_menu: string; export_jpeg: string; export_webp: string;
 };
 
 const en: Msg = {
@@ -60,9 +64,13 @@ const en: Msg = {
   dist_h: 'Distribute horizontally', dist_v: 'Distribute vertically', align_hint_multi: 'Distribute spreads the gaps evenly', align_hint_single: 'With 1 object aligns to the page; with 2+, to the group',
   status_selection: 'selection', status_objects: 'objects',
   obj_rect: 'Rectangle', obj_ellipse: 'Ellipse', obj_line: 'Line', obj_text: 'Text', default_layer: 'Layer 1', default_page: 'Page',
+  settings: 'Settings', theme: 'Theme', theme_system: 'System', theme_light: 'Light', theme_dark: 'Dark',
+  language: 'Language', zoom: 'Zoom', bg: 'Background', bg_grid: 'Checker grid', bg_none: 'Solid',
+  alpha: 'Alpha', recent_colors: 'Recent colors', custom_colors: 'Custom colors', add_color: 'Add current color to custom palette', remove_color: 'Remove color',
+  export_menu: 'Export', export_jpeg: 'Export JPEG', export_webp: 'Export WebP',
 };
 
-const es: Msg = {
+const es: Partial<Msg> = {
   ...en,
   tool_select: 'Selección (V)', tool_rect: 'Rectángulo (R)', tool_ellipse: 'Elipse (E)', tool_line: 'Línea (L)', tool_text: 'Texto (T)',
   import_image: 'Importar imagen', export_fpng: 'Exportar .f.png', export_png: 'Exportar PNG plano', fit_zoom: 'Zoom ajustar (0)', change_lang: 'Cambiar idioma',
@@ -82,9 +90,13 @@ const es: Msg = {
   dist_h: 'Distribuir horizontalmente', dist_v: 'Distribuir verticalmente', align_hint_multi: 'Distribuir reparte el hueco por igual', align_hint_single: 'Con 1 objeto se alinea a la página; con 2+, al grupo',
   status_selection: 'selección', status_objects: 'objetos',
   obj_rect: 'Rectángulo', obj_ellipse: 'Elipse', obj_line: 'Línea', obj_text: 'Texto', default_layer: 'Capa 1', default_page: 'Página',
+  settings: 'Configuración', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Claro', theme_dark: 'Oscuro',
+  language: 'Idioma', zoom: 'Zoom', bg: 'Fondo', bg_grid: 'Cuadrícula', bg_none: 'Sólido',
+  alpha: 'Alfa', recent_colors: 'Colores recientes', custom_colors: 'Colores personalizados', add_color: 'Añadir el color actual a la paleta personalizada', remove_color: 'Eliminar color',
+  export_menu: 'Exportar', export_jpeg: 'Exportar JPEG', export_webp: 'Exportar WebP',
 };
 
-const zh: Msg = {
+const zh: Partial<Msg> = {
   ...en,
   tool_select: '选择 (V)', tool_rect: '矩形 (R)', tool_ellipse: '椭圆 (E)', tool_line: '直线 (L)', tool_text: '文本 (T)',
   import_image: '导入图像', export_fpng: '导出 .f.png', export_png: '导出平面 PNG', fit_zoom: '缩放适配 (0)', change_lang: '更改语言',
@@ -103,9 +115,10 @@ const zh: Msg = {
   align_left: '左对齐', align_hcenter: '水平居中', align_right: '右对齐', align_top: '顶部对齐', align_vcenter: '垂直居中', align_bottom: '底部对齐',
   dist_h: '水平分布', dist_v: '垂直分布', align_hint_multi: '分布会平均分配间距', align_hint_single: '1 个对象时对齐页面；2 个以上时对齐所选组',
   status_selection: '选中', status_objects: '个对象',
+  settings: '设置', theme: '主题', theme_system: '跟随系统', theme_light: '浅色', theme_dark: '深色',
 };
 
-const hi: Msg = {
+const hi: Partial<Msg> = {
   ...en,
   tool_select: 'चयन (V)', tool_rect: 'आयत (R)', tool_ellipse: 'अंडाकार (E)', tool_line: 'रेखा (L)', tool_text: 'पाठ (T)',
   import_image: 'छवि आयात करें', export_fpng: '.f.png निर्यात करें', export_png: 'सपाट PNG निर्यात करें', fit_zoom: 'ज़ूम फ़िट (0)', change_lang: 'भाषा बदलें',
@@ -124,9 +137,10 @@ const hi: Msg = {
   align_left: 'बाएँ संरेखित करें', align_hcenter: 'क्षैतिज केंद्रित करें', align_right: 'दाएँ संरेखित करें', align_top: 'ऊपर संरेखित करें', align_vcenter: 'ऊर्ध्वाधर केंद्रित करें', align_bottom: 'नीचे संरेखित करें',
   dist_h: 'क्षैतिज वितरित करें', dist_v: 'ऊर्ध्वाधर वितरित करें', align_hint_multi: 'वितरण अंतराल समान बाँटता है', align_hint_single: '1 ऑब्जेक्ट पर पृष्ठ के साथ; 2+ पर समूह के साथ',
   status_selection: 'चयन', status_objects: 'ऑब्जेक्ट',
+  settings: 'सेटिंग्स', theme: 'थीम', theme_system: 'सिस्टम', theme_light: 'हल्का', theme_dark: 'गहरा',
 };
 
-const ar: Msg = {
+const ar: Partial<Msg> = {
   ...en,
   tool_select: 'تحديد (V)', tool_rect: 'مستطيل (R)', tool_ellipse: 'قطع ناقص (E)', tool_line: 'خط (L)', tool_text: 'نص (T)',
   import_image: 'استيراد صورة', export_fpng: 'تصدير ‎.f.png', export_png: 'تصدير PNG مسطحة', fit_zoom: 'تكييف التكبير (0)', change_lang: 'تغيير اللغة',
@@ -145,9 +159,10 @@ const ar: Msg = {
   align_left: 'محاذاة لليسار', align_hcenter: 'توسيط أفقي', align_right: 'محاذاة لليمين', align_top: 'محاذاة للأعلى', align_vcenter: 'توسيط عمودي', align_bottom: 'محاذاة للأسفل',
   dist_h: 'توزيع أفقي', dist_v: 'توزيع عمودي', align_hint_multi: 'التوزيع يوزع المسافات بالتساوي', align_hint_single: 'مع كائن واحد يحاذي الصفحة؛ مع كائنين أو أكثر يحاذي المجموعة',
   status_selection: 'تحديد', status_objects: 'كائنات',
+  settings: 'الإعدادات', theme: 'السمة', theme_system: 'النظام', theme_light: 'فاتح', theme_dark: 'داكن',
 };
 
-const pt: Msg = {
+const pt: Partial<Msg> = {
   ...en,
   tool_select: 'Seleção (V)', tool_rect: 'Retângulo (R)', tool_ellipse: 'Elipse (E)', tool_line: 'Linha (L)', tool_text: 'Texto (T)',
   import_image: 'Importar imagem', export_fpng: 'Exportar .f.png', export_png: 'Exportar PNG plano', fit_zoom: 'Ajustar zoom (0)', change_lang: 'Mudar idioma',
@@ -166,9 +181,10 @@ const pt: Msg = {
   align_left: 'Alinhar à esquerda', align_hcenter: 'Centralizar horizontalmente', align_right: 'Alinhar à direita', align_top: 'Alinhar ao topo', align_vcenter: 'Centralizar verticalmente', align_bottom: 'Alinhar à base',
   dist_h: 'Distribuir horizontalmente', dist_v: 'Distribuir verticalmente', align_hint_multi: 'Distribuir divide os espaços por igual', align_hint_single: 'Com 1 objeto alinha à página; com 2+, ao grupo',
   status_selection: 'seleção', status_objects: 'objetos',
+  settings: 'Configurações', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Claro', theme_dark: 'Escuro',
 };
 
-const ru: Msg = {
+const ru: Partial<Msg> = {
   ...en,
   tool_select: 'Выделение (V)', tool_rect: 'Прямоугольник (R)', tool_ellipse: 'Эллипс (E)', tool_line: 'Линия (L)', tool_text: 'Текст (T)',
   import_image: 'Импорт изображения', export_fpng: 'Экспорт .f.png', export_png: 'Экспорт плоского PNG', fit_zoom: 'Вписать масштаб (0)', change_lang: 'Сменить язык',
@@ -187,9 +203,10 @@ const ru: Msg = {
   align_left: 'Выровнять по левому краю', align_hcenter: 'Центрировать по горизонтали', align_right: 'Выровнять по правому краю', align_top: 'Выровнять по верхнему краю', align_vcenter: 'Центрировать по вертикали', align_bottom: 'Выровнять по нижнему краю',
   dist_h: 'Распределить по горизонтали', dist_v: 'Распределить по вертикали', align_hint_multi: 'Распределение делит промежутки поровну', align_hint_single: 'С 1 объектом выравнивает по странице; с 2+ — по группе',
   status_selection: 'выделение', status_objects: 'объектов',
+  settings: 'Настройки', theme: 'Тема', theme_system: 'Системная', theme_light: 'Светлая', theme_dark: 'Тёмная',
 };
 
-const ja: Msg = {
+const ja: Partial<Msg> = {
   ...en,
   tool_select: '選択 (V)', tool_rect: '長方形 (R)', tool_ellipse: '楕円 (E)', tool_line: '直線 (L)', tool_text: 'テキスト (T)',
   import_image: '画像を読み込む', export_fpng: '.f.png として書き出す', export_png: 'フラット PNG を書き出す', fit_zoom: 'ズーム調整 (0)', change_lang: '言語を変更',
@@ -208,9 +225,10 @@ const ja: Msg = {
   align_left: '左揃え', align_hcenter: '水平中央揃え', align_right: '右揃え', align_top: '上揃え', align_vcenter: '垂直中央揃え', align_bottom: '下揃え',
   dist_h: '水平分布', dist_v: '垂直分布', align_hint_multi: '分布は間隔を均等に配置します', align_hint_single: '1 個ならページに整列、2 個以上なら選択グループに整列',
   status_selection: '選択', status_objects: 'オブジェクト',
+  settings: '設定', theme: 'テーマ', theme_system: 'システム', theme_light: 'ライト', theme_dark: 'ダーク',
 };
 
-const fr: Msg = {
+const fr: Partial<Msg> = {
   ...en,
   tool_select: 'Sélection (V)', tool_rect: 'Rectangle (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Ligne (L)', tool_text: 'Texte (T)',
   import_image: 'Importer une image', export_fpng: 'Exporter .f.png', export_png: 'Exporter PNG à plat', fit_zoom: 'Ajuster le zoom (0)', change_lang: 'Changer de langue',
@@ -229,9 +247,10 @@ const fr: Msg = {
   align_left: 'Aligner à gauche', align_hcenter: 'Centrer horizontalement', align_right: 'Aligner à droite', align_top: 'Aligner en haut', align_vcenter: 'Centrer verticalement', align_bottom: 'Aligner en bas',
   dist_h: 'Répartir horizontalement', dist_v: 'Répartir verticalement', align_hint_multi: 'Répartir répartit les espaces également', align_hint_single: 'Avec 1 objet, aligne sur la page ; avec 2+, sur le groupe',
   status_selection: 'sélection', status_objects: 'objets',
+  settings: 'Paramètres', theme: 'Thème', theme_system: 'Système', theme_light: 'Clair', theme_dark: 'Sombre',
 };
 
-const de: Msg = {
+const de: Partial<Msg> = {
   ...en,
   tool_select: 'Auswahl (V)', tool_rect: 'Rechteck (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Linie (L)', tool_text: 'Text (T)',
   import_image: 'Bild importieren', export_fpng: '.f.png exportieren', export_png: 'Flaches PNG exportieren', fit_zoom: 'Zoom anpassen (0)', change_lang: 'Sprache wechseln',
@@ -250,9 +269,10 @@ const de: Msg = {
   align_left: 'Links ausrichten', align_hcenter: 'Horizontal zentrieren', align_right: 'Rechts ausrichten', align_top: 'Oben ausrichten', align_vcenter: 'Vertikal zentrieren', align_bottom: 'Unten ausrichten',
   dist_h: 'Horizontal verteilen', dist_v: 'Vertikal verteilen', align_hint_multi: 'Verteilen teilt die Abstände gleichmäßig auf', align_hint_single: 'Mit 1 Objekt an der Seite; mit 2+ an der Gruppe ausrichten',
   status_selection: 'Auswahl', status_objects: 'Objekte',
+  settings: 'Einstellungen', theme: 'Design', theme_system: 'System', theme_light: 'Hell', theme_dark: 'Dunkel',
 };
 
-const ko: Msg = {
+const ko: Partial<Msg> = {
   ...en,
   tool_select: '선택 (V)', tool_rect: '사각형 (R)', tool_ellipse: '타원 (E)', tool_line: '선 (L)', tool_text: '텍스트 (T)',
   import_image: '이미지 가져오기', export_fpng: '.f.png 내보내기', export_png: '플랫 PNG 내보내기', fit_zoom: '확대 맞춤 (0)', change_lang: '언어 변경',
@@ -271,9 +291,10 @@ const ko: Msg = {
   align_left: '왼쪽 정렬', align_hcenter: '가로 가운데 정렬', align_right: '오른쪽 정렬', align_top: '위쪽 정렬', align_vcenter: '세로 가운데 정렬', align_bottom: '아래쪽 정렬',
   dist_h: '가로 분산', dist_v: '세로 분산', align_hint_multi: '분산은 간격을 균등하게 배치합니다', align_hint_single: '1개면 페이지에, 2개 이상이면 선택 그룹에 정렬',
   status_selection: '선택', status_objects: '개체',
+  settings: '설정', theme: '테마', theme_system: '시스템', theme_light: '라이트', theme_dark: '다크',
 };
 
-const it: Msg = {
+const it: Partial<Msg> = {
   ...en,
   tool_select: 'Selezione (V)', tool_rect: 'Rettangolo (R)', tool_ellipse: 'Ellisse (E)', tool_line: 'Linea (L)', tool_text: 'Testo (T)',
   import_image: 'Importa immagine', export_fpng: 'Esporta .f.png', export_png: 'Esporta PNG piatta', fit_zoom: 'Adatta zoom (0)', change_lang: 'Cambia lingua',
@@ -292,9 +313,10 @@ const it: Msg = {
   align_left: 'Allinea a sinistra', align_hcenter: 'Centra orizzontalmente', align_right: 'Allinea a destra', align_top: 'Allinea in alto', align_vcenter: 'Centra verticalmente', align_bottom: 'Allinea in basso',
   dist_h: 'Distribuisci orizzontalmente', dist_v: 'Distribuisci verticalmente', align_hint_multi: 'Distribuisci ripartisce gli spazi in modo uniforme', align_hint_single: 'Con 1 oggetto allinea alla pagina; con 2+, al gruppo',
   status_selection: 'selezione', status_objects: 'oggetti',
+  settings: 'Impostazioni', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Chiaro', theme_dark: 'Scuro',
 };
 
-const tr: Msg = {
+const tr: Partial<Msg> = {
   ...en,
   tool_select: 'Seçim (V)', tool_rect: 'Dikdörtgen (R)', tool_ellipse: 'Elips (E)', tool_line: 'Çizgi (L)', tool_text: 'Metin (T)',
   import_image: 'Görüntü içe aktar', export_fpng: '.f.png dışa aktar', export_png: 'Düz PNG dışa aktar', fit_zoom: 'Yakınlaştırmayı sığdır (0)', change_lang: 'Dili değiştir',
@@ -313,9 +335,10 @@ const tr: Msg = {
   align_left: 'Sola hizala', align_hcenter: 'Yatay ortala', align_right: 'Sağa hizala', align_top: 'Üste hizala', align_vcenter: 'Dikey ortala', align_bottom: 'Alta hizala',
   dist_h: 'Yatay dağıt', dist_v: 'Dikey dağıt', align_hint_multi: 'Dağıt, aralıkları eşit paylaştırır', align_hint_single: '1 nesnede sayfaya hizalar; 2+ nesnede gruba hizalar',
   status_selection: 'seçim', status_objects: 'nesne',
+  settings: 'Ayarlar', theme: 'Tema', theme_system: 'Sistem', theme_light: 'Açık', theme_dark: 'Koyu',
 };
 
-const vi: Msg = {
+const vi: Partial<Msg> = {
   ...en,
   tool_select: 'Chọn (V)', tool_rect: 'Hình chữ nhật (R)', tool_ellipse: 'Hình elip (E)', tool_line: 'Đường thẳng (L)', tool_text: 'Văn bản (T)',
   import_image: 'Nhập ảnh', export_fpng: 'Xuất .f.png', export_png: 'Xuất PNG phẳng', fit_zoom: 'Vừa zoom (0)', change_lang: 'Đổi ngôn ngữ',
@@ -334,9 +357,10 @@ const vi: Msg = {
   align_left: 'Căn trái', align_hcenter: 'Canh giữa ngang', align_right: 'Căn phải', align_top: 'Căn trên', align_vcenter: 'Canh giữa dọc', align_bottom: 'Căn dưới',
   dist_h: 'Phân bố ngang', dist_v: 'Phân bố dọc', align_hint_multi: 'Phân bố chia đều khoảng trống', align_hint_single: 'Với 1 đối tượng canh theo trang; với 2+, canh theo nhóm',
   status_selection: 'đã chọn', status_objects: 'đối tượng',
+  settings: 'Cài đặt', theme: 'Chủ đề', theme_system: 'Hệ thống', theme_light: 'Sáng', theme_dark: 'Tối',
 };
 
-const nl: Msg = {
+const nl: Partial<Msg> = {
   ...en,
   tool_select: 'Selectie (V)', tool_rect: 'Rechthoek (R)', tool_ellipse: 'Ellips (E)', tool_line: 'Lijn (L)', tool_text: 'Tekst (T)',
   import_image: 'Afbeelding importeren', export_fpng: '.f.png exporteren', export_png: 'Platte PNG exporteren', fit_zoom: 'Zoom aanpassen (0)', change_lang: 'Taal wisselen',
@@ -355,9 +379,10 @@ const nl: Msg = {
   align_left: 'Links uitlijnen', align_hcenter: 'Horizontaal centreren', align_right: 'Rechts uitlijnen', align_top: 'Boven uitlijnen', align_vcenter: 'Verticaal centreren', align_bottom: 'Onder uitlijnen',
   dist_h: 'Horizontaal verdelen', dist_v: 'Verticaal verdelen', align_hint_multi: 'Verdelen verdeelt de ruimtes gelijk', align_hint_single: 'Met 1 object uitlijnen op de pagina; met 2+ op de groep',
   status_selection: 'selectie', status_objects: 'objecten',
+  settings: 'Instellingen', theme: 'Thema', theme_system: 'Systeem', theme_light: 'Licht', theme_dark: 'Donker',
 };
 
-const LOCALES: Record<Lang, Msg> = { en, es, zh, hi, ar, pt, ru, ja, fr, de, ko, it, tr, vi, nl };
+const LOCALES: Record<Lang, Partial<Msg>> = { en, es, zh, hi, ar, pt, ru, ja, fr, de, ko, it, tr, vi, nl };
 
 const RTL: Lang[] = ['ar'];
 
@@ -385,8 +410,7 @@ export function t(key: keyof Msg): string {
 
 /** Barra de estado: `120% · selección 30×40 (2 objetos)`. */
 export function statusText(zoomPct: number, selW: number, selH: number, n: number): string {
-  const sel = selW > 0
-    ? ` · ${t('status_selection')} ${Math.round(selW)}×${Math.round(selH)}${n > 1 ? ` (${n} ${t('status_objects')})` : ''}`
-    : '';
-  return `${zoomPct}%${sel}`;
+  void zoomPct; // el zoom se muestra en su propio control de la barra
+  if (selW <= 0) return '';
+  return `${t('status_selection')} ${Math.round(selW)}×${Math.round(selH)}${n > 1 ? ` (${n} ${t('status_objects')})` : ''}`;
 }

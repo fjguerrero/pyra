@@ -1,8 +1,11 @@
-import { activePage, NO_FX, type BitmapObj, type Doc, type Fx, type Obj, type ShapeObj, type TextObj } from './model';
+import { activePage, NO_FX, type BitmapObj, type Doc, type Fx, type Layer, type Obj, type ShapeObj, type TextObj } from './model';
 import { findObj } from './hit';
 import type { View } from './view';
 import { statusText, t } from './i18n';
+import { flattenLayers } from './layers';
 import type { AlignKind } from './align';
+import { icon, hasIcon } from './icons';
+import { addCustom, addRecent, loadSwatches, moveSwatch, removeSwatch, type SwatchStore } from './swatches';
 
 export interface PanelApi {
   editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj> | Partial<TextObj> | { fx: Fx }): void;
@@ -11,6 +14,7 @@ export interface PanelApi {
   addLayer(): void;
   removeLayer(layerId: string): void;
   moveLayer(layerId: string, delta: number): void;
+  reorderLayer(layerId: string, targetId: string, mode: 'before' | 'after' | 'child'): void;
   align(kind: AlignKind): void;
   selectPage(pageId: string): void;
   editPage(patch: { width?: number; height?: number }): void;
@@ -26,11 +30,12 @@ const $ = (id: string): HTMLElement => document.getElementById(id)!;
 const esc = (s: string): string =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 
-function btn(cls: string, label: string, title: string, on: boolean, onClick: () => void): HTMLElement {
+function btn(cls: string, label: string, title: string, on: boolean, onClick: () => void, iconName?: string): HTMLElement {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'iconbtn' + (cls ? ' ' + cls : '') + (on ? ' on' : '');
-  b.textContent = label;
+  if (iconName && hasIcon(iconName)) b.innerHTML = icon(iconName);
+  else b.textContent = label;
   b.title = title;
   b.setAttribute('aria-pressed', String(on));
   b.addEventListener('click', (e) => {
@@ -41,15 +46,149 @@ function btn(cls: string, label: string, title: string, on: boolean, onClick: ()
 }
 
 const ALIGN_BUTTONS: [AlignKind, string, 'align_left' | 'align_hcenter' | 'align_right' | 'align_top' | 'align_vcenter' | 'align_bottom' | 'dist_h' | 'dist_v'][] = [
-  ['left', '⇤', 'align_left'],
-  ['hcenter', '↔', 'align_hcenter'],
-  ['right', '⇥', 'align_right'],
-  ['top', '⤒', 'align_top'],
-  ['vcenter', '↕', 'align_vcenter'],
-  ['bottom', '⤓', 'align_bottom'],
-  ['hdist', '⇱', 'dist_h'],
-  ['vdist', '⇲', 'dist_v'],
+  ['left', 'alignLeft', 'align_left'],
+  ['hcenter', 'alignHCenter', 'align_hcenter'],
+  ['right', 'alignRight', 'align_right'],
+  ['top', 'alignTop', 'align_top'],
+  ['vcenter', 'alignVCenter', 'align_vcenter'],
+  ['bottom', 'alignBottom', 'align_bottom'],
+  ['hdist', 'hdist', 'dist_h'],
+  ['vdist', 'vdist', 'dist_v'],
 ];
+
+// ---- Colores: selector con alfa + paletas (recientes / personalizados) ----
+function hexToRgba(hex: string): { r: number; g: number; b: number; a: number } {
+  const h = hex.replace('#', '');
+  const f = (s: string) => parseInt(s, 16);
+  if (h.length === 8) return { r: f(h.slice(0, 2)), g: f(h.slice(2, 4)), b: f(h.slice(4, 6)), a: f(h.slice(6, 8)) / 255 };
+  const s = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  return { r: f(s.slice(0, 2)), g: f(s.slice(2, 4)), b: f(s.slice(4, 6)), a: 1 };
+}
+
+function colorField(label: string, value: string, onSet: (v: string) => void): void {
+  const insp = $('inspector-body');
+  const wrap = document.createElement('label');
+  wrap.className = 'field color-field';
+  wrap.innerHTML = `<span>${label}</span>`;
+  const rgba = hexToRgba(value || '#000000');
+  const base = `#${[rgba.r, rgba.g, rgba.b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+
+  const picker = document.createElement('input');
+  picker.type = 'color';
+  picker.value = base;
+
+  const alphaLabel = document.createElement('span');
+  alphaLabel.textContent = 'α';
+  wrap.appendChild(alphaLabel);
+  const alpha = document.createElement('input');
+  alpha.type = 'number';
+  alpha.min = '0';
+  alpha.max = '1';
+  alpha.step = '0.05';
+  alpha.value = String(Math.round(rgba.a * 100) / 100);
+  alpha.title = t('alpha');
+
+  const emit = (): void => {
+    const a = Math.max(0, Math.min(1, Number(alpha.value)));
+    const hex = Number.isFinite(a) && a < 1
+      ? picker.value + Math.round(a * 255).toString(16).padStart(2, '0')
+      : picker.value;
+    onSet(hex);
+    addRecent(loadSwatches(), hex);
+  };
+  picker.addEventListener('input', emit);
+  alpha.addEventListener('change', emit);
+  wrap.append(picker, alpha);
+  insp.appendChild(wrap);
+  swatchPalette(insp, base, (c) => {
+    picker.value = c.slice(0, 7);
+    alpha.value = c.length === 9 ? String(Math.round((parseInt(c.slice(7, 9), 16) / 255) * 100) / 100) : '1';
+    onSet(c);
+  });
+}
+
+function swatchPalette(insp: HTMLElement, current: string, pick: (color: string) => void): void {
+  const store: SwatchStore = loadSwatches();
+  const section = (title: string, list: SwatchStore['recent']) => {
+    if (!list.length) return;
+    insp.insertAdjacentHTML('beforeend', `<span class="hint">${title}</span>`);
+    const row = document.createElement('div');
+    row.className = 'swatches';
+    for (const s of list) {
+      const sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'swatch';
+      sw.style.background = s.color;
+      sw.title = s.color;
+      sw.draggable = true;
+      sw.addEventListener('click', () => pick(s.color));
+      sw.addEventListener('dragstart', (e) => {
+        e.dataTransfer?.setData('text/plain', s.id);
+        row.dataset.dragId = s.id;
+      });
+      sw.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        sw.classList.add('drop-after');
+      });
+      sw.addEventListener('dragleave', () => sw.classList.remove('drop-after'));
+      sw.addEventListener('drop', (e) => {
+        e.preventDefault();
+        sw.classList.remove('drop-after');
+        const id = row.dataset.dragId || e.dataTransfer?.getData('text/plain');
+        if (id) moveSwatch(store, id, s.id, true);
+        renderNow();
+      });
+      row.appendChild(sw);
+      const del = btn('danger', '×', t('remove_color'), false, () => {
+        removeSwatch(store, s.id);
+        renderNow();
+      }, 'close');
+      row.appendChild(del);
+    }
+    insp.appendChild(row);
+  };
+  section(t('recent_colors'), store.recent);
+  section(t('custom_colors'), store.custom);
+  insp.appendChild(btn('', t('add_color'), t('add_color'), false, () => {
+    addCustom(store, current);
+    renderNow();
+  }, 'plus'));
+}
+
+let renderNow: () => void = () => {};
+
+// slider + campo numérico: siempre editable a mano
+function sliderField(label: string, value: number, min: number, max: number, step: number, onSet: (v: number) => void): void {
+  const insp = $('inspector-body');
+  const wrap = document.createElement('label');
+  wrap.className = 'field';
+  wrap.innerHTML = `<span>${label}</span>`;
+  const rng = document.createElement('input');
+  rng.type = 'range';
+  rng.min = String(min);
+  rng.max = String(max);
+  rng.step = String(step);
+  rng.value = String(value);
+  const num = document.createElement('input');
+  num.type = 'number';
+  num.min = String(min);
+  num.max = String(max);
+  num.step = String(step);
+  num.value = String(value);
+  rng.addEventListener('input', () => {
+    num.value = rng.value;
+    onSet(Number(rng.value));
+  });
+  num.addEventListener('change', () => {
+    const v = Number(num.value);
+    if (Number.isFinite(v)) {
+      rng.value = String(Math.max(min, Math.min(max, v)));
+      onSet(v);
+    }
+  });
+  wrap.append(rng, num);
+  insp.appendChild(wrap);
+}
 
 export function renderPanels(
   doc: Doc,
@@ -62,24 +201,15 @@ export function renderPanels(
   const page = activePage(doc);
   const obj = findObj(page, selectedId);
 
+  renderNow = () => renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, api);
+
   // ---- Property Inspector contextual: documento → objeto (como Fireworks) ----
   const insp = $('inspector-body');
   insp.innerHTML = '';
   if (!obj) {
     const layer = page.layers.find((l) => l.id === selectedLayerId) ?? null;
     if (layer) {
-      const op = document.createElement('label');
-      op.className = 'field';
-      op.innerHTML = `<span>${t('layer_opacity')}</span>`;
-      const rng = document.createElement('input');
-      rng.type = 'range';
-      rng.min = '0';
-      rng.max = '1';
-      rng.step = '0.01';
-      rng.value = String(layer.opacity);
-      rng.addEventListener('input', () => api.editLayer(layer.id, { opacity: Number(rng.value) }));
-      op.appendChild(rng);
-      insp.appendChild(op);
+      sliderField(t('layer_opacity'), layer.opacity, 0, 1, 0.01, (v) => api.editLayer(layer.id, { opacity: v }));
       insp.insertAdjacentHTML('beforeend', `<span class="hint">${esc(layer.name)}</span>`);
     } else {
       insp.insertAdjacentHTML(
@@ -125,22 +255,8 @@ export function renderPanels(
     num('h', t('height'));
 
     if (obj.shape === 'bitmap') {
-      const slider = (label: string, key: 'sat' | 'bri', min: number, max: number, step: number) => {
-        const wrap = document.createElement('label');
-        wrap.className = 'field';
-        wrap.innerHTML = `<span>${label}</span>`;
-        const rng = document.createElement('input');
-        rng.type = 'range';
-        rng.min = String(min);
-        rng.max = String(max);
-        rng.step = String(step);
-        rng.value = String(obj[key]);
-        rng.addEventListener('input', () => api.editObj(obj, { [key]: Number(rng.value) } as Partial<BitmapObj>));
-        wrap.appendChild(rng);
-        insp.appendChild(wrap);
-      };
-      slider(t('saturation'), 'sat', 0, 2, 0.05);
-      slider(t('brightness'), 'bri', 0, 2, 0.05);
+      sliderField(t('saturation'), obj.sat, 0, 2, 0.05, (v) => api.editObj(obj, { sat: v } as Partial<BitmapObj>));
+      sliderField(t('brightness'), obj.bri, 0, 2, 0.05, (v) => api.editObj(obj, { bri: v } as Partial<BitmapObj>));
 
       // recorte en píxeles de la fuente original; campos vacíos = imagen completa
       const cropInputs: Record<'x' | 'y' | 'w' | 'h', HTMLInputElement> = { x: null!, y: null!, w: null!, h: null! };
@@ -187,27 +303,11 @@ export function renderPanels(
       sizeWrap.appendChild(size);
       insp.appendChild(sizeWrap);
 
-      const colorWrap = document.createElement('label');
-      colorWrap.className = 'field';
-      colorWrap.innerHTML = `<span>${t('color')}</span>`;
-      const color = document.createElement('input');
-      color.type = 'color';
-      color.value = obj.fill;
-      color.addEventListener('change', () => api.editObj(obj, { fill: color.value }));
-      colorWrap.appendChild(color);
-      insp.appendChild(colorWrap);
+      colorField(t('color'), obj.fill, (v) => api.editObj(obj, { fill: v }));
     } else {
       // una línea no se rellena: su color es el trazo
       const colorKey = obj.shape === 'line' ? 'stroke' : 'fill';
-      const wrap = document.createElement('label');
-      wrap.className = 'field';
-      wrap.innerHTML = `<span>${obj.shape === 'line' ? t('stroke_color') : t('fill')}</span>`;
-      const color = document.createElement('input');
-      color.type = 'color';
-      color.value = (obj[colorKey] as string) || '#000000';
-      color.addEventListener('change', () => api.editObj(obj, { [colorKey]: color.value } as Partial<ShapeObj>));
-      wrap.appendChild(color);
-      insp.appendChild(wrap);
+      colorField(obj.shape === 'line' ? t('stroke_color') : t('fill'), (obj[colorKey] as string) || '#000000', (v) => api.editObj(obj, { [colorKey]: v } as Partial<ShapeObj>));
       const rotWrap = document.createElement('label');
       rotWrap.className = 'field';
       rotWrap.innerHTML = `<span>${t('rotation')}</span>`;
@@ -225,19 +325,8 @@ export function renderPanels(
         insp.appendChild(btn('', g ? t('remove_gradient') : t('add_gradient'), t('gradient_hint'), false, () =>
           api.editObj(obj, { gradient: g ? null : { from: obj.fill, to: '#ffffff', angle: 0 } })));
         if (g) {
-          const gradField = (label: string, value: string, onSet: (v: string) => void) => {
-            const w = document.createElement('label');
-            w.className = 'field';
-            w.innerHTML = `<span>${label}</span>`;
-            const c = document.createElement('input');
-            c.type = 'color';
-            c.value = value;
-            c.addEventListener('change', () => onSet(c.value));
-            w.appendChild(c);
-            insp.appendChild(w);
-          };
-          gradField(t('gradient_from'), g.from, (v) => api.editObj(obj, { gradient: { ...g, from: v } }));
-          gradField(t('gradient_to'), g.to, (v) => api.editObj(obj, { gradient: { ...g, to: v } }));
+          colorField(t('gradient_from'), g.from, (v) => api.editObj(obj, { gradient: { ...g, from: v } }));
+          colorField(t('gradient_to'), g.to, (v) => api.editObj(obj, { gradient: { ...g, to: v } }));
           const angleWrap = document.createElement('label');
           angleWrap.className = 'field';
           angleWrap.innerHTML = `<span>${t('angle')}</span>`;
@@ -269,17 +358,6 @@ export function renderPanels(
       wrap.appendChild(input);
       insp.appendChild(wrap);
     };
-    const colorField = (label: string, value: string, onSet: (v: string) => void) => {
-      const wrap = document.createElement('label');
-      wrap.className = 'field';
-      wrap.innerHTML = `<span>${label}</span>`;
-      const input = document.createElement('input');
-      input.type = 'color';
-      input.value = value;
-      input.addEventListener('change', () => onSet(input.value));
-      wrap.appendChild(input);
-      insp.appendChild(wrap);
-    };
     numField(t('blur'), fx.blur, (v) => editFx({ blur: Math.max(0, v) }));
     insp.appendChild(btn('', fx.shadow ? t('remove_shadow') : t('add_shadow'), t('shadow_hint'), Boolean(fx.shadow), () =>
       editFx({ shadow: fx.shadow ? null : { x: 4, y: 4, blur: 8, color: '#00000080' } }),
@@ -288,14 +366,14 @@ export function renderPanels(
       numField(t('shadow_x'), fx.shadow.x, (v) => editFx({ shadow: { ...fx.shadow!, x: v } }));
       numField(t('shadow_y'), fx.shadow.y, (v) => editFx({ shadow: { ...fx.shadow!, y: v } }));
       numField(t('shadow_blur'), fx.shadow.blur, (v) => editFx({ shadow: { ...fx.shadow!, blur: Math.max(0, v) } }));
-      colorField(t('shadow_color'), fx.shadow.color.slice(0, 7), (v) => editFx({ shadow: { ...fx.shadow!, color: v } }));
+      colorField(t('shadow_color'), fx.shadow.color, (v) => editFx({ shadow: { ...fx.shadow!, color: v } }));
     }
     insp.appendChild(btn('', fx.glow ? t('remove_glow') : t('add_glow'), t('glow_hint'), Boolean(fx.glow), () =>
       editFx({ glow: fx.glow ? null : { blur: 12, color: '#4f8cff' } }),
     ));
     if (fx.glow) {
       numField(t('glow_blur'), fx.glow.blur, (v) => editFx({ glow: { ...fx.glow!, blur: Math.max(0, v) } }));
-      colorField(t('glow_color'), fx.glow.color.slice(0, 7), (v) => editFx({ glow: { ...fx.glow!, color: v } }));
+      colorField(t('glow_color'), fx.glow.color, (v) => editFx({ glow: { ...fx.glow!, color: v } }));
     }
 
     // ---- Styles (M5): paquetes reutilizables de aspecto, como Fireworks ----
@@ -311,7 +389,9 @@ export function renderPanels(
       name.textContent = s.name;
       row.append(swatch, name);
       row.addEventListener('click', () => api.applyStyle(s.id));
-      row.appendChild(btn('danger', '×', t('delete_style'), false, () => api.removeStyle(s.id)));
+      const ds = btn('danger', '', t('delete_style'), false, () => api.removeStyle(s.id), 'close');
+      ds.dataset.act = 'delstyle';
+      row.appendChild(ds);
       insp.appendChild(row);
     }
   }
@@ -321,8 +401,11 @@ export function renderPanels(
   ab.innerHTML = '';
   const grid = document.createElement('div');
   grid.className = 'aligngrid';
-  for (const [kind, glyph, titleKey] of ALIGN_BUTTONS) {
-    grid.appendChild(btn('', glyph, t(titleKey), false, () => api.align(kind)));
+  for (const [kind, iconName, titleKey] of ALIGN_BUTTONS) {
+    if (kind === 'hdist') grid.insertAdjacentHTML('beforeend', '<span class="asep"></span>');
+    const ab2 = btn('', '', t(titleKey), false, () => api.align(kind), iconName);
+    ab2.dataset.align = kind;
+    grid.appendChild(ab2);
   }
   ab.appendChild(grid);
   const hint = document.createElement('div');
@@ -333,14 +416,72 @@ export function renderPanels(
   // ---- Capas: completas (visibilidad, bloqueo, opacidad, orden, crear, borrar) ----
   const lb = $('layers-body');
   lb.innerHTML = '';
-  for (const l of [...page.layers].reverse()) {
+  // árbol de capas (padre arriba, hijos indentados debajo), como Fireworks
+  const flat = flattenLayers(page.layers);
+  const depthOf = (l: Layer): number => {
+    let d = 0;
+    let cur = l;
+    while (cur.parent) {
+      const p = page.layers.find((x) => x.id === cur.parent);
+      if (!p) break;
+      d++;
+      cur = p;
+    }
+    return d;
+  };
+  let dragId: string | null = null;
+  for (const l of [...flat].reverse()) {
+    const depth = depthOf(l);
     const row = document.createElement('div');
     row.className =
       'row' + (l.visible ? '' : ' off') + (l.id === selectedLayerId ? ' active' : '');
+    row.draggable = true;
+    row.dataset.layerId = l.id;
+    row.style.paddingLeft = `${8 + depth * 18}px`;
+    if (depth > 0) {
+      const guide = document.createElement('span');
+      guide.textContent = '⌞ ';
+      guide.style.color = 'var(--dim)';
+      row.prepend(guide);
+    }
     row.addEventListener('click', () => api.selectLayer(l.id === selectedLayerId ? null : l.id));
+    row.addEventListener('dragstart', (e) => {
+      dragId = l.id;
+      e.dataTransfer?.setData('text/plain', l.id);
+      row.classList.add('dragging');
+    });
+    row.addEventListener('dragend', () => {
+      dragId = null;
+      row.classList.remove('dragging');
+      lb.querySelectorAll('.drop-before,.drop-after,.drop-child').forEach((el) =>
+        el.classList.remove('drop-before', 'drop-after', 'drop-child'),
+      );
+    });
+    row.addEventListener('dragover', (e) => {
+      if (!dragId || dragId === l.id) return;
+      e.preventDefault();
+      const r = row.getBoundingClientRect();
+      const f = (e.clientY - r.top) / r.height;
+      const mode = f < 0.3 ? 'before' : f > 0.7 ? 'after' : 'child';
+      row.classList.remove('drop-before', 'drop-after', 'drop-child');
+      row.classList.add(`drop-${mode}`);
+    });
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!dragId || dragId === l.id) return;
+      const r = row.getBoundingClientRect();
+      const f = (e.clientY - r.top) / r.height;
+      const mode = f < 0.3 ? 'before' : f > 0.7 ? 'after' : 'child';
+      api.reorderLayer(dragId, l.id, mode);
+      dragId = null;
+    });
 
-    row.appendChild(btn('', l.visible ? '👁' : '–', l.visible ? t('hide_layer') : t('show_layer'), l.visible, () => api.editLayer(l.id, { visible: !l.visible })));
-    row.appendChild(btn('', l.locked ? '🔒' : '🔓', l.locked ? t('unlock_layer') : t('lock_layer'), l.locked, () => api.editLayer(l.id, { locked: !l.locked })));
+    const vb = btn('', '', l.visible ? t('hide_layer') : t('show_layer'), l.visible, () => api.editLayer(l.id, { visible: !l.visible }), l.visible ? 'eye' : 'eyeOff');
+    vb.dataset.act = 'visible';
+    row.appendChild(vb);
+    const lb2 = btn('', '', l.locked ? t('unlock_layer') : t('lock_layer'), l.locked, () => api.editLayer(l.id, { locked: !l.locked }), l.locked ? 'lock' : 'unlock');
+    lb2.dataset.act = 'locked';
+    row.appendChild(lb2);
 
     const name = document.createElement('span');
     name.className = 'row-name';
@@ -352,14 +493,22 @@ export function renderPanels(
     });
     row.appendChild(name);
 
-    row.appendChild(btn('', '↑', 'Subir capa', false, () => api.moveLayer(l.id, 1)));
-    row.appendChild(btn('', '↓', 'Bajar capa', false, () => api.moveLayer(l.id, -1)));
-    row.appendChild(btn('danger', '✕', 'Eliminar capa', false, () => api.removeLayer(l.id)));
+    for (const [act, ic, title, fn] of [
+      ['up', 'up', t('move_up'), () => api.moveLayer(l.id, 1)],
+      ['down', 'down', t('move_down'), () => api.moveLayer(l.id, -1)],
+      ['del', 'close', t('delete_layer'), () => api.removeLayer(l.id)],
+    ] as const) {
+      const b = btn(act === 'del' ? 'danger' : '', '', title, false, fn, ic);
+      b.dataset.act = act;
+      row.appendChild(b);
+    }
     lb.appendChild(row);
   }
   const addRow = document.createElement('div');
   addRow.className = 'rowbtn';
-  addRow.appendChild(btn('', '＋ Nueva capa', 'Crear capa', false, () => api.addLayer()));
+  const addBtn = btn('', t('new_layer'), t('create_layer'), false, () => api.addLayer(), 'plus');
+  addBtn.dataset.act = 'add';
+  addRow.appendChild(addBtn);
   lb.appendChild(addRow);
 
   // ---- Páginas ----
@@ -371,15 +520,25 @@ export function renderPanels(
     row.textContent = p.name;
     row.addEventListener('click', () => api.selectPage(p.id));
     if (doc.pages.length > 1) {
-      row.appendChild(btn('danger', '✕', 'Eliminar página', false, () => api.removePage(p.id)));
+      const dp = btn('danger', '', t('delete_page'), false, () => api.removePage(p.id), 'close');
+      dp.dataset.act = 'delpage';
+      row.appendChild(dp);
     }
     pb.appendChild(row);
   }
   const prow = document.createElement('div');
   prow.className = 'rowbtn';
-  prow.appendChild(btn('', '＋ Nueva página', 'Crear página', false, () => api.addPage()));
+  const ap = btn('', t('new_page'), t('create_page'), false, () => api.addPage(), 'plus');
+  ap.dataset.act = 'addpage';
+  prow.appendChild(ap);
   pb.appendChild(prow);
 
   const n = selectedIds.length;
-  $('status').textContent = statusText(Math.round(view.zoom * 100), obj ? obj.w : 0, obj ? obj.h : 0, n);
+  const target = document.getElementById('status-text') ?? $('status');
+  target.textContent = statusText(Math.round(view.zoom * 100), obj ? obj.w : 0, obj ? obj.h : 0, n);
+  const zoomPct = String(Math.round(view.zoom * 100));
+  const zn = document.getElementById('zoom-num') as HTMLInputElement | null;
+  const zr = document.getElementById('zoom-range') as HTMLInputElement | null;
+  if (zn && document.activeElement !== zn) zn.value = zoomPct;
+  if (zr) zr.value = zoomPct;
 }

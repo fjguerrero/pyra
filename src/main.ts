@@ -2,7 +2,7 @@ import { activePage, newDoc, uid, type BitmapObj, type Doc, type Obj, type Shape
 import { History, type Command } from './history';
 import { fitAll, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
-import { addLayer, moveLayer } from './layers';
+import { addLayer, moveLayer, reorderLayer } from './layers';
 import { snapBox, type Guide } from './guides';
 import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
@@ -11,6 +11,7 @@ import { duplicateCmd, groupCmd, pasteCmd, zOrderCmd } from './commands';
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
 import { renderPanels } from './panels';
+import { icon } from './icons';
 import { LANGS, currentLang, setLang, t } from './i18n';
 
 const doc: Doc = (await loadDoc()) ?? newDoc();
@@ -43,7 +44,7 @@ function invalidate(): void {
   dirty = true;
   requestAnimationFrame(() => {
     dirty = false;
-    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, draft, marquee, guides });
+    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, draft, marquee, guides, workspace: bg });
     if (!pointerDownInInspector) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi);
   });
 }
@@ -119,6 +120,9 @@ function applyStaticI18n(): void {
   document.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach((el) => {
     el.title = t(el.dataset.i18nTitle as never);
   });
+  document.querySelectorAll<HTMLElement>('[data-icon]').forEach((el) => {
+    el.innerHTML = icon(el.dataset.icon!);
+  });
 }
 const langSel = document.getElementById('lang') as HTMLSelectElement;
 langSel.innerHTML = LANGS.map((l) => `<option value="${l.code}">${l.label}</option>`).join('');
@@ -128,6 +132,76 @@ langSel.addEventListener('change', () => {
   applyStaticI18n();
   invalidate();
 });
+
+
+
+// ---- Theme: oscuro / claro / como el sistema (persistido en pyra:theme) ----
+type Theme = 'system' | 'light' | 'dark';
+const themeSel = document.getElementById('theme') as HTMLSelectElement;
+const mediaDark = window.matchMedia('(prefers-color-scheme: dark)');
+function currentTheme(): Theme {
+  const v = localStorage.getItem('pyra:theme');
+  return v === 'light' || v === 'dark' ? v : 'system';
+}
+function applyTheme(): void {
+  const th = currentTheme();
+  const dark = th === 'dark' || (th === 'system' && mediaDark.matches);
+  if (dark) document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', 'light');
+  themeSel.value = th;
+  themeSel.options[0].textContent = t('theme_system');
+  themeSel.options[1].textContent = t('theme_light');
+  themeSel.options[2].textContent = t('theme_dark');
+}
+themeSel.addEventListener('change', () => {
+  localStorage.setItem('pyra:theme', themeSel.value);
+  applyTheme();
+});
+mediaDark.addEventListener('change', () => {
+  if (currentTheme() === 'system') applyTheme();
+});
+applyTheme();
+
+// ---- Menú de configuración (abajo a la izquierda) ----
+const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
+const settingsMenu = document.getElementById('settings-menu') as HTMLElement;
+settingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  settingsMenu.hidden = !settingsMenu.hidden;
+});
+document.addEventListener('pointerdown', (e) => {
+  if (!settingsMenu.hidden && !settingsMenu.contains(e.target as Node) && e.target !== settingsBtn) {
+    settingsMenu.hidden = true;
+  }
+});
+
+// ---- Fondo del área de trabajo: color y/o rejilla de cuadrados (pyra:bg) ----
+type WsBg = { color: string; grid: number };
+function currentBg(): WsBg {
+  try {
+    const b = JSON.parse(localStorage.getItem('pyra:bg') ?? '');
+    if (b && typeof b.color === 'string') return { color: b.color, grid: Number(b.grid) || 0 };
+  } catch { /* sin estado previo */ }
+  return { color: '#0e1013', grid: 0 };
+}
+const bg = currentBg();
+const bgColor = document.getElementById('bg-color') as HTMLInputElement;
+const bgGrid = document.getElementById('bg-grid') as HTMLSelectElement;
+bgColor.value = bg.color;
+bgGrid.value = String(bg.grid);
+const saveBg = (): void => {
+  localStorage.setItem('pyra:bg', JSON.stringify(bg));
+  invalidate();
+};
+bgColor.addEventListener('input', () => {
+  bg.color = bgColor.value;
+  saveBg();
+});
+bgGrid.addEventListener('change', () => {
+  bg.grid = Number(bgGrid.value) || 0;
+  saveBg();
+});
+
 applyStaticI18n();
 
 document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) =>
@@ -204,15 +278,29 @@ function importBitmapFile(file: File): void {
   reader.readAsDataURL(file);
 }
 
-// ---- Exportar .f.png (M6): PNG con la fuente Pyra embebida ----
-document.querySelector<HTMLElement>('#toolbar .tool[data-export]')?.addEventListener('click', async () => {
-  const blob = await exportFpng(doc, renderer);
-  downloadBlob(blob, `${doc.name || 'pyra'}.f.png`);
+// ---- Exportar: menú con .f.png, PNG, JPEG y WebP (formatos del navegador) ----
+const exportMenu = document.getElementById('export-menu')!;
+document.querySelector<HTMLElement>('#toolbar .tool[data-export-menu]')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  exportMenu.hidden = !exportMenu.hidden;
 });
-document.querySelector<HTMLElement>('#toolbar .tool[data-export-png]')?.addEventListener('click', async () => {
-  const off = await renderer.exportPage(activePage(doc));
-  off.toBlob((b) => b && downloadBlob(b, `${doc.name || 'pyra'}.png`), 'image/png');
+document.addEventListener('pointerdown', (e) => {
+  if (!exportMenu.hidden && !exportMenu.contains(e.target as Node) && !(e.target as HTMLElement).closest?.('[data-export-menu]'))
+    exportMenu.hidden = true;
 });
+const baseName = () => doc.name || 'pyra';
+document.querySelector<HTMLElement>('#export-menu [data-export]')?.addEventListener('click', async () => {
+  downloadBlob(await exportFpng(doc, renderer), `${baseName()}.f.png`);
+  exportMenu.hidden = true;
+});
+const exportRaster = (mime: string, ext: string): void => {
+  void renderer.exportPage(activePage(doc)).then((off) => {
+    off.toBlob((b) => b && downloadBlob(b, `${baseName()}.${ext}`), mime, mime === 'image/jpeg' ? 0.92 : undefined);
+  });
+};
+document.querySelector<HTMLElement>('#export-menu [data-export-png]')?.addEventListener('click', () => { exportRaster('image/png', 'png'); exportMenu.hidden = true; });
+document.querySelector<HTMLElement>('#export-menu [data-export-jpeg]')?.addEventListener('click', () => { exportRaster('image/jpeg', 'jpg'); exportMenu.hidden = true; });
+document.querySelector<HTMLElement>('#export-menu [data-export-webp]')?.addEventListener('click', () => { exportRaster('image/webp', 'webp'); exportMenu.hidden = true; });
 
 renderer.onImgReady = invalidate;
 
@@ -681,6 +769,7 @@ const panelApi = {
     const page = activePage(doc);
     const above = selectedLayerId ?? page.layers[page.layers.length - 1].id;
     const layer = addLayer(page, above);
+    if (selectedLayerId) layer.parent = selectedLayerId; // capa dentro de la capa seleccionada
     const i = page.layers.indexOf(layer);
     history.record({
       label: 'crear capa',
@@ -709,6 +798,25 @@ const panelApi = {
     });
     if (selectedLayerId === layerId) selectedLayerId = null;
     persist();
+    invalidate();
+  },
+  reorderLayer(layerId: string, targetId: string, mode: 'before' | 'after' | 'child'): void {
+    const page = activePage(doc);
+    const before = page.layers.map((l) => ({ id: l.id, parent: l.parent }));
+    if (!reorderLayer(page, layerId, targetId, mode)) return;
+    history.record({
+      label: 'reordenar capa',
+      do: () => {},
+      undo: () => {
+        for (const b of before) {
+          const l = page.layers.find((x) => x.id === b.id);
+          if (!l) continue;
+          if (b.parent) l.parent = b.parent;
+          else delete l.parent;
+        }
+        page.layers = before.map((b) => page.layers.find((l) => l.id === b.id)!).filter(Boolean);
+      },
+    });
     invalidate();
   },
   moveLayer(layerId: string, delta: number): void {
@@ -841,6 +949,40 @@ const panelApi = {
     }
   },
 };
+
+// ---- Zoom: control en la barra de estado (número editable + slider al pulsar el icono) ----
+const zoomNum = document.getElementById('zoom-num') as HTMLInputElement;
+const zoomRange = document.getElementById('zoom-range') as HTMLInputElement;
+const zoomPop = document.getElementById('zoom-pop')!;
+document.getElementById('zoom-btn')!.addEventListener('click', (e) => {
+  e.stopPropagation();
+  zoomPop.hidden = !zoomPop.hidden;
+});
+document.addEventListener('pointerdown', (e) => {
+  if (!zoomPop.hidden && !zoomPop.contains(e.target as Node) && !(e.target as HTMLElement).closest?.('#zoom-ctl'))
+    zoomPop.hidden = true;
+});
+function setZoom(z: number, keepCenter = true): void {
+  const nz = Math.min(6.4, Math.max(0.05, z));
+  if (!keepCenter) {
+    view.zoom = nz;
+    invalidate();
+    return;
+  }
+  const cx = canvas.clientWidth / 2;
+  const cy = canvas.clientHeight / 2;
+  const before = screenToWorld(view, cx, cy);
+  view.zoom = nz;
+  const after = screenToWorld(view, cx, cy);
+  view.panX += (after.x - before.x) * view.zoom;
+  view.panY += (after.y - before.y) * view.zoom;
+  invalidate();
+}
+zoomNum.addEventListener('change', () => {
+  const v = Number(zoomNum.value);
+  if (Number.isFinite(v) && v > 0) setZoom(v / 100);
+});
+zoomRange.addEventListener('input', () => setZoom(Number(zoomRange.value) / 100));
 
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();

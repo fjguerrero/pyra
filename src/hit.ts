@@ -1,9 +1,11 @@
+import { flattenLayers } from './layers';
 import type { Layer, Obj, Page } from './model';
 import type { View } from './view';
 
 export function hitTest(page: Page, wx: number, wy: number, tol = 0): Obj | null {
-  for (let i = page.layers.length - 1; i >= 0; i--) {
-    const l = page.layers[i];
+  const flat = flattenLayers(page.layers);
+  for (let i = flat.length - 1; i >= 0; i--) {
+    const l = flat[i];
     if (!l.visible || l.locked) continue;
     for (let j = l.objects.length - 1; j >= 0; j--) {
       const o = l.objects[j];

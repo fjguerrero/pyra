@@ -10,16 +10,21 @@
     <div id="app">
       <div id="main">
         <div id="toolbar">
-          <button type="button" class="tool active" data-tool="select" aria-pressed="true" data-i18n-title="tool_select">V</button>
-          <button type="button" class="tool" data-tool="rect" aria-pressed="false" data-i18n-title="tool_rect">▭</button>
-          <button type="button" class="tool" data-tool="ellipse" aria-pressed="false" data-i18n-title="tool_ellipse">◯</button>
-          <button type="button" class="tool" data-tool="line" aria-pressed="false" data-i18n-title="tool_line">╱</button>
-          <button type="button" class="tool" data-tool="text" aria-pressed="false" data-i18n-title="tool_text">T</button>
-          <button type="button" class="tool" data-import data-i18n-title="import_image">🖼</button>
-          <button type="button" class="tool" data-export data-i18n-title="export_fpng">⬇</button>
-          <button type="button" class="tool" data-export-png data-i18n-title="export_png">🖼</button>
-          <button type="button" class="tool" data-fit data-i18n-title="fit_zoom">⤢</button>
-          <select id="lang" title="Idioma"></select>
+          <button type="button" class="tool active" data-tool="select" data-icon="cursor" aria-pressed="true" data-i18n-title="tool_select"></button>
+          <button type="button" class="tool" data-tool="rect" data-icon="rect" aria-pressed="false" data-i18n-title="tool_rect"></button>
+          <button type="button" class="tool" data-tool="ellipse" data-icon="ellipse" aria-pressed="false" data-i18n-title="tool_ellipse"></button>
+          <button type="button" class="tool" data-tool="line" data-icon="line" aria-pressed="false" data-i18n-title="tool_line"></button>
+          <button type="button" class="tool" data-tool="text" data-icon="text" aria-pressed="false" data-i18n-title="tool_text"></button>
+          <div class="tsep"></div>
+          <button type="button" class="tool" data-import data-icon="import" data-i18n-title="import_image"></button>
+          <button type="button" class="tool" data-export-menu data-icon="export" data-i18n-title="export_menu"></button>
+          <button type="button" class="tool" data-fit data-icon="fit" data-i18n-title="fit_zoom"></button>
+          <div id="export-menu" hidden>
+            <button type="button" data-export data-i18n="export_fpng"></button>
+            <button type="button" data-export-png data-i18n="export_png"></button>
+            <button type="button" data-export-jpeg data-i18n="export_jpeg"></button>
+            <button type="button" data-export-webp data-i18n="export_webp"></button>
+          </div>
         </div>
         <div id="canvas-wrap"><canvas id="canvas"></canvas></div>
         <div id="side">
@@ -41,7 +46,37 @@
           </div>
         </div>
       </div>
-      <div id="status"></div>
+      <div id="status">
+        <span id="status-text"></span>
+        <div id="zoom-ctl">
+          <button type="button" id="zoom-btn" data-icon="zoom" data-i18n-title="zoom"></button>
+          <input type="number" id="zoom-num" min="5" max="1000" step="5" title="Zoom" />
+          <div id="zoom-pop" hidden><input type="range" id="zoom-range" min="5" max="400" step="1" /></div>
+        </div>
+        <span id="status-end"></span>
+      </div>
+      <button type="button" id="settings-btn" data-icon="settings" data-i18n-title="settings"></button>
+      <div id="settings-menu" hidden>
+        <label data-i18n="language"></label>
+        <select id="lang"></select>
+        <label data-i18n="theme"></label>
+        <select id="theme">
+          <option value="system"></option>
+          <option value="light"></option>
+          <option value="dark"></option>
+        </select>
+        <label data-i18n="bg"></label>
+        <div class="bg-row">
+          <input type="color" id="bg-color" />
+          <select id="bg-grid">
+            <option value="0"></option>
+            <option value="10">10px</option>
+            <option value="20">20px</option>
+            <option value="50">50px</option>
+            <option value="100">100px</option>
+          </select>
+        </div>
+      </div>
     </div>
     <input type="file" id="import-file" accept="image/*" hidden />
     <script type="module" src="/src/main.ts"></script>

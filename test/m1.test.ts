@@ -1,7 +1,7 @@
 // Tests de M1 escritos desde la especificación de comportamiento, no desde la implementación.
 import { describe, expect, it } from 'vitest';
 import { activePage, newDoc, uid, type ShapeObj } from '../src/model';
-import { addLayer, moveLayer, moveObjToLayer, removeLayer } from '../src/layers';
+import { addLayer, flattenLayers, moveLayer, moveObjToLayer, removeLayer, reorderLayer } from '../src/layers';
 import { snapBox } from '../src/guides';
 import { bbox, computeAlign } from '../src/align';
 
@@ -219,5 +219,51 @@ describe('alinear: con uno respeta la página, con varios respeta el grupo', () 
     const [m] = computeAlign([a], 'left', { width: 800, height: 600 });
     expect(m.from).toEqual({ x: 30, y: 30 });
     expect(m.obj).toBe(a);
+  });
+});
+
+describe('nesting de capas', () => {
+  const mk = () => {
+    const page = pageWith(1);
+    const a = page.layers[0];
+    const b = addLayer(page, null);
+    return { page, a, b };
+  };
+  it('reorderLayer child convierte una capa en hija de otra', () => {
+    const { page, a, b } = mk();
+    expect(reorderLayer(page, b.id, a.id, 'child')).toBe(true);
+    expect(b.parent).toBe(a.id);
+    expect(flattenLayers(page.layers).map((l) => l.id)).toEqual([a.id, b.id]);
+  });
+  it('no permite anidar una capa dentro de su descendiente (ciclo)', () => {
+    const { page, a, b } = mk();
+    reorderLayer(page, b.id, a.id, 'child');
+    expect(reorderLayer(page, a.id, b.id, 'child')).toBe(false);
+  });
+  it('reorderLayer before/after reordena hermanas', () => {
+    const { page, a, b } = mk();
+    // panel muestra invertido: b arriba. after(a) => b justo debajo de a en z, o sea antes en el panel
+    expect(reorderLayer(page, b.id, a.id, 'after')).toBe(true);
+    expect(flattenLayers(page.layers).map((l) => l.id)).toEqual([a.id, b.id]);
+    expect(reorderLayer(page, b.id, a.id, 'before')).toBe(true);
+    expect(flattenLayers(page.layers).map((l) => l.id)).toEqual([b.id, a.id]);
+    expect(b.parent).toBeUndefined();
+  });
+  it('mover un padre mueve su subárbol y hereda el parent nuevo', () => {
+    const page = pageWith(1);
+    const a = page.layers[0];
+    const b = addLayer(page, null);
+    const c = addLayer(page, null);
+    reorderLayer(page, b.id, a.id, 'child');
+    reorderLayer(page, c.id, b.id, 'child');
+    // no se puede mover un padre junto a su propio descendiente (ciclo)
+    expect(reorderLayer(page, b.id, c.id, 'before')).toBe(false);
+    // mover el subárbol b→c junto a a como 'before' arrastra a c también y hereda raíz
+    expect(reorderLayer(page, b.id, a.id, 'before')).toBe(true);
+    const flat = flattenLayers(page.layers).map((l) => l.id);
+    expect(flat.indexOf(b.id)).toBeLessThan(flat.indexOf(a.id));
+    expect(flat.indexOf(c.id)).toBeLessThan(flat.indexOf(a.id));
+    expect(c.parent).toBe(b.id);
+    expect(b.parent).toBeUndefined();
   });
 });

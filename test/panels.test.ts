@@ -24,6 +24,7 @@ function fixture(): { doc: Doc; view: View; api: PanelApi; calls: string[] } {
     addLayer: vi.fn(() => calls.push('addLayer')),
     removeLayer: vi.fn(() => calls.push('removeLayer')),
     moveLayer: vi.fn((_id, d) => calls.push(`moveLayer:${d}`)),
+    reorderLayer: vi.fn((_id, _t, _m) => calls.push('reorderLayer')),
     align: vi.fn((k) => calls.push(`align:${k}`)),
     selectPage: vi.fn((_id) => calls.push('selectPage')),
     editPage: vi.fn(),
@@ -42,29 +43,30 @@ function mount(doc: Doc, selectedId: string | null, selectedLayerId: string | nu
     <div id="align-body"></div>
     <div id="layers-body"></div>
     <div id="pages-body"></div>
-    <div id="status"></div>`;
+    <div id="status"><span id="status-text"></span></div>
+    <input type="number" id="zoom-num" /><input type="range" id="zoom-range" />`;
   renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, api);
 }
 
 const buttonsIn = (sel: string): HTMLButtonElement[] =>
   [...document.querySelectorAll<HTMLButtonElement>(`${sel} button`)];
 
-const clickByText = (sel: string, text: string): void => {
-  const b = buttonsIn(sel).find((x) => x.textContent === text);
-  if (!b) throw new Error(`botón ${JSON.stringify(text)} no encontrado en ${sel}`);
+const clickByAttr = (sel: string, attr: string, value: string): void => {
+  const b = document.querySelector<HTMLElement>(`${sel} [${attr}=${JSON.stringify(value)}]`);
+  if (!b) throw new Error(`botón ${attr}=${value} no encontrado en ${sel}`);
   b.click();
 };
 
 describe('Alinear: 8 botones reales, uno por cada operación', () => {
   const EXPECTED: [string, string][] = [
-    ['⇤', 'left'],
-    ['↔', 'hcenter'],
-    ['⇥', 'right'],
-    ['⤒', 'top'],
-    ['↕', 'vcenter'],
-    ['⤓', 'bottom'],
-    ['⇱', 'hdist'],
-    ['⇲', 'vdist'],
+    ['left', 'left'],
+    ['hcenter', 'hcenter'],
+    ['right', 'right'],
+    ['top', 'top'],
+    ['vcenter', 'vcenter'],
+    ['bottom', 'bottom'],
+    ['hdist', 'hdist'],
+    ['vdist', 'vdist'],
   ];
 
   it('existen exactamente 8 botones y son <button> con aria-pressed', () => {
@@ -77,17 +79,17 @@ describe('Alinear: 8 botones reales, uno por cada operación', () => {
     expect(bs.every((b) => b.title.length > 0)).toBe(true);
   });
 
-  it.each(EXPECTED)('el botón %s invoca align(%s)', (glyph, kind) => {
+  it.each(EXPECTED)('el botón %s invoca align(%s)', (attr, kind) => {
     const f = fixture();
     mount(f.doc, null, null, [], f.view, f.api);
-    clickByText('#align-body', glyph);
+    clickByAttr('#align-body', 'data-align', attr);
     expect(f.api.align).toHaveBeenCalledWith(kind);
   });
 
   it('pulsar un botón de alinear no dispara además la fila de capa que lo contiene', () => {
     const f = fixture();
     mount(f.doc, null, null, [], f.view, f.api);
-    clickByText('#align-body', '⇤');
+    clickByAttr('#align-body', 'data-align', 'left');
     expect(f.api.selectLayer).not.toHaveBeenCalled();
   });
 });
@@ -105,17 +107,16 @@ describe('Capas: cada fila expone visibilidad, bloqueo, orden y borrado', () => 
     expect(names.map((n) => n!.split(' · ')[0])).toEqual(['L2', 'L1', 'Capa 1']);
   });
 
-  it('el botón de visibilidad alterna visible y su glyph', () => {
+  it('el botón de visibilidad alterna visible', () => {
     const f = fixture();
     const layer = activePage(f.doc).layers[0];
     mount(f.doc, null, null, [], f.view, f.api);
-    clickByText('#layers-body', '👁');
+    clickByAttr('#layers-body', 'data-act', 'visible');
     expect(f.api.editLayer).toHaveBeenCalledWith(layer.id, { visible: false });
 
     layer.visible = false;
     mount(f.doc, null, null, [], f.view, f.api);
-    expect(buttonsIn('#layers-body').some((b) => b.textContent === '–')).toBe(true);
-    clickByText('#layers-body', '–');
+    clickByAttr('#layers-body', 'data-act', 'visible');
     expect(f.api.editLayer).toHaveBeenLastCalledWith(layer.id, { visible: true });
   });
 
@@ -123,17 +124,17 @@ describe('Capas: cada fila expone visibilidad, bloqueo, orden y borrado', () => 
     const f = fixture();
     const layer = activePage(f.doc).layers[0];
     mount(f.doc, null, null, [], f.view, f.api);
-    clickByText('#layers-body', '🔓');
+    clickByAttr('#layers-body', 'data-act', 'locked');
     expect(f.api.editLayer).toHaveBeenCalledWith(layer.id, { locked: true });
   });
 
-  it('↑ y ↓ invocan moveLayer con +1 y -1', () => {
+  it('subir y bajar invocan moveLayer con +1 y -1', () => {
     const f = fixture();
     const layer = activePage(f.doc).layers[0];
     mount(f.doc, null, null, [], f.view, f.api);
-    clickByText('#layers-body', '↑');
+    clickByAttr('#layers-body', 'data-act', 'up');
     expect(f.api.moveLayer).toHaveBeenCalledWith(layer.id, 1);
-    clickByText('#layers-body', '↓');
+    clickByAttr('#layers-body', 'data-act', 'down');
     expect(f.api.moveLayer).toHaveBeenLastCalledWith(layer.id, -1);
   });
 
@@ -150,7 +151,7 @@ describe('Capas: cada fila expone visibilidad, bloqueo, orden y borrado', () => 
   it('hay un botón para crear capa', () => {
     const f = fixture();
     mount(f.doc, null, null, [], f.view, f.api);
-    clickByText('#layers-body', '＋ Nueva capa');
+    clickByAttr('#layers-body', 'data-act', 'add');
     expect(f.api.addLayer).toHaveBeenCalledOnce();
   });
 
@@ -213,7 +214,7 @@ describe('Páginas: listar, cambiar, crear y borrar', () => {
   it('hay un botón para crear página', () => {
     const f = fixture();
     mount(f.doc, null, null, [], f.view, f.api);
-    clickByText('#pages-body', '＋ Nueva página');
+    clickByAttr('#pages-body', 'data-act', 'addpage');
     expect(f.api.addPage).toHaveBeenCalledOnce();
   });
 });
@@ -258,16 +259,21 @@ describe('Property Inspector: campos según lo seleccionado', () => {
     expect(f.api.editObj).not.toHaveBeenCalled();
   });
 
-  it('el color de relleno se edita con un input de color', () => {
+  it('el color de relleno se edita con un input de color y admite alfa', () => {
     const f = fixture();
     const obj = activePage(f.doc).layers[0].objects[0] as ShapeObj;
     obj.fill = '#ff0000';
     mount(f.doc, obj.id, null, [obj.id], f.view, f.api);
-    const color = document.querySelector<HTMLInputElement>('#inspector-body input[type=color]')!;
+    const color = document.querySelector<HTMLInputElement>('#inspector-body .color-field input[type=color]')!;
     expect(color.value).toBe('#ff0000');
     color.value = '#00ff00';
-    color.dispatchEvent(new Event('change'));
+    color.dispatchEvent(new Event('input'));
     expect(f.api.editObj).toHaveBeenCalledWith(obj, { fill: '#00ff00' });
+
+    const alpha = document.querySelector<HTMLInputElement>('#inspector-body .color-field input[type=number]')!;
+    alpha.value = '0.5';
+    alpha.dispatchEvent(new Event('change'));
+    expect(f.api.editObj).toHaveBeenLastCalledWith(obj, { fill: '#00ff0080' });
   });
 
   it('con una capa seleccionada expone su opacidad', () => {
@@ -283,10 +289,11 @@ describe('Property Inspector: campos según lo seleccionado', () => {
 });
 
 describe('Barra de estado: zoom y selección', () => {
-  it('muestra el zoom como porcentaje', () => {
+  it('muestra el zoom en su control', () => {
     const f = fixture();
     mount(f.doc, null, null, [], { zoom: 0.46, panX: 0, panY: 0 }, f.api);
-    expect(document.getElementById('status')!.textContent).toContain('46%');
+    expect((document.getElementById('zoom-num') as HTMLInputElement).value).toBe('46');
+    expect((document.getElementById('zoom-range') as HTMLInputElement).value).toBe('46');
   });
 
   it('con un objeto seleccionado muestra su tamaño', () => {

@@ -89,6 +89,8 @@ export interface Layer {
   locked: boolean;
   opacity: number;
   objects: Obj[];
+  /** Capa padre (nesting). Ausente = raíz. */
+  parent?: string;
 }
 
 /** Guía manual de página (arrastrable; Alt+clic la borra). */

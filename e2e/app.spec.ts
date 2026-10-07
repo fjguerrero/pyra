@@ -196,7 +196,8 @@ test('exportar .f.png y reimportarlo restaura el documento', async ({ page }) =>
   await drag(page, [100, 100], [220, 180]);
   await expect(layerCount(page)).toContainText('· 1');
   const download = page.waitForEvent('download');
-  await page.locator('#toolbar .tool[data-export]').click();
+  await page.locator('#toolbar .tool[data-export-menu]').click();
+  await page.locator('#export-menu [data-export]').click();
   const dl = await download;
   expect(dl.suggestedFilename()).toMatch(/\.f\.png$/);
   const path = await dl.path();
@@ -210,7 +211,7 @@ test('exportar .f.png y reimportarlo restaura el documento', async ({ page }) =>
 });
 
 test('páginas: crear y cambiar', async ({ page }) => {
-  await page.getByText('＋ Nueva página').click();
+  await page.locator('#pages-body [data-act="addpage"]').click();
   await expect(page.locator('#pages-body .row')).toHaveCount(2);
   await expect(page.locator('#pages-body .row.active')).toContainText('Page 2');
   await page.locator('#pages-body .row').first().click();
@@ -221,14 +222,14 @@ test('rotación: campo en el inspector y hit-test rotado', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 140]); // rect ancho y bajo
   // poner rotación 90 desde el inspector
-  const rotInput = page.locator('#inspector-body input[type=number]').nth(4);
+  const rotInput = page.locator('#inspector-body .field:has(span:text-is("Rotation")) input[type=number]');
   await rotInput.fill('90');
   await rotInput.dispatchEvent('change');
   // el centro sigue siendo hit-testable (el rect girado pasa por ahí)
   const box = await canvas(page).boundingBox();
   await page.keyboard.press('Escape');
   await page.mouse.click(box!.x + 160, box!.y + 120);
-  await expect(page.locator('#inspector-body input[type=number]').nth(4)).toHaveValue('90');
+  await expect(page.locator('#inspector-body .field:has(span:text-is("Rotation")) input[type=number]')).toHaveValue('90');
 });
 
 test('agrupar: Ctrl+G selecciona el grupo entero al tocar un miembro', async ({ page }) => {
@@ -258,8 +259,34 @@ test('agrupar: Ctrl+G selecciona el grupo entero al tocar un miembro', async ({ 
 test('exportar PNG plano descarga un .png', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#toolbar .tool[data-export-png]')]);
+  await page.locator('#toolbar .tool[data-export-menu]').click();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#export-menu [data-export-png]')]);
   expect(dl.suggestedFilename()).toMatch(/\.png$/);
+});
+
+test('exportar JPEG y WebP descarga los formatos del navegador', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  await page.locator('#toolbar .tool[data-export-menu]').click();
+  const [jpg] = await Promise.all([page.waitForEvent('download'), page.click('#export-menu [data-export-jpeg]')]);
+  expect(jpg.suggestedFilename()).toMatch(/\.jpg$/);
+  await page.locator('#toolbar .tool[data-export-menu]').click();
+  const [webp] = await Promise.all([page.waitForEvent('download'), page.click('#export-menu [data-export-webp]')]);
+  expect(webp.suggestedFilename()).toMatch(/\.webp$/);
+});
+
+test('color con alfa: el inspector emite #rrggbbaa y aparece en recientes', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  const alpha = page.locator('#inspector-body .color-field input[type=number]');
+  await alpha.fill('0.5');
+  await alpha.dispatchEvent('change');
+  await expect(page.locator('#inspector-body .swatch').first()).toHaveAttribute('title', /80$/);
+  // el color con alfa sobrevive a un re-render del inspector
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('r');
+  await drag(page, [300, 100], [420, 180]);
+  await expect(page.locator('#inspector-body .swatch').first()).toHaveAttribute('title', /80$/);
 });
 
 test('guías manuales: clic derecho crea, clic derecho sobre ella borra', async ({ page }) => {
@@ -272,13 +299,76 @@ test('guías manuales: clic derecho crea, clic derecho sobre ella borra', async 
   await expect(page.locator('#inspector-body input[type=number]').nth(0)).toHaveValue('900');
 });
 
-test('i18n: el idioma guardado cambia la UI (es) y hay selector con 15 idiomas', async ({ page }) => {
+test('i18n: el idioma guardado cambia la UI (es) y hay selector con 15 idiomas en el menú de configuración', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('pyra:lang', 'es'));
   await page.goto('/');
   await expect(page.locator('.panel-title').first()).toContainText('Capas');
+  await page.locator('#settings-btn').click();
   const langSel = page.locator('#lang');
+  await expect(langSel).toBeVisible();
   await expect(langSel.locator('option')).toHaveCount(15);
   await langSel.selectOption('de');
   await expect(page.locator('.panel-title').first()).toContainText('Ebenen');
   await expect(langSel).toHaveValue('de');
+});
+
+test('theme: menú de configuración abajo a la izquierda con claro/oscuro/sistema', async ({ browser }) => {
+  const ctx = await browser.newContext({ colorScheme: 'dark' });
+  const page = await ctx.newPage();
+  await page.goto('/');
+  // por defecto: theme del sistema (oscuro en este contexto)
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme');
+  await page.locator('#settings-btn').click();
+  const menu = page.locator('#settings-menu');
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('#theme option')).toHaveCount(3);
+  await page.locator('#theme').selectOption('light');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  // persiste tras recargar
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.locator('#settings-btn').click();
+  await page.locator('#theme').selectOption('dark');
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme');
+  // clic fuera cierra el menú
+  await page.locator('#canvas').click();
+  await expect(page.locator('#settings-menu')).toBeHidden();
+});
+
+test('capas: drag and drop reordena y anida capas', async ({ page }) => {
+  await openApp(page);
+  await page.locator('#layers-body .rowbtn button').click();
+  const rows = page.locator('#layers-body .row');
+  await expect(rows).toHaveCount(2);
+  const topName = (await rows.first().locator('.row-name').textContent())!.split(' ·')[0];
+
+  // soltar la capa superior sobre el centro de la inferior => se anida dentro
+  await page.evaluate(() => {
+    const rws = document.querySelectorAll<HTMLElement>('#layers-body .row');
+    const dt = new DataTransfer();
+    const fire = (el: HTMLElement, type: string, clientY: number) =>
+      el.dispatchEvent(new DragEvent(type, { bubbles: true, dataTransfer: dt, clientY }));
+    const target = rws[1];
+    const r = target.getBoundingClientRect();
+    fire(rws[0], 'dragstart', 0);
+    fire(target, 'dragover', r.top + r.height / 2);
+    fire(target, 'drop', r.top + r.height / 2);
+    fire(rws[0], 'dragend', 0);
+  });
+  await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+
+  // la capa arrastrada queda indentada (hija) bajo su padre
+  await expect(rows.first().locator('.row-name')).toContainText(topName);
+  const pads = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('#layers-body .row')].map((el) => parseInt(el.style.paddingLeft || '0')),
+  );
+  expect(Math.max(...pads)).toBeGreaterThan(Math.min(...pads));
+
+  // undo deshace el reorden
+  await page.keyboard.press('Control+z');
+  await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+  const pads2 = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('#layers-body .row')].map((el) => parseInt(el.style.paddingLeft || '0')),
+  );
+  expect(new Set(pads2).size).toBe(1);
 });
