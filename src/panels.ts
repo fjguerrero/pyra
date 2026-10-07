@@ -9,7 +9,19 @@ import { icon, hasIcon } from './icons';
 import { addCustom, addRecent, loadSwatches, moveSwatch, removeSwatch, type SwatchStore } from './swatches';
 
 /** Ajustes del pincel cuando la herramienta activa es el pincel. */
-export type BrushPanelArg = { s: BrushSettings; set: (patch: Partial<BrushSettings>) => void };
+export type BrushPanelArg = {
+  s?: BrushSettings;
+  set?: (patch: Partial<BrushSettings>) => void;
+  /** Modo actual de la herramienta (lápiz continuo/suavizado, polígono recto/estilizado, pluma curva/recta). */
+  mode?: string;
+  /** Claves i18n de los dos modos a ofrecer como botones. */
+  modes?: [string, string];
+  setMode?: (mode: string) => void;
+  /** Mostrar el slider de presión (solo el pincel). */
+  pressure?: boolean;
+  /** Campos de color para la herramienta activa (polilápiz: borde y relleno). */
+  colors?: { labelKey: string; value: string; set: (v: string) => void }[];
+};
 
 export interface PanelApi {
   editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj> | Partial<TextObj> | { fx: Fx }): void;
@@ -20,6 +32,7 @@ export interface PanelApi {
   moveLayer(layerId: string, delta: number): void;
   reorderLayer(layerId: string, targetId: string, mode: 'before' | 'after' | 'child'): void;
   align(kind: AlignKind): void;
+  order(kind: 'front' | 'up' | 'down' | 'back'): void;
   union(): void;
   selectPage(pageId: string): void;
   editPage(patch: { width?: number; height?: number }): void;
@@ -189,7 +202,24 @@ function brushFields(s: BrushSettings, set: (patch: Partial<BrushSettings>) => v
 }
 
 function renderBrushPanel(bp: BrushPanelArg): void {
-  brushFields(bp.s, bp.set, true);
+  if (bp.modes && bp.setMode) {
+    const row = document.createElement('div');
+    row.className = 'field';
+    for (const m of bp.modes) {
+      row.append(btn('', t(m as never), t(m as never), bp.mode === m, () => bp.setMode!(m), m === 'pencil_continuous' || m === 'poly_straight' || m === 'pen_straight' ? 'line' : 'pen'));
+    }
+    $('inspector-body').appendChild(row);
+  }
+  if (bp.s && bp.set) brushFields(bp.s, bp.set, Boolean(bp.pressure));
+  if (bp.colors) {
+    for (const c of bp.colors) colorField(t(c.labelKey as never), c.value, c.set);
+    const noFill = bp.colors.find((c) => c.labelKey === 'fill');
+    if (noFill) {
+      $('inspector-body').appendChild(
+        btn('', t('no_fill'), t('no_fill'), !noFill.value, () => noFill.set(noFill.value ? '' : noFill.value || '#4f8cff')),
+      );
+    }
+  }
 }
 
 let renderNow: () => void = () => {};
@@ -245,10 +275,9 @@ export function renderPanels(
   const insp = $('inspector-body');
   insp.innerHTML = '';
   if (brushPanel && !obj) {
+    // sólo cambia el inspector; capas/páginas se siguen renderizando abajo
     renderBrushPanel(brushPanel);
-    return;
-  }
-  if (!obj) {
+  } else if (!obj) {
     const layer = page.layers.find((l) => l.id === selectedLayerId) ?? null;
     if (layer) {
       sliderField(t('layer_opacity'), layer.opacity, 0, 1, 0.01, (v) => api.editLayer(layer.id, { opacity: v }));
@@ -378,6 +407,23 @@ export function renderPanels(
       // una línea no se rellena: su color es el trazo
       const colorKey = isLineLike(obj) ? 'stroke' : 'fill';
       colorField(isLineLike(obj) ? t('stroke_color') : t('fill'), (obj[colorKey] as string) || '#000000', (v) => api.editObj(obj, { [colorKey]: v } as Partial<ShapeObj>));
+      if (obj.shape === 'polygon') {
+        // borde y relleno son independientes en un polígono
+        insp.appendChild(btn('', t('no_fill'), t('no_fill'), !obj.fill, () => api.editObj(obj, { fill: obj.fill ? '' : (obj.stroke ?? '#4f8cff') } as Partial<ShapeObj>)));
+        colorField(t('stroke_color'), obj.stroke ?? '#000000', (v) => api.editObj(obj, { stroke: v, strokeWidth: Math.max(1, obj.strokeWidth) } as Partial<ShapeObj>));
+        const swWrap = document.createElement('label');
+        swWrap.className = 'field';
+        swWrap.innerHTML = `<span>${t('stroke_width')}</span>`;
+        const sw = document.createElement('input');
+        sw.type = 'number';
+        sw.min = '0';
+        sw.value = String(obj.strokeWidth);
+        sw.addEventListener('change', () => api.editObj(obj, { strokeWidth: Math.max(0, Number(sw.value)) } as Partial<ShapeObj>));
+        swWrap.appendChild(sw);
+        insp.appendChild(swWrap);
+        insp.appendChild(btn('', obj.dash ? t('stroke_dashed') : t('stroke_solid'), t('stroke_style'), Boolean(obj.dash), () => api.editObj(obj, { dash: obj.dash ? null : [6, 4] } as Partial<ShapeObj>)));
+        insp.appendChild(btn('', obj.smooth ? t('pencil_smooth') : t('poly_straight'), t('stroke_style'), Boolean(obj.smooth), () => api.editObj(obj, { smooth: !obj.smooth } as Partial<ShapeObj>)));
+      }
       if (isLineLike(obj)) {
         // el pincel del objeto: tamaño = grosor del trazo
         brushFields(
@@ -492,6 +538,20 @@ export function renderPanels(
     grid.appendChild(ab2);
   }
   ab.appendChild(grid);
+  // orden de apilado: frente / un paso arriba / un paso abajo / fondo
+  const og = document.createElement('div');
+  og.className = 'aligngrid';
+  for (const [kind, iconName, titleKey] of [
+    ['front', 'front', 'order_front'],
+    ['up', 'up', 'order_up'],
+    ['down', 'down', 'order_down'],
+    ['back', 'back', 'order_back'],
+  ] as const) {
+    const ob = btn('', '', t(titleKey), false, () => api.order(kind), iconName);
+    ob.dataset.order = kind;
+    og.appendChild(ob);
+  }
+  ab.appendChild(og);
   if (selectedIds.length >= 2) {
     const ub = btn('', t('union'), t('union_hint'), false, () => api.union());
     ub.dataset.act = 'union';

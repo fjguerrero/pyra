@@ -3,6 +3,7 @@ import { lineEnds, polyPoints, type BrushShape, type Fx, type LineFrom, type Obj
 import type { View } from './view';
 import type { Guide } from './guides';
 import { findObj, handles } from './hit';
+import { smoothClosedPolygon, smoothPolyline } from './freehand';
 import { drawTextObj } from './text';
 import { gradientFill } from './gradient';
 export interface Draft {
@@ -20,6 +21,8 @@ export interface Draft {
   tip?: string | null;
   /** Vértices del lápiz en coords de mundo (draft de polígono). */
   poly?: { x: number; y: number }[];
+  /** El draft de polígono debe dibujarse suavizado (Catmull-Rom). */
+  smooth?: boolean;
 }
 
 export interface Scene {
@@ -89,11 +92,14 @@ export class Renderer {
     ctx.fillStyle = ws?.color || WORKSPACE;
     ctx.fillRect(0, 0, cw, ch);
     if (ws?.grid) {
-      // rejilla de cuadrados sobre el fondo
+      // cuadrícula de líneas sobre el fondo
       const g = ws.grid;
-      ctx.fillStyle = 'rgba(128,128,128,0.18)';
-      for (let y = 0; y < ch; y += g * 2)
-        for (let x = 0; x < cw; x += g * 2) ctx.fillRect(x, y, g, g);
+      ctx.strokeStyle = 'rgba(128,128,128,0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = 0; x <= cw; x += g) { ctx.moveTo(x, 0); ctx.lineTo(x, ch); }
+      for (let y = 0; y <= ch; y += g) { ctx.moveTo(0, y); ctx.lineTo(cw, y); }
+      ctx.stroke();
     }
 
     const px = v.panX;
@@ -141,18 +147,17 @@ export class Renderer {
 
     if (scene.draft) {
       if (scene.draft.shape === 'stroke' && scene.draft.pts) {
-        this.paintStroke(
-          scene.draft.pts.map((p) => ({ x: p.x * v.zoom + v.panX, y: p.y * v.zoom + v.panY, p: p.p })),
-          (scene.draft.strokeWidth ?? 4) * v.zoom,
-          scene.draft.stroke ?? ACCENT,
-          scene.draft.brush,
-          scene.draft.tip,
-        );
+        const raw = scene.draft.pts.map((p) => ({ x: p.x * v.zoom + v.panX, y: p.y * v.zoom + v.panY, p: p.p }));
+        const pts = scene.draft.smooth
+          ? smoothPolyline(raw, 8).map((q) => ({ x: q.x, y: q.y, p: 1 }))
+          : raw;
+        this.paintStroke(pts, (scene.draft.strokeWidth ?? 4) * v.zoom, scene.draft.stroke ?? ACCENT, scene.draft.brush, scene.draft.tip);
       } else if (scene.draft.shape === 'polygon' && scene.draft.poly) {
+        const verts = scene.draft.smooth ? smoothClosedPolygon(scene.draft.poly, 10) : scene.draft.poly;
         ctx.strokeStyle = ACCENT;
         ctx.setLineDash([4, 3]);
         ctx.beginPath();
-        scene.draft.poly.forEach((p, i) => (i ? ctx.lineTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY) : ctx.moveTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY)));
+        verts.forEach((p, i) => (i ? ctx.lineTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY) : ctx.moveTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY)));
         ctx.closePath();
         ctx.stroke();
         ctx.setLineDash([]);
@@ -331,7 +336,7 @@ export class Renderer {
     return off;
   }
 
-  private path(o: { x: number; y: number; w: number; h: number; shape: ShapeKind }, v: View): void {
+  private path(o: { x: number; y: number; w: number; h: number; shape: ShapeKind; smooth?: boolean }, v: View): void {
     const ctx = this.ctx;
     const x = o.x * v.zoom + v.panX;
     const y = o.y * v.zoom + v.panY;
@@ -345,7 +350,7 @@ export class Renderer {
       ctx.moveTo(e.x1 * v.zoom + v.panX, e.y1 * v.zoom + v.panY);
       ctx.lineTo(e.x2 * v.zoom + v.panX, e.y2 * v.zoom + v.panY);
     } else if (o.shape === 'polygon') {
-      const pts = polyPoints(o);
+      const pts = o.smooth ? smoothClosedPolygon(polyPoints(o), 12) : polyPoints(o);
       pts.forEach((p, i) => (i ? ctx.lineTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY) : ctx.moveTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY)));
       ctx.closePath();
     } else {
@@ -467,7 +472,9 @@ export class Renderer {
       ctx.lineWidth = o.strokeWidth * v.zoom;
       ctx.lineCap = o.brush === 'square' ? 'butt' : 'round';
       ctx.lineJoin = o.brush === 'square' ? 'miter' : 'round';
+      if (o.dash) ctx.setLineDash(o.dash.map((d) => d * v.zoom));
       ctx.stroke();
+      if (o.dash) ctx.setLineDash([]);
       ctx.lineCap = 'butt';
       ctx.lineJoin = 'miter';
       ctx.globalAlpha = ga / (o.strokeOpacity ?? 1);
@@ -502,12 +509,16 @@ export class Renderer {
   /** Traza del pincel: polilínea con ancho por presión; `tip` estampa una imagen en cada punto. */
   private drawStroke(o: ShapeObj, v: View): void {
     if ((o.points?.length ?? 0) < 2) return;
+    const raw = o.points!.map((p) => ({
+      x: (o.x + p.x * o.w) * v.zoom + v.panX,
+      y: (o.y + p.y * o.h) * v.zoom + v.panY,
+      p: Math.max(0.05, p.p),
+    }));
+    const pts = o.smooth
+      ? smoothPolyline(raw, 8).map((q) => ({ x: q.x, y: q.y, p: 1 }))
+      : raw;
     this.paintStroke(
-      o.points!.map((p) => ({
-        x: (o.x + p.x * o.w) * v.zoom + v.panX,
-        y: (o.y + p.y * o.h) * v.zoom + v.panY,
-        p: Math.max(0.05, p.p),
-      })),
+      pts,
       Math.max(0.5, o.strokeWidth * v.zoom),
       o.stroke ?? '#000000',
       o.brush,

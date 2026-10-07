@@ -15,6 +15,8 @@
           <button type="button" class="tool" data-tool="ellipse" data-icon="ellipse" aria-pressed="false" data-i18n-title="tool_ellipse"></button>
           <button type="button" class="tool" data-tool="line" data-icon="line" aria-pressed="false" data-i18n-title="tool_line"></button>
           <button type="button" class="tool" data-tool="pen" data-icon="pen" aria-pressed="false" data-i18n-title="tool_pen"></button>
+          <button type="button" class="tool" data-tool="pencil" data-icon="pencil" aria-pressed="false" data-i18n-title="tool_pencil"></button>
+          <button type="button" class="tool" data-tool="polypen" data-icon="polypen" aria-pressed="false" data-i18n-title="pencil_polygon"></button>
           <button type="button" class="tool" data-tool="eraser" data-icon="eraser" aria-pressed="false" data-i18n-title="tool_eraser"></button>
           <button type="button" class="tool" data-tool="brush" data-icon="brush" aria-pressed="false" data-i18n-title="tool_brush"></button>
           <button type="button" class="tool" data-tool="text" data-icon="text" aria-pressed="false" data-i18n-title="tool_text"></button>
@@ -75,14 +77,16 @@
         <div class="bg-row">
           <input type="color" id="bg-color" />
           <select id="bg-grid">
-            <option value="0"></option>
+            <option value="0" data-i18n="bg_none"></option>
             <option value="10">10px</option>
             <option value="20">20px</option>
             <option value="50">50px</option>
             <option value="100">100px</option>
           </select>
         </div>
+        <button type="button" id="help-btn" data-i18n="help"></button>
       </div>
+      <div id="help-modal" hidden></div>
     </div>
     <input type="file" id="import-file" accept="image/*" hidden />
     <script type="module" src="/src/main.ts"></script>

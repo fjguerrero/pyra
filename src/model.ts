@@ -66,6 +66,10 @@ export interface ShapeObj {
   tip?: string | null;
   /** Polígono (pen tool): vértices normalizados 0..1 dentro del bbox; se escala con el bbox. */
   poly?: { x: number; y: number }[];
+  /** Trazo/lápiz suavizado o polígono con vértices curvos: se dibuja con Catmull-Rom. */
+  smooth?: boolean;
+  /** Guión del borde de un polígono (px de mundo); undefined = línea continua. */
+  dash?: number[] | null;
   /** Opacidad del trazo (1 = opaco). */
   strokeOpacity?: number;
   /** Esquina de inicio del trazo de una línea; undefined = 'nw'. */

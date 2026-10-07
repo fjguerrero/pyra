@@ -4,7 +4,8 @@ import type { Draft } from './render';
 import { fitAll, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
 import { addLayer, moveLayer, reorderLayer } from './layers';
-import { snapBox, type Guide } from './guides';
+import { snapBox, type Guide, type Snap } from './guides';
+import { rdpSimplify } from './freehand';
 import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { DEFAULT_FONT, measureText } from './text';
@@ -32,9 +33,36 @@ const view: View = { zoom: 1, panX: 0, panY: 0 };
 let selectedId: string | null = null;
 let selectedIds: string[] = [];
 let selectedLayerId: string | null = null;
-let tool: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'eraser' = 'select';
+let tool: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' | 'polypen' | 'eraser' = 'select';
 let draft: Draft | null = null;
-let penPts: { x: number; y: number }[] = []; // vértices del lápiz en coords de mundo
+// vértices de la pluma en coords de mundo; c = vértice curvo (Shift o modo curvo)
+let penPts: { x: number; y: number; c: boolean }[] = [];
+
+// Lápiz: modo continuo (MS Paint) o suavizado; grosor propio. Persistido.
+type PencilSettings = { mode: 'continuous' | 'smooth'; size: number };
+const pencil: PencilSettings = { mode: 'continuous', size: 3, ...JSON.parse(localStorage.getItem('pyra:pencil') || '{}') };
+function setPencil(patch: Partial<PencilSettings>): void {
+  Object.assign(pencil, patch);
+  localStorage.setItem('pyra:pencil', JSON.stringify(pencil));
+  invalidate();
+}
+
+// Lápiz de polígonos: modo líneas rectas (RDP) o estilizado; borde y relleno propios. Persistido.
+type PolySettings = { mode: 'straight' | 'stylized'; fill: string; noFill: boolean; stroke: string; width: number; dash: boolean };
+const poly: PolySettings = { mode: 'straight', fill: '#4f8cff', noFill: false, stroke: '#4f8cff', width: 2, dash: false, ...JSON.parse(localStorage.getItem('pyra:poly') || '{}') };
+function setPoly(patch: Partial<PolySettings>): void {
+  Object.assign(poly, patch);
+  localStorage.setItem('pyra:poly', JSON.stringify(poly));
+  invalidate();
+}
+
+// Pluma: vértices curvos por defecto (Shift los invierte). Persistido.
+const penOpt: { curved: boolean } = { curved: false, ...JSON.parse(localStorage.getItem('pyra:pen') || '{}') };
+function setPenOpt(patch: Partial<{ curved: boolean }>): void {
+  Object.assign(penOpt, patch);
+  localStorage.setItem('pyra:pen', JSON.stringify(penOpt));
+  invalidate();
+}
 let eraserDrag: { obj: BitmapObj; start: NonNullable<BitmapObj['erase']>; moved: boolean } | null = null;
 let marquee: { x: number; y: number; w: number; h: number } | null = null;
 let clipboard: Obj[] = [];
@@ -103,12 +131,16 @@ function selectedObjs(): Obj[] {
   return selectedIds.map((id) => findObj(page, id)).filter((o): o is Obj => o !== null);
 }
 
+type Pt = { x: number; y: number };
+
 type Drag =
   | { mode: 'pan'; sx: number; sy: number; panX: number; panY: number }
   | { mode: 'create'; ox: number; oy: number }
   | { mode: 'paint'; pts: { x: number; y: number; p: number }[] }
+  | { mode: 'pencil'; pts: Pt[] }
+  | { mode: 'polypen'; pts: Pt[] }
   | { mode: 'marquee'; ox: number; oy: number; additive: boolean }
-  | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
+  | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean; axis?: 'x' | 'y'; toggle?: Obj | null }
   | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number; size?: number }; grab: { x: number; y: number } }
   | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number }
   | { mode: 'guide'; index: number; startPos: number }
@@ -144,7 +176,7 @@ function eraseAt(obj: BitmapObj, wx: number, wy: number): void {
   (obj.erase ??= []).push({ x: (wx - obj.x) / obj.w, y: (wy - obj.y) / obj.h, r: 8 / view.zoom / obj.w });
 }
 
-/** Cerrar el polígono del lápiz: los vértices de mundo pasan a `poly` normalizada. */
+/** Cerrar la pluma: los vértices de mundo pasan a `poly` normalizada (curvos = Catmull-Rom). */
 function finishPen(): void {
   const pts = penPts;
   penPts = [];
@@ -155,6 +187,7 @@ function finishPen(): void {
   }
   const x0 = Math.min(...pts.map((p) => p.x)), y0 = Math.min(...pts.map((p) => p.y));
   const w = Math.max(1, Math.max(...pts.map((p) => p.x)) - x0), h = Math.max(1, Math.max(...pts.map((p) => p.y)) - y0);
+  const curved = pts.some((p) => p.c);
   const obj: ShapeObj = {
     id: uid(),
     shape: 'polygon',
@@ -164,6 +197,7 @@ function finishPen(): void {
     stroke: null,
     strokeWidth: 0,
     poly: pts.map((p) => ({ x: (p.x - x0) / w, y: (p.y - y0) / h })),
+    smooth: curved,
   };
   pushCreateCmd(obj);
   setTool('select');
@@ -172,7 +206,7 @@ function finishPen(): void {
 let drag: Drag | null = null;
 
 // Modelo de herramientas de Fireworks: la herramienta define qué hace el arrastre.
-function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'eraser'): void {
+function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' | 'polypen' | 'eraser'): void {
   tool = t;
   penPts = [];
   document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) => {
@@ -181,7 +215,11 @@ function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'eraser'):
     el.setAttribute('aria-pressed', String(on));
   });
   canvas.style.cursor = t === 'select' ? 'default' : 'crosshair';
-  brushPanel = t === 'brush' ? { s: brush, set: setBrush } : undefined;
+  brushPanel = t === 'brush' ? { s: brush, set: setBrush, pressure: true }
+    : t === 'pencil' ? { s: { size: pencil.size, pressure: 1, opacity: 1, shape: 'round', tip: null }, set: (p) => setPencil({ size: p.size ?? pencil.size, mode: p.shape === 'square' ? 'continuous' : 'smooth' }), mode: pencil.mode, modes: ['pencil_continuous', 'pencil_smooth'] }
+    : t === 'polypen' ? { s: { size: poly.width, pressure: 1, opacity: 1, shape: 'round', tip: null }, set: (p) => setPoly({ width: p.size ?? poly.width, dash: p.shape === 'square' }), mode: poly.mode, modes: ['poly_freehand', 'poly_straight'], colors: [{ labelKey: 'stroke_color', value: poly.stroke, set: (v) => setPoly({ stroke: v }) }, { labelKey: 'fill', value: poly.noFill ? '' : poly.fill, set: (v) => setPoly({ fill: v || '#4f8cff', noFill: !v }) }] }
+    : t === 'pen' ? { s: undefined, mode: penOpt.curved ? 'pen_curved' : 'pen_straight', modes: ['pen_curved', 'pen_straight'], setMode: (m) => setPenOpt({ curved: m === 'pen_curved' }) }
+    : undefined;
   invalidate();
 }
 // ---- i18n: textos estáticos del HTML + selector de idioma ----
@@ -273,6 +311,16 @@ bgGrid.addEventListener('change', () => {
   bg.grid = Number(bgGrid.value) || 0;
   saveBg();
 });
+
+// ---- Ayuda: modal con todas las funcionalidades (texto i18n ya formateado) ----
+const helpBtn = document.getElementById('help-btn') as HTMLButtonElement;
+const helpModal = document.getElementById('help-modal') as HTMLElement;
+helpBtn.addEventListener('click', () => {
+  helpModal.innerHTML = `<div class="card">${t('help_html')}</div>`;
+  helpModal.hidden = false;
+  settingsMenu.hidden = true;
+});
+helpModal.addEventListener('click', () => { helpModal.hidden = true; });
 
 applyStaticI18n();
 
@@ -577,13 +625,26 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
 
+  if (tool === 'pencil') {
+    drag = { mode: 'pencil', pts: [{ x: wx, y: wy }] };
+    invalidate();
+    return;
+  }
+
+  if (tool === 'polypen') {
+    drag = { mode: 'polypen', pts: [{ x: wx, y: wy }] };
+    invalidate();
+    return;
+  }
+
   if (tool === 'pen') {
     if (penPts.length >= 3 && Math.hypot(wx - penPts[0].x, wy - penPts[0].y) < 8 / view.zoom) {
       finishPen(); // clic sobre el primer vértice = cerrar
       return;
     }
-    penPts.push({ x: wx, y: wy });
-    draft = { x: 0, y: 0, w: 0, h: 0, shape: 'polygon', poly: penPts };
+    // modo curvo por defecto; Shift invierte el vértice (curvo↔recto)
+    penPts.push({ x: wx, y: wy, c: e.shiftKey ? !penOpt.curved : penOpt.curved });
+    draft = { x: 0, y: 0, w: 0, h: 0, shape: 'polygon', poly: penPts, smooth: penPts.some((p) => p.c) };
     invalidate();
     return;
   }
@@ -658,13 +719,17 @@ canvas.addEventListener('pointerdown', (e) => {
 
   const hit = hitTest(page, wx, wy, 4 / view.zoom, e.shiftKey ? undefined : selectedIds); // margen constante en pantalla
   if (hit) {
-    if (e.shiftKey) select(hit.id, true);
+    // Shift sobre un objeto ya seleccionado: no lo deselecta al empezar (rompería el drag);
+    // el toggle aditivo se aplica en pointerup solo si no hubo movimiento
+    const toggle = e.shiftKey && selectedIds.includes(hit.id) ? hit : null;
+    if (e.shiftKey && !toggle) select(hit.id, true);
     else if (!selectedIds.includes(hit.id)) select(hit.id);
     drag = {
       mode: 'move',
       items: selectedObjs().map((o) => ({ obj: o, start: { x: o.x, y: o.y } })),
       grab: { x: wx, y: wy },
       moved: false,
+      toggle,
     };
     canvas.style.cursor = 'move';
     invalidate();
@@ -711,6 +776,18 @@ canvas.addEventListener('pointermove', (e) => {
     return;
   }
 
+  if (drag.mode === 'pencil' || drag.mode === 'polypen') {
+    const last = drag.pts[drag.pts.length - 1];
+    if (Math.hypot(wx - last.x, wy - last.y) > 2 / view.zoom) {
+      drag.pts.push({ x: wx, y: wy });
+      draft = drag.mode === 'pencil'
+        ? { x: 0, y: 0, w: 0, h: 0, shape: 'stroke', pts: drag.pts.map((p) => ({ x: p.x, y: p.y, p: 1 })), stroke: brushColor(), strokeWidth: pencil.size, brush: pencil.mode === 'smooth' ? 'round' : 'square', smooth: pencil.mode === 'smooth' }
+        : { x: 0, y: 0, w: 0, h: 0, shape: 'polygon', poly: drag.pts, smooth: poly.mode === 'stylized' };
+    }
+    invalidate();
+    return;
+  }
+
   if (drag.mode === 'erase' && eraserDrag) {
     const last = eraserDrag.obj.erase?.[eraserDrag.obj.erase.length - 1];
     if (!last || Math.hypot(wx - (eraserDrag.obj.x + last.x * eraserDrag.obj.w), wy - (eraserDrag.obj.y + last.y * eraserDrag.obj.h)) > 4 / view.zoom) {
@@ -749,9 +826,14 @@ canvas.addEventListener('pointermove', (e) => {
 
   if (drag.mode === 'move') {
     const page = activePage(doc);
-    const dx = wx - drag.grab.x;
-    const dy = wy - drag.grab.y;
-    // smart guides: imán a bordes/centros de objetos visibles y de la página
+    let dx = wx - drag.grab.x;
+    let dy = wy - drag.grab.y;
+    // Shift = eje único: la primera dirección con movimiento real manda (como Fireworks)
+    if (e.shiftKey && !drag.axis && (Math.abs(dx) > 2 || Math.abs(dy) > 2))
+      drag.axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+    if (drag.axis === 'x') dy = 0;
+    if (drag.axis === 'y') dx = 0;
+    // smart guides: imán a bordes/centros de objetos visibles y de la página; Ctrl = movimiento libre
     const items = drag.items;
     const primary = items[0];
     const others = page.layers
@@ -759,13 +841,19 @@ canvas.addEventListener('pointermove', (e) => {
       .flatMap((l) => l.objects)
       .filter((o) => !items.some((i) => i.obj === o))
       .map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h }));
-    const snap = snapBox(
-      { x: primary.start.x + dx, y: primary.start.y + dy, w: primary.obj.w, h: primary.obj.h },
-      others,
-      { width: page.width, height: page.height, guides: page.guides },
-      6 / view.zoom, // tolerancia constante en pantalla
-    );
-    guides = snap.guides;
+    let snap: Snap = { dx: 0, dy: 0, guides: [] };
+    if (!e.ctrlKey) {
+      snap = snapBox(
+        { x: primary.start.x + dx, y: primary.start.y + dy, w: primary.obj.w, h: primary.obj.h },
+        others,
+        { width: page.width, height: page.height, guides: page.guides },
+        6 / view.zoom, // tolerancia constante en pantalla
+      );
+      if (drag.axis === 'x') snap.dy = 0;
+      if (drag.axis === 'y') snap.dx = 0;
+    }
+    // solo se dibujan las líneas que referencian un objeto real (las de página/guías ya están en pantalla)
+    guides = snap.guides.filter((g) => g.kind === 'obj');
     for (const it of drag.items) {
       it.obj.x = Math.round(it.start.x + dx + snap.dx);
       it.obj.y = Math.round(it.start.y + dy + snap.dy);
@@ -851,7 +939,6 @@ canvas.addEventListener('pointerup', (e) => {
       });
     }
     persist();
-    return;
   }
 
   if (drag.mode === 'erase' && eraserDrag) {
@@ -866,8 +953,6 @@ canvas.addEventListener('pointerup', (e) => {
       });
       persist();
     }
-    invalidate();
-    return;
   }
 
   if (drag.mode === 'groupresize') {
@@ -878,11 +963,7 @@ canvas.addEventListener('pointerup', (e) => {
       undo: () => items.forEach((it) => Object.assign(it.obj, it.from)),
     });
     persist();
-    invalidate();
-    return;
-  }
-
-  if (drag.mode === 'paint') {
+  } else if (drag.mode === 'paint') {
     guides = [];
     const pts = drag.pts;
     if (pts.length > 1) {
@@ -903,6 +984,52 @@ canvas.addEventListener('pointerup', (e) => {
         points: pts.map((p) => ({ x: (p.x - x0) / w, y: (p.y - y0) / h, p: p.p })),
       };
       pushCreateCmd(obj);
+    }
+  } else if (drag.mode === 'pencil') {
+    guides = [];
+    draft = null;
+    const pts = drag.pts;
+    if (pts.length > 1) {
+      const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+      const x0 = Math.min(...xs), y0 = Math.min(...ys);
+      const w = Math.max(1, Math.max(...xs) - x0), h = Math.max(1, Math.max(...ys) - y0);
+      const obj: ShapeObj = {
+        id: uid(),
+        shape: 'stroke',
+        name: NAMES.stroke,
+        x: Math.round(x0), y: Math.round(y0), w: Math.round(w), h: Math.round(h),
+        fill: '',
+        stroke: brushColor(),
+        strokeWidth: pencil.size,
+        points: pts.map((p) => ({ x: (p.x - x0) / w, y: (p.y - y0) / h, p: 1 })),
+        smooth: pencil.mode === 'smooth',
+      };
+      pushCreateCmd(obj);
+    }
+  } else if (drag.mode === 'polypen') {
+    guides = [];
+    draft = null;
+    let pts = drag.pts;
+    if (pts.length > 2) {
+      const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+      const x0 = Math.min(...xs), y0 = Math.min(...ys);
+      const w = Math.max(1, Math.max(...xs) - x0), h = Math.max(1, Math.max(...ys) - y0);
+      if (poly.mode === 'straight') pts = rdpSimplify(pts, Math.max(4, poly.width * 2));
+      if (pts.length > 2) {
+        const obj: ShapeObj = {
+          id: uid(),
+          shape: 'polygon',
+          name: NAMES.polygon,
+          x: Math.round(x0), y: Math.round(y0), w: Math.round(w), h: Math.round(h),
+          fill: poly.noFill ? '' : poly.fill,
+          stroke: poly.stroke,
+          strokeWidth: poly.width,
+          poly: pts.map((p) => ({ x: (p.x - x0) / w, y: (p.y - y0) / h })),
+          smooth: poly.mode === 'stylized',
+          dash: poly.dash ? [6, 4] : null,
+        };
+        pushCreateCmd(obj);
+      }
     }
   } else if (drag.mode === 'create' && draft) {
     const d = draft;
@@ -942,15 +1069,19 @@ canvas.addEventListener('pointerup', (e) => {
         persist();
       }
     }
-  } else if (drag.mode === 'move' && drag.moved) {
+  } else if (drag.mode === 'move') {
     guides = [];
-    const items = drag.items.map((it) => ({ obj: it.obj, from: it.start, to: { x: it.obj.x, y: it.obj.y } }));
-    history.record({
-      label: 'mover',
-      do: () => items.forEach((it) => Object.assign(it.obj, it.to)),
-      undo: () => items.forEach((it) => Object.assign(it.obj, it.from)),
-    });
-    persist();
+    if (drag.moved) {
+      const items = drag.items.map((it) => ({ obj: it.obj, from: it.start, to: { x: it.obj.x, y: it.obj.y } }));
+      history.record({
+        label: 'mover',
+        do: () => items.forEach((it) => Object.assign(it.obj, it.to)),
+        undo: () => items.forEach((it) => Object.assign(it.obj, it.from)),
+      });
+      persist();
+    } else if (drag.toggle) {
+      select(drag.toggle.id, true); // Shift+clic sin mover = deselectar (toggle aditivo)
+    }
   } else if (drag.mode === 'marquee') {
     const m = marquee;
     marquee = null;
@@ -1100,6 +1231,40 @@ const panelApi = {
       persist();
       invalidate();
     }
+  },
+  order(kind: 'front' | 'up' | 'down' | 'back'): void {
+    const page = activePage(doc);
+    const moves = selectedObjs().map((o) => {
+      const li = page.layers.findIndex((l) => l.objects.includes(o));
+      return { o, li, from: li >= 0 ? page.layers[li].objects.indexOf(o) : -1 };
+    }).filter((m) => m.from >= 0);
+    if (moves.length) {
+      const apply = () => {
+        for (const m of moves) {
+          const arr = page.layers[m.li].objects;
+          const i = arr.indexOf(m.o);
+          if (i < 0) continue;
+          arr.splice(i, 1);
+          const j = kind === 'front' ? arr.length : kind === 'back' ? 0
+            : kind === 'up' ? Math.min(i + 1, arr.length) : Math.max(i - 1, 0);
+          arr.splice(j, 0, m.o);
+        }
+      };
+      history.run({
+        label: `orden ${kind}`,
+        do: apply,
+        undo: () => {
+          for (const m of [...moves].reverse()) {
+            const arr = page.layers[m.li].objects;
+            const i = arr.indexOf(m.o);
+            if (i >= 0) arr.splice(i, 1);
+            arr.splice(m.from, 0, m.o);
+          }
+        },
+      });
+      persist();
+    }
+    invalidate();
   },
   align(kind: AlignKind): void {
     const page = activePage(doc);
@@ -1347,6 +1512,10 @@ window.addEventListener('keydown', (e) => {
     fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
     invalidate();
   } else if (e.key === 'Escape') {
+    if (!helpModal.hidden) {
+      helpModal.hidden = true;
+      return;
+    }
     if (penPts.length) {
       penPts = [];
       draft = null;
@@ -1370,6 +1539,10 @@ window.addEventListener('keydown', (e) => {
     setTool('brush');
   } else if (e.key === 'p' || e.key === 'P') {
     setTool('pen');
+  } else if (e.key === 'n' || e.key === 'N') {
+    setTool('pencil');
+  } else if (!mod && (e.key === 'g' || e.key === 'G')) {
+    setTool('polypen');
   } else if (e.key === 'x' || e.key === 'X') {
     setTool('eraser');
   } else if (mod && (e.key === 'u' || e.key === 'U')) {

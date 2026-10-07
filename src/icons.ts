@@ -10,6 +10,8 @@ const P: Record<string, string> = {
   brushRound: 'M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8',
   brushSquare: 'M8 8h8v8H8z',
   pen: 'M4 20l3.5-1L19 7.5 21 9.5 9.5 21zM15 6l3 3',
+  pencil: 'M4 20l1-4L16 5l3 3L8 19zM14 7l3 3',
+  polypen: 'M12 4l7 4v8l-7 4-7-4V8zM12 4v16',
   eraser: 'M8 18h9M10 21h7M5 13l7-7 6 6-7 7H6z',
   text: 'M5 6h14M12 6v13',
   hand: 'M8 13V6a1.5 1.5 0 0 1 3 0v6M11 12V5a1.5 1.5 0 0 1 3 0v7M14 12V7a1.5 1.5 0 0 1 3 0v7a6 6 0 0 1-6 6h-1a5 5 0 0 1-4-2l-2.5-3.5a1.6 1.6 0 0 1 2.6-1.8L8 15',
@@ -38,6 +40,8 @@ const P: Record<string, string> = {
   alignBottom: 'M4 20h16M7 7v9M14 11v5',
   hdist: 'M4 4v16M12 4v16M20 4v16M7 10v4M15 10v4',
   vdist: 'M4 4h16M4 12h16M4 20h16M10 7h4M10 15h4',
+  front: 'M4 4h16M12 20V8m-5 5 5-5 5 5',
+  back: 'M4 20h16M12 4v12m-5-5 5 5 5-5',
   check: 'M5 13l4 4L19 7',
 };
 

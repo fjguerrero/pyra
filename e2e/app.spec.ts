@@ -467,6 +467,17 @@ test('theme: menú de configuración abajo a la izquierda con claro/oscuro/siste
   await expect(page.locator('#settings-menu')).toBeHidden();
 });
 
+test('ayuda: botón en el menú de configuración abre un modal con la documentación', async ({ page }) => {
+  await page.locator('#settings-btn').click();
+  await page.locator('#help-btn').click();
+  const modal = page.locator('#help-modal');
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('.card h4').first()).toBeVisible();
+  await expect(modal.locator('.card')).toContainText('Ctrl+Z');
+  await page.keyboard.press('Escape');
+  await expect(modal).toBeHidden();
+});
+
 test('capas: drag and drop reordena y anida capas', async ({ page }) => {
   await openApp(page);
   await page.locator('#layers-body .rowbtn button').click();
@@ -518,6 +529,54 @@ test('lápiz: clic a clic se dibuja un polígono y cerrar con clic en el primer 
   await expect(layerCount(page)).toContainText('· 1');
   await expect(page.locator('#toolbar .tool[data-tool="select"]')).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(docShape(page)).toBe('polygon');
+});
+
+test('lápiz: arrastre continuo crea un trazo real (stroke) y undo lo deshace', async ({ page }) => {
+  await page.keyboard.press('n');
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.move(box.x + 120, box.y + 140);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 260, box.y + 200, { steps: 12 });
+  await page.mouse.move(box.x + 320, box.y + 120, { steps: 12 });
+  await page.mouse.up();
+  await expect(layerCount(page)).toContainText('· 1');
+  await expect.poll(docShape(page)).toBe('stroke');
+  await page.keyboard.press('Control+z');
+  await expect(layerCount(page)).toContainText('· 0');
+});
+
+test('polilápiz: un trazo libre se convierte en polígono vectorial con borde y relleno', async ({ page }) => {
+  await page.keyboard.press('g');
+  const box = (await canvas(page).boundingBox())!;
+  // dibujar un triángulo a mano alzada (con vibración)
+  const path: [number, number][] = [];
+  for (let i = 0; i <= 10; i++) path.push([150 + i * 15, 120 + (i % 2)]);
+  for (let i = 0; i <= 10; i++) path.push([300 - i * 7, 120 + i * 16]);
+  for (let i = 0; i <= 10; i++) path.push([300 - i * 15, 280 - (i % 2)]);
+  await page.mouse.move(box.x + path[0][0], box.y + path[0][1]);
+  await page.mouse.down();
+  for (const [x, y] of path.slice(1)) await page.mouse.move(box.x + x, box.y + y);
+  await page.mouse.up();
+  await expect(layerCount(page)).toContainText('· 1');
+  await expect.poll(docShape(page)).toBe('polygon');
+  // el polígono queda con borde y relleno configurables en el inspector
+  const poly = await page.evaluate(() =>
+    new Promise<{ stroke: string; strokeWidth: number; fill: string }>((resolve) => {
+      const open = indexedDB.open('pyra');
+      open.onsuccess = () => {
+        const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+        req.onsuccess = () => {
+          const o = req.result?.pages?.[0]?.layers?.[0]?.objects?.[0];
+          resolve({ stroke: o?.stroke, strokeWidth: o?.strokeWidth, fill: o?.fill });
+        };
+        req.onerror = () => resolve({ stroke: '', strokeWidth: 0, fill: '' });
+      };
+      open.onerror = () => resolve({ stroke: '', strokeWidth: 0, fill: '' });
+    }),
+  );
+  expect(poly.stroke).toBeTruthy();
+  expect(poly.strokeWidth).toBeGreaterThanOrEqual(1);
+  expect(poly.fill).toBeTruthy();
 });
 
 test('unión: Ctrl+U fusiona dos rectángulos seleccionados en un polígono', async ({ page }) => {
@@ -650,6 +709,72 @@ test('guías: crear, eliminar y deshacer ambas', async ({ page }) => {
   await expect.poll(guideCount(page), { timeout: 5000 }).toBe(0);
   await page.keyboard.press('Control+z');
   await expect.poll(guideCount(page), { timeout: 5000 }).toBe(1);
+});
+
+test('mover con Shift: eje único (no libre)', async ({ page }) => {
+  const box = (await canvas(page).boundingBox())!;
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [160, 160]); // rect 60x60 en mundo
+  await page.keyboard.press('v');
+  const pos = () =>
+    page.evaluate(() =>
+      new Promise<{ x: number; y: number }>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => {
+            const o = req.result?.pages?.[0]?.layers?.[0]?.objects?.[0];
+            resolve(o ? { x: o.x, y: o.y } : { x: NaN, y: NaN });
+          };
+          req.onerror = () => resolve({ x: NaN, y: NaN });
+        };
+        open.onerror = () => resolve({ x: NaN, y: NaN });
+      }),
+    );
+  await expect.poll(async () => (await pos()).x, { timeout: 5000 }).not.toBeNaN();
+  const before = await pos();
+  // seleccionar primero (Shift+clic sobre un objeto no seleccionado es selección aditiva, no drag)
+  await page.mouse.click(box.x + 130, box.y + 130);
+  // arrastre diagonal con Shift: solo debe cambiar el eje dominante (x)
+  await page.mouse.move(box.x + 130, box.y + 130);
+  await page.keyboard.down('Shift');
+  await page.mouse.down();
+  await page.mouse.move(box.x + 230, box.y + 140, { steps: 10 });
+  await page.mouse.up();
+  await page.keyboard.up('Shift');
+  await expect.poll(async () => (await pos()).x, { timeout: 5000 }).not.toBe(before.x);
+  const after = await pos();
+  expect(after.x).toBeGreaterThan(before.x);
+  expect(after.y).toBe(before.y);
+});
+
+test('orden de apilado: enviar al fondo y deshacer', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [160, 160]); // A
+  await page.keyboard.press('r'); // tras crear, la app vuelve a selección: hay que reactivar R
+  await drag(page, [120, 120], [180, 180]); // B encima de A
+  const xs = () =>
+    page.evaluate(() =>
+      new Promise<number[]>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve((req.result?.pages?.[0]?.layers?.[0]?.objects ?? []).map((o: any) => o.x));
+          req.onerror = () => resolve([]);
+        };
+        open.onerror = () => resolve([]);
+      }),
+    );
+  await expect.poll(xs, { timeout: 5000 }).toHaveLength(2);
+  const before = await xs();
+  expect(before[0]).toBeLessThan(before[1]); // A primero en el array
+  await page.locator('#align-body [data-order="back"]').click(); // B (seleccionado) al fondo
+  await expect.poll(xs, { timeout: 5000 }).not.toEqual(before);
+  const after = await xs();
+  expect(after[0]).toBeGreaterThan(after[1]);
+  await canvas(page).click();
+  await page.keyboard.press('Control+z');
+  await expect.poll(xs, { timeout: 5000 }).toEqual(before);
 });
 
 test('páginas: crear y eliminar con undo', async ({ page }) => {
