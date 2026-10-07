@@ -21,6 +21,22 @@ async function openApp(page: Page): Promise<void> {
 }
 
 /** Arrastre sobre el lienzo entre dos puntos de pantalla. */
+/** Shape del primer objeto del documento persistido. */
+function docShape(page: Page): () => Promise<string> {
+  return () =>
+    page.evaluate(() =>
+      new Promise<string>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.shape ?? '');
+          req.onerror = () => resolve('');
+        };
+        open.onerror = () => resolve('');
+      }),
+    );
+}
+
 async function drag(page: Page, from: [number, number], to: [number, number]): Promise<void> {
   const box = await canvas(page).boundingBox();
   if (!box) throw new Error('canvas sin tamaño');
@@ -471,4 +487,120 @@ test('capas: drag and drop reordena y anida capas', async ({ page }) => {
     [...document.querySelectorAll<HTMLElement>('#layers-body .row')].map((el) => parseInt(el.style.paddingLeft || '0')),
   );
   expect(new Set(pads2).size).toBe(1);
+});
+
+test('lápiz: clic a clic se dibuja un polígono y cerrar con clic en el primer vértice', async ({ page }) => {
+  await page.keyboard.press('p');
+  const box = (await canvas(page).boundingBox())!;
+  const click = async (x: number, y: number) => {
+    await page.mouse.click(box.x + x, box.y + y);
+  };
+  await click(150, 120);
+  await click(320, 160);
+  await click(220, 300);
+  await click(150, 120); // cerrar
+  await expect(layerCount(page)).toContainText('· 1');
+  await expect(page.locator('#toolbar .tool[data-tool="select"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(docShape(page)).toBe('polygon');
+});
+
+test('unión: Ctrl+U fusiona dos rectángulos seleccionados en un polígono', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [260, 220]);
+  await page.keyboard.press('r');
+  await drag(page, [220, 140], [380, 260]);
+  await expect(layerCount(page)).toContainText('· 2');
+  // seleccionar ambos: clic en el primero + Shift+clic en el segundo
+  await page.keyboard.press('Escape');
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(box.x + 300, box.y + 200);
+  await page.keyboard.up('Shift');
+  await page.keyboard.press('Control+u');
+  await expect(layerCount(page)).toContainText('· 1');
+  await expect.poll(docShape(page)).toBe('polygon');
+  await page.keyboard.press('Control+z');
+  await expect(layerCount(page)).toContainText('· 2');
+});
+
+test('goma bitmap: borrar píxeles de una imagen importada deja huecos reales', async ({ page }) => {
+  const dataUrl = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 100; c.height = 100;
+    const g = c.getContext('2d')!;
+    g.fillStyle = 'red';
+    g.fillRect(0, 0, 100, 100);
+    return c.toDataURL('image/png');
+  });
+  await page.setInputFiles('#import-file', { name: 'rojo.png', mimeType: 'image/png', buffer: Buffer.from(dataUrl.split(',')[1], 'base64') });
+  const box = (await canvas(page).boundingBox())!;
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  // borrar una línea por el centro con la goma
+  await page.locator('#canvas').click(); // foco en el lienzo
+  await page.keyboard.press('x');
+  await page.mouse.move(cx - 15, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx + 15, cy, { steps: 10 });
+  await page.mouse.up();
+  const eraseCount = () =>
+    page.evaluate(() =>
+      new Promise<number>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.erase?.length ?? -1);
+          req.onerror = () => resolve(-1);
+        };
+        open.onerror = () => resolve(-1);
+      }),
+    );
+  await expect.poll(eraseCount, { timeout: 5000 }).toBeGreaterThan(0);
+  await page.keyboard.press('Control+z');
+  await expect.poll(eraseCount, { timeout: 5000 }).toBe(-1);
+});
+
+test('negrita/cursiva: el inspector de texto tiene los botones y persisten', async ({ page }) => {
+  await page.keyboard.press('t');
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + 200, box.y + 200);
+  await page.keyboard.type('Hola');
+  await expect(page.locator('#inspector-body [data-act="bold"]')).toBeVisible();
+  await page.locator('#inspector-body [data-act="bold"]').click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        new Promise<boolean>((resolve) => {
+          const open = indexedDB.open('pyra');
+          open.onsuccess = () => {
+            const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+            req.onsuccess = () => resolve(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.bold === true);
+            req.onerror = () => resolve(false);
+          };
+          open.onerror = () => resolve(false);
+        }),
+      ),
+      { timeout: 5000 },
+    )
+    .toBe(true);
+});
+
+test('export de assets: un PNG por objeto seleccionado', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 200]);
+  await page.keyboard.press('r');
+  await drag(page, [300, 150], [420, 260]);
+  await page.keyboard.press('Escape');
+  const box = await canvas(page).boundingBox()!;
+  await page.mouse.click(box.x + 150, box.y + 150);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(box.x + 350, box.y + 200);
+  await page.keyboard.up('Shift');
+  await page.locator('#toolbar .tool[data-export-menu]').click();
+  const downloads = Promise.all(
+    [0, 1].map(() => page.waitForEvent('download', { timeout: 5000 }).then((d) => d.suggestedFilename())),
+  );
+  await page.locator('#export-menu [data-export-asset]').click();
+  const names = await downloads;
+  expect(names.filter((n) => n.endsWith('.png')).length).toBe(2);
 });

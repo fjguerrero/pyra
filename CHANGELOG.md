@@ -1,5 +1,23 @@
 # Pyra — registro de versiones
 
+## v1.2 — 2026-10-07
+
+### Herramientas y objetos
+- Lápiz (P): polígono clic a clic, cierre en el primer vértice o con Enter; Escape descarta.
+- Goma de borrar (X) bitmap: borra píxeles reales de imágenes importadas (`destination-out`), undoable, como el Paint Eraser de Fireworks.
+- Unión booleana (Ctrl+U o botón en ALINEAR): fusiona las formas seleccionadas en un polígono, undoable.
+- Bisel: campo en efectos en vivo (luz/sombra interior recortada a la forma).
+- Negrita/cursiva en texto con re-medición del bbox.
+
+### Selección y guías
+- Multi-selección con asas del bbox común: redimensionar todas las formas a la vez.
+- Alinear/distribuir trata los grupos como unidades.
+- Smart guides con imán de "igual distancia" (huecos iguales entre objetos).
+
+### Export
+- Export de assets individuales: un PNG por objeto seleccionado (menú Exportar).
+
+
 ## v0.2 — 2026-10-07
 
 ### Herramientas y objetos

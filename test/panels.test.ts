@@ -26,6 +26,7 @@ function fixture(): { doc: Doc; view: View; api: PanelApi; calls: string[] } {
     moveLayer: vi.fn((_id, d) => calls.push(`moveLayer:${d}`)),
     reorderLayer: vi.fn((_id, _t, _m) => calls.push('reorderLayer')),
     align: vi.fn((k) => calls.push(`align:${k}`)),
+    union: vi.fn(() => calls.push('union')),
     selectPage: vi.fn((_id) => calls.push('selectPage')),
     editPage: vi.fn(),
     addPage: vi.fn(() => calls.push('addPage')),

@@ -89,12 +89,8 @@ Verificación: `tsc --noEmit` limpio, 185 tests unitarios, 25 e2e Playwright, `v
 ## Pendientes
 
 - Deuda técnica:
-  - Hit-test de trazos de pincel por bbox (`ponytail:` en `hit.ts`) → pulir a polilínea si molesta.
   - Export SVG (requiere serializador vectorial propio).
   - Panel ALINEAR bajo scroll en ventanas de poca altura.
-- Funcionalidad (candidatos v1.2):
-  - Goma de borrar bitmap (Eraser E, como Fireworks) sobre imágenes importadas.
-  - Pen tool, unión booleana, bevel, distribución con selección de grupo.
-  - Multi-selección con asas de grupo, export de assets individuales.
-  - Dirty-rects/offscreen para miles de objetos, "igual distancia" en smart guides.
-  - Fuentes web descargables y negrita/cursiva en texto.
+  - Dirty-rects/offscreen para miles de objetos (redraw completo con rAF, `ponytail:` en `render.ts`).
+  - Fuentes web descargables (solo fuentes del sistema por ahora).
+  - Unión booleana por convex hull (suficiente para formas convexas; unión exacta con huecos requiere clipping de paths).

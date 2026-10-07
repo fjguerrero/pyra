@@ -29,7 +29,7 @@ type Msg = {
   delete_page: string; new_page: string; create_page: string; page: string; layer: string;
   page_width: string; page_height: string; width: string; height: string;
   saturation: string; brightness: string; crop_x: string; crop_y: string; crop_w: string; crop_h: string; remove_crop: string; show_full_image: string;
-  text: string; size: string; font: string; color: string; stroke_color: string; fill: string; rotation: string;
+  text: string; size: string; font: string; bold: string; italic: string; color: string; stroke_color: string; fill: string; rotation: string;
   remove_gradient: string; add_gradient: string; gradient_hint: string; gradient_from: string; gradient_to: string; angle: string;
   live_effects: string; blur: string; remove_shadow: string; add_shadow: string; shadow_hint: string;
   shadow_x: string; shadow_y: string; shadow_blur: string; shadow_color: string;
@@ -43,7 +43,8 @@ type Msg = {
   language: string; zoom: string; bg: string; bg_grid: string; bg_none: string;
   alpha: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
   export_menu: string; export_jpeg: string; export_webp: string;
-  tool_brush: string; obj_stroke: string; brush_size: string; brush_pressure: string; brush_opacity: string;
+  tool_brush: string; tool_eraser: string; export_asset: string; obj_stroke: string; brush_size: string; brush_pressure: string; brush_opacity: string;
+  bevel: string; tool_pen: string; obj_polygon: string; union: string; union_hint: string;
   brush_round: string; brush_square: string; brush_tip: string; brush_tip_none: string;
 };
 
@@ -56,7 +57,7 @@ const en: Msg = {
   delete_page: 'Delete page', new_page: '+ New page', create_page: 'Create page', page: 'Page', layer: 'Layer',
   page_width: 'Page width', page_height: 'Page height', width: 'Width', height: 'Height',
   saturation: 'Saturation', brightness: 'Brightness', crop_x: 'Crop X', crop_y: 'Crop Y', crop_w: 'Crop width', crop_h: 'Crop height', remove_crop: 'Remove crop', show_full_image: 'Show the full image',
-  text: 'Text', size: 'Size', font: 'Font', color: 'Color', stroke_color: 'Stroke color', fill: 'Fill', rotation: 'Rotation',
+  text: 'Text', size: 'Size', font: 'Font', bold: 'Bold', italic: 'Italic', color: 'Color', stroke_color: 'Stroke color', fill: 'Fill', rotation: 'Rotation',
   remove_gradient: 'Remove gradient', add_gradient: 'Add gradient', gradient_hint: 'Linear gradient fill', gradient_from: 'Gradient from', gradient_to: 'Gradient to', angle: 'Angle',
   live_effects: 'Live effects', blur: 'Blur', remove_shadow: 'Remove shadow', add_shadow: 'Add shadow', shadow_hint: 'Live drop shadow',
   shadow_x: 'Shadow X', shadow_y: 'Shadow Y', shadow_blur: 'Shadow blur', shadow_color: 'Shadow color',
@@ -70,7 +71,8 @@ const en: Msg = {
   language: 'Language', zoom: 'Zoom', bg: 'Background', bg_grid: 'Checker grid', bg_none: 'Solid',
   alpha: 'Alpha', recent_colors: 'Recent colors', custom_colors: 'Custom colors', add_color: 'Add current color to custom palette', remove_color: 'Remove color',
   export_menu: 'Export', export_jpeg: 'Export JPEG', export_webp: 'Export WebP',
-  tool_brush: 'Paint brush (B)', obj_stroke: 'Brush stroke', brush_size: 'Size', brush_pressure: 'Pressure', brush_opacity: 'Opacity',
+    tool_brush: 'Paint brush (B)', tool_eraser: 'Eraser (X)', export_asset: 'Export selection as PNG', obj_stroke: 'Brush stroke',
+  bevel: 'Bevel', tool_pen: 'Pen (P)', obj_polygon: 'Polygon', union: 'Union', union_hint: 'Merge selected shapes into one', brush_size: 'Size', brush_pressure: 'Pressure', brush_opacity: 'Opacity',
   brush_round: 'Round tip', brush_square: 'Square tip', brush_tip: 'Custom tip (SVG or image)', brush_tip_none: 'Remove custom tip',
 };
 
@@ -84,7 +86,7 @@ const es: Partial<Msg> = {
   delete_page: 'Eliminar página', new_page: '＋ Nueva página', create_page: 'Crear página', page: 'Página', layer: 'Capa',
   page_width: 'Ancho página', page_height: 'Alto página', width: 'Ancho', height: 'Alto',
   saturation: 'Saturación', brightness: 'Brillo', crop_x: 'Recorte X', crop_y: 'Recorte Y', crop_w: 'Recorte ancho', crop_h: 'Recorte alto', remove_crop: 'Quitar recorte', show_full_image: 'Mostrar la imagen completa',
-  text: 'Texto', size: 'Tamaño', font: 'Fuente', color: 'Color', stroke_color: 'Color trazo', fill: 'Relleno', rotation: 'Rotación',
+  text: 'Texto', size: 'Tamaño', font: 'Fuente', bold: 'Negrita', italic: 'Cursiva', color: 'Color', stroke_color: 'Color trazo', fill: 'Relleno', rotation: 'Rotación',
   remove_gradient: 'Quitar degradado', add_gradient: 'Añadir degradado', gradient_hint: 'Relleno con degradado lineal', gradient_from: 'Degradado desde', gradient_to: 'Degradado hasta', angle: 'Ángulo',
   live_effects: 'Efectos en vivo', blur: 'Desenfoque', remove_shadow: 'Quitar sombra', add_shadow: 'Añadir sombra', shadow_hint: 'Sombra paralela en vivo',
   shadow_x: 'Sombra X', shadow_y: 'Sombra Y', shadow_blur: 'Sombra desenfoque', shadow_color: 'Sombra color',
@@ -98,7 +100,8 @@ const es: Partial<Msg> = {
   language: 'Idioma', zoom: 'Zoom', bg: 'Fondo', bg_grid: 'Cuadrícula', bg_none: 'Sólido',
   alpha: 'Alfa', recent_colors: 'Colores recientes', custom_colors: 'Colores personalizados', add_color: 'Añadir el color actual a la paleta personalizada', remove_color: 'Eliminar color',
   export_menu: 'Exportar', export_jpeg: 'Exportar JPEG', export_webp: 'Exportar WebP',
-  tool_brush: 'Pincel (B)', obj_stroke: 'Trazo de pincel', brush_size: 'Tamaño', brush_pressure: 'Presión', brush_opacity: 'Opacidad',
+  tool_brush: 'Pincel (B)', tool_eraser: 'Goma de borrar (X)', export_asset: 'Exportar selección como PNG', obj_stroke: 'Trazo de pincel', brush_size: 'Tamaño', brush_pressure: 'Presión', brush_opacity: 'Opacidad',
+  bevel: 'Bisel', tool_pen: 'Lápiz (P)', obj_polygon: 'Polígono', union: 'Unión', union_hint: 'Unir las formas seleccionadas en una sola',
   brush_round: 'Punta redonda', brush_square: 'Punta cuadrada', brush_tip: 'Punta personalizada (SVG o imagen)', brush_tip_none: 'Quitar punta personalizada',
 };
 
@@ -112,7 +115,7 @@ const zh: Partial<Msg> = {
   delete_page: '删除页面', new_page: '＋ 新建页面', create_page: '创建页面', page: '页面', layer: '图层',
   page_width: '页面宽度', page_height: '页面高度', width: '宽度', height: '高度',
   saturation: '饱和度', brightness: '亮度', crop_x: '裁剪 X', crop_y: '裁剪 Y', crop_w: '裁剪宽度', crop_h: '裁剪高度', remove_crop: '移除裁剪', show_full_image: '显示完整图像',
-  text: '文本', size: '字号', font: '字体', color: '颜色', stroke_color: '描边颜色', fill: '填充', rotation: '旋转',
+  text: '文本', size: '字号', font: '字体', bold: '粗体', italic: '斜体', color: '颜色', stroke_color: '描边颜色', fill: '填充', rotation: '旋转',
   remove_gradient: '移除渐变', add_gradient: '添加渐变', gradient_hint: '线性渐变填充', gradient_from: '渐变起始', gradient_to: '渐变结束', angle: '角度',
   live_effects: '实时效果', blur: '模糊', remove_shadow: '移除阴影', add_shadow: '添加阴影', shadow_hint: '实时投影',
   shadow_x: '阴影 X', shadow_y: '阴影 Y', shadow_blur: '阴影模糊', shadow_color: '阴影颜色',
@@ -134,7 +137,7 @@ const hi: Partial<Msg> = {
   delete_page: 'पृष्ठ हटाएँ', new_page: '＋ नया पृष्ठ', create_page: 'पृष्ठ बनाएँ', page: 'पृष्ठ', layer: 'लेयर',
   page_width: 'पृष्ठ की चौड़ाई', page_height: 'पृष्ठ की ऊँचाई', width: 'चौड़ाई', height: 'ऊँचाई',
   saturation: 'संतृप्ति', brightness: 'चमक', crop_x: 'क्रॉप X', crop_y: 'क्रॉप Y', crop_w: 'क्रॉप चौड़ाई', crop_h: 'क्रॉप ऊँचाई', remove_crop: 'क्रॉप हटाएँ', show_full_image: 'पूरी छवि दिखाएँ',
-  text: 'पाठ', size: 'आकार', font: 'फ़ॉन्ट', color: 'रंग', stroke_color: 'स्ट्रोक रंग', fill: 'फ़िल', rotation: 'घूर्णन',
+  text: 'पाठ', size: 'आकार', font: 'फ़ॉन्ट', bold: 'बोल्ड', italic: 'इटैलिक', color: 'रंग', stroke_color: 'स्ट्रोक रंग', fill: 'फ़िल', rotation: 'घूर्णन',
   remove_gradient: 'ग्रेडिएंट हटाएँ', add_gradient: 'ग्रेडिएंट जोड़ें', gradient_hint: 'रेखीय ग्रेडिएंट फ़िल', gradient_from: 'ग्रेडिएंट से', gradient_to: 'ग्रेडिएंट तक', angle: 'कोण',
   live_effects: 'लाइव प्रभाव', blur: 'धुंधलापन', remove_shadow: 'छाया हटाएँ', add_shadow: 'छाया जोड़ें', shadow_hint: 'लाइव ड्रॉप छाया',
   shadow_x: 'छाया X', shadow_y: 'छाया Y', shadow_blur: 'छाया धुंधलापन', shadow_color: 'छाया रंग',
@@ -156,7 +159,7 @@ const ar: Partial<Msg> = {
   delete_page: 'حذف الصفحة', new_page: '＋ صفحة جديدة', create_page: 'إنشاء صفحة', page: 'صفحة', layer: 'طبقة',
   page_width: 'عرض الصفحة', page_height: 'ارتفاع الصفحة', width: 'العرض', height: 'الارتفاع',
   saturation: 'التشبع', brightness: 'السطوع', crop_x: 'اقتصاص X', crop_y: 'اقتصاص Y', crop_w: 'عرض الاقتصاص', crop_h: 'ارتفاع الاقتصاص', remove_crop: 'إزالة الاقتصاص', show_full_image: 'إظهار الصورة كاملة',
-  text: 'نص', size: 'الحجم', font: 'الخط', color: 'اللون', stroke_color: 'لون الحد', fill: 'التعبئة', rotation: 'التدوير',
+  text: 'نص', size: 'الحجم', font: 'الخط', bold: 'عريض', italic: 'مائل', color: 'اللون', stroke_color: 'لون الحد', fill: 'التعبئة', rotation: 'التدوير',
   remove_gradient: 'إزالة التدرج', add_gradient: 'إضافة تدرج', gradient_hint: 'تعبئة بتدرج خطي', gradient_from: 'بداية التدرج', gradient_to: 'نهاية التدرج', angle: 'الزاوية',
   live_effects: 'تأثيرات مباشرة', blur: 'طمس', remove_shadow: 'إزالة الظل', add_shadow: 'إضافة ظل', shadow_hint: 'ظل مباشر',
   shadow_x: 'ظل X', shadow_y: 'ظل Y', shadow_blur: 'طمس الظل', shadow_color: 'لون الظل',
@@ -178,7 +181,7 @@ const pt: Partial<Msg> = {
   delete_page: 'Excluir página', new_page: '＋ Nova página', create_page: 'Criar página', page: 'Página', layer: 'Camada',
   page_width: 'Largura da página', page_height: 'Altura da página', width: 'Largura', height: 'Altura',
   saturation: 'Saturação', brightness: 'Brilho', crop_x: 'Recorte X', crop_y: 'Recorte Y', crop_w: 'Recorte largura', crop_h: 'Recorte altura', remove_crop: 'Remover recorte', show_full_image: 'Mostrar a imagem completa',
-  text: 'Texto', size: 'Tamanho', font: 'Fonte', color: 'Cor', stroke_color: 'Cor do traço', fill: 'Preenchimento', rotation: 'Rotação',
+  text: 'Texto', size: 'Tamanho', font: 'Fonte', bold: 'Negrito', italic: 'Itálico', color: 'Cor', stroke_color: 'Cor do traço', fill: 'Preenchimento', rotation: 'Rotação',
   remove_gradient: 'Remover gradiente', add_gradient: 'Adicionar gradiente', gradient_hint: 'Preenchimento com gradiente linear', gradient_from: 'Gradiente de', gradient_to: 'Gradiente até', angle: 'Ângulo',
   live_effects: 'Efeitos ao vivo', blur: 'Desfoque', remove_shadow: 'Remover sombra', add_shadow: 'Adicionar sombra', shadow_hint: 'Sombra projetada ao vivo',
   shadow_x: 'Sombra X', shadow_y: 'Sombra Y', shadow_blur: 'Desfoque da sombra', shadow_color: 'Cor da sombra',
@@ -200,7 +203,7 @@ const ru: Partial<Msg> = {
   delete_page: 'Удалить страницу', new_page: '＋ Новая страница', create_page: 'Создать страницу', page: 'Страница', layer: 'Слой',
   page_width: 'Ширина страницы', page_height: 'Высота страницы', width: 'Ширина', height: 'Высота',
   saturation: 'Насыщенность', brightness: 'Яркость', crop_x: 'Обрезка X', crop_y: 'Обрезка Y', crop_w: 'Обрезка ширины', crop_h: 'Обрезка высоты', remove_crop: 'Убрать обрезку', show_full_image: 'Показать изображение целиком',
-  text: 'Текст', size: 'Размер', font: 'Шрифт', color: 'Цвет', stroke_color: 'Цвет обводки', fill: 'Заливка', rotation: 'Поворот',
+  text: 'Текст', size: 'Размер', font: 'Шрифт', bold: 'Жирный', italic: 'Курсив', color: 'Цвет', stroke_color: 'Цвет обводки', fill: 'Заливка', rotation: 'Поворот',
   remove_gradient: 'Убрать градиент', add_gradient: 'Добавить градиент', gradient_hint: 'Заливка линейным градиентом', gradient_from: 'Градиент от', gradient_to: 'Градиент до', angle: 'Угол',
   live_effects: 'Живые эффекты', blur: 'Размытие', remove_shadow: 'Убрать тень', add_shadow: 'Добавить тень', shadow_hint: 'Живая падающая тень',
   shadow_x: 'Тень X', shadow_y: 'Тень Y', shadow_blur: 'Размытие тени', shadow_color: 'Цвет тени',
@@ -222,7 +225,7 @@ const ja: Partial<Msg> = {
   delete_page: 'ページを削除', new_page: '＋ 新規ページ', create_page: 'ページを作成', page: 'ページ', layer: 'レイヤー',
   page_width: 'ページ幅', page_height: 'ページ高さ', width: '幅', height: '高さ',
   saturation: '彩度', brightness: '明度', crop_x: '切り抜き X', crop_y: '切り抜き Y', crop_w: '切り抜き幅', crop_h: '切り抜き高さ', remove_crop: '切り抜きを解除', show_full_image: '画像全体を表示',
-  text: 'テキスト', size: 'サイズ', font: 'フォント', color: '色', stroke_color: '線の色', fill: '塗り', rotation: '回転',
+  text: 'テキスト', size: 'サイズ', font: 'フォント', bold: '太字', italic: '斜体', color: '色', stroke_color: '線の色', fill: '塗り', rotation: '回転',
   remove_gradient: 'グラデーションを削除', add_gradient: 'グラデーションを追加', gradient_hint: '線形グラデーション塗り', gradient_from: 'グラデーション開始', gradient_to: 'グラデーション終了', angle: '角度',
   live_effects: 'ライブ効果', blur: 'ぼかし', remove_shadow: '影を削除', add_shadow: '影を追加', shadow_hint: 'ライブドロップシャドウ',
   shadow_x: '影 X', shadow_y: '影 Y', shadow_blur: '影のぼかし', shadow_color: '影の色',
@@ -244,7 +247,7 @@ const fr: Partial<Msg> = {
   delete_page: 'Supprimer la page', new_page: '＋ Nouvelle page', create_page: 'Créer une page', page: 'Page', layer: 'Calque',
   page_width: 'Largeur de page', page_height: 'Hauteur de page', width: 'Largeur', height: 'Hauteur',
   saturation: 'Saturation', brightness: 'Luminosité', crop_x: 'Recadrage X', crop_y: 'Recadrage Y', crop_w: 'Recadrage largeur', crop_h: 'Recadrage hauteur', remove_crop: 'Supprimer le recadrage', show_full_image: 'Afficher l’image entière',
-  text: 'Texte', size: 'Taille', font: 'Police', color: 'Couleur', stroke_color: 'Couleur du contour', fill: 'Remplissage', rotation: 'Rotation',
+  text: 'Texte', size: 'Taille', font: 'Police', bold: 'Gras', italic: 'Italique', color: 'Couleur', stroke_color: 'Couleur du contour', fill: 'Remplissage', rotation: 'Rotation',
   remove_gradient: 'Supprimer le dégradé', add_gradient: 'Ajouter un dégradé', gradient_hint: 'Remplissage en dégradé linéaire', gradient_from: 'Dégradé depuis', gradient_to: 'Dégradé vers', angle: 'Angle',
   live_effects: 'Effets en direct', blur: 'Flou', remove_shadow: 'Supprimer l’ombre', add_shadow: 'Ajouter une ombre', shadow_hint: 'Ombre portée en direct',
   shadow_x: 'Ombre X', shadow_y: 'Ombre Y', shadow_blur: 'Flou de l’ombre', shadow_color: 'Couleur de l’ombre',
@@ -266,7 +269,7 @@ const de: Partial<Msg> = {
   delete_page: 'Seite löschen', new_page: '＋ Neue Seite', create_page: 'Seite erstellen', page: 'Seite', layer: 'Ebene',
   page_width: 'Seitenbreite', page_height: 'Seitenhöhe', width: 'Breite', height: 'Höhe',
   saturation: 'Sättigung', brightness: 'Helligkeit', crop_x: 'Beschnitt X', crop_y: 'Beschnitt Y', crop_w: 'Beschnitt Breite', crop_h: 'Beschnitt Höhe', remove_crop: 'Beschnitt entfernen', show_full_image: 'Vollständiges Bild anzeigen',
-  text: 'Text', size: 'Größe', font: 'Schrift', color: 'Farbe', stroke_color: 'Konturfarbe', fill: 'Füllung', rotation: 'Drehung',
+  text: 'Text', size: 'Größe', font: 'Schrift', bold: 'Fett', italic: 'Kursiv', color: 'Farbe', stroke_color: 'Konturfarbe', fill: 'Füllung', rotation: 'Drehung',
   remove_gradient: 'Verlauf entfernen', add_gradient: 'Verlauf hinzufügen', gradient_hint: 'Lineare Verlaufsfüllung', gradient_from: 'Verlauf von', gradient_to: 'Verlauf nach', angle: 'Winkel',
   live_effects: 'Live-Effekte', blur: 'Unschärfe', remove_shadow: 'Schatten entfernen', add_shadow: 'Schatten hinzufügen', shadow_hint: 'Live-Schlagschatten',
   shadow_x: 'Schatten X', shadow_y: 'Schatten Y', shadow_blur: 'Schattenunschärfe', shadow_color: 'Schattenfarbe',
@@ -288,7 +291,7 @@ const ko: Partial<Msg> = {
   delete_page: '페이지 삭제', new_page: '＋ 새 페이지', create_page: '페이지 만들기', page: '페이지', layer: '레이어',
   page_width: '페이지 너비', page_height: '페이지 높이', width: '너비', height: '높이',
   saturation: '채도', brightness: '밝기', crop_x: '자르기 X', crop_y: '자르기 Y', crop_w: '자르기 너비', crop_h: '자르기 높이', remove_crop: '자르기 제거', show_full_image: '전체 이미지 표시',
-  text: '텍스트', size: '크기', font: '글꼴', color: '색상', stroke_color: '선 색상', fill: '채우기', rotation: '회전',
+  text: '텍스트', size: '크기', font: '글꼴', bold: '굵게', italic: '기울임', color: '색상', stroke_color: '선 색상', fill: '채우기', rotation: '회전',
   remove_gradient: '그라데이션 제거', add_gradient: '그라데이션 추가', gradient_hint: '선형 그라데이션 채우기', gradient_from: '그라데이션 시작', gradient_to: '그라데이션 끝', angle: '각도',
   live_effects: '라이브 효과', blur: '흐림', remove_shadow: '그림자 제거', add_shadow: '그림자 추가', shadow_hint: '라이브 드롭 섀도',
   shadow_x: '그림자 X', shadow_y: '그림자 Y', shadow_blur: '그림자 흐림', shadow_color: '그림자 색상',
@@ -310,7 +313,7 @@ const it: Partial<Msg> = {
   delete_page: 'Elimina pagina', new_page: '＋ Nuova pagina', create_page: 'Crea pagina', page: 'Pagina', layer: 'Livello',
   page_width: 'Larghezza pagina', page_height: 'Altezza pagina', width: 'Larghezza', height: 'Altezza',
   saturation: 'Saturazione', brightness: 'Luminosità', crop_x: 'Ritaglio X', crop_y: 'Ritaglio Y', crop_w: 'Ritaglio larghezza', crop_h: 'Ritaglio altezza', remove_crop: 'Rimuovi ritaglio', show_full_image: 'Mostra l’immagine completa',
-  text: 'Testo', size: 'Dimensione', font: 'Carattere', color: 'Colore', stroke_color: 'Colore contorno', fill: 'Riempimento', rotation: 'Rotazione',
+  text: 'Testo', size: 'Dimensione', font: 'Carattere', bold: 'Grassetto', italic: 'Corsivo', color: 'Colore', stroke_color: 'Colore contorno', fill: 'Riempimento', rotation: 'Rotazione',
   remove_gradient: 'Rimuovi sfumatura', add_gradient: 'Aggiungi sfumatura', gradient_hint: 'Riempimento con sfumatura lineare', gradient_from: 'Sfumatura da', gradient_to: 'Sfumatura a', angle: 'Angolo',
   live_effects: 'Effetti live', blur: 'Sfocatura', remove_shadow: 'Rimuovi ombra', add_shadow: 'Aggiungi ombra', shadow_hint: 'Ombra portata live',
   shadow_x: 'Ombra X', shadow_y: 'Ombra Y', shadow_blur: 'Sfocatura ombra', shadow_color: 'Colore ombra',
@@ -332,7 +335,7 @@ const tr: Partial<Msg> = {
   delete_page: 'Sayfayı sil', new_page: '＋ Yeni sayfa', create_page: 'Sayfa oluştur', page: 'Sayfa', layer: 'Katman',
   page_width: 'Sayfa genişliği', page_height: 'Sayfa yüksekliği', width: 'Genişlik', height: 'Yükseklik',
   saturation: 'Doygunluk', brightness: 'Parlaklık', crop_x: 'Kırpma X', crop_y: 'Kırpma Y', crop_w: 'Kırpma genişliği', crop_h: 'Kırpma yüksekliği', remove_crop: 'Kırpmayı kaldır', show_full_image: 'Tüm görüntüyü göster',
-  text: 'Metin', size: 'Boyut', font: 'Yazı tipi', color: 'Renk', stroke_color: 'Çizgi rengi', fill: 'Dolgu', rotation: 'Döndürme',
+  text: 'Metin', size: 'Boyut', font: 'Yazı tipi', bold: 'Kalın', italic: 'İtalik', color: 'Renk', stroke_color: 'Çizgi rengi', fill: 'Dolgu', rotation: 'Döndürme',
   remove_gradient: 'Gradyanı kaldır', add_gradient: 'Gradyan ekle', gradient_hint: 'Doğrusal gradyan dolgu', gradient_from: 'Gradyan başlangıcı', gradient_to: 'Gradyan sonu', angle: 'Açı',
   live_effects: 'Canlı efektler', blur: 'Bulanıklık', remove_shadow: 'Gölgeyi kaldır', add_shadow: 'Gölge ekle', shadow_hint: 'Canlı düşme gölgesi',
   shadow_x: 'Gölge X', shadow_y: 'Gölge Y', shadow_blur: 'Gölge bulanıklığı', shadow_color: 'Gölge rengi',
@@ -354,7 +357,7 @@ const vi: Partial<Msg> = {
   delete_page: 'Xóa trang', new_page: '＋ Trang mới', create_page: 'Tạo trang', page: 'Trang', layer: 'Lớp',
   page_width: 'Chiều rộng trang', page_height: 'Chiều cao trang', width: 'Chiều rộng', height: 'Chiều cao',
   saturation: 'Độ bão hòa', brightness: 'Độ sáng', crop_x: 'Cắt X', crop_y: 'Cắt Y', crop_w: 'Cắt chiều rộng', crop_h: 'Cắt chiều cao', remove_crop: 'Bỏ cắt', show_full_image: 'Hiện ảnh đầy đủ',
-  text: 'Văn bản', size: 'Kích cỡ', font: 'Phông chữ', color: 'Màu', stroke_color: 'Màu viền', fill: 'Tô', rotation: 'Xoay',
+  text: 'Văn bản', size: 'Kích cỡ', font: 'Phông chữ', bold: 'Đậm', italic: 'Nghiêng', color: 'Màu', stroke_color: 'Màu viền', fill: 'Tô', rotation: 'Xoay',
   remove_gradient: 'Bỏ chuyển màu', add_gradient: 'Thêm chuyển màu', gradient_hint: 'Tô chuyển màu tuyến tính', gradient_from: 'Chuyển màu từ', gradient_to: 'Chuyển màu đến', angle: 'Góc',
   live_effects: 'Hiệu ứng trực tiếp', blur: 'Làm mờ', remove_shadow: 'Bỏ bóng', add_shadow: 'Thêm bóng', shadow_hint: 'Bóng đổ trực tiếp',
   shadow_x: 'Bóng X', shadow_y: 'Bóng Y', shadow_blur: 'Làm mờ bóng', shadow_color: 'Màu bóng',
@@ -376,7 +379,7 @@ const nl: Partial<Msg> = {
   delete_page: 'Pagina verwijderen', new_page: '＋ Nieuwe pagina', create_page: 'Pagina maken', page: 'Pagina', layer: 'Laag',
   page_width: 'Paginabreedte', page_height: 'Paginahoogte', width: 'Breedte', height: 'Hoogte',
   saturation: 'Verzadiging', brightness: 'Helderheid', crop_x: 'Bijsnijden X', crop_y: 'Bijsnijden Y', crop_w: 'Bijsnijden breedte', crop_h: 'Bijsnijden hoogte', remove_crop: 'Bijsnijden verwijderen', show_full_image: 'Volledige afbeelding tonen',
-  text: 'Tekst', size: 'Grootte', font: 'Lettertype', color: 'Kleur', stroke_color: 'Lijnkleur', fill: 'Vulling', rotation: 'Rotatie',
+  text: 'Tekst', size: 'Grootte', font: 'Lettertype', bold: 'Vet', italic: 'Cursief', color: 'Kleur', stroke_color: 'Lijnkleur', fill: 'Vulling', rotation: 'Rotatie',
   remove_gradient: 'Verloop verwijderen', add_gradient: 'Verloop toevoegen', gradient_hint: 'Vulling met lineair verloop', gradient_from: 'Verloop van', gradient_to: 'Verloop naar', angle: 'Hoek',
   live_effects: 'Live-effecten', blur: 'Vervaging', remove_shadow: 'Schaduw verwijderen', add_shadow: 'Schaduw toevoegen', shadow_hint: 'Live slagschaduw',
   shadow_x: 'Schaduw X', shadow_y: 'Schaduw Y', shadow_blur: 'Schaduvervaging', shadow_color: 'Schaduwkleur',

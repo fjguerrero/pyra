@@ -8,7 +8,7 @@ import { snapBox, type Guide } from './guides';
 import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { DEFAULT_FONT, measureText } from './text';
-import { duplicateCmd, groupCmd, pasteCmd, zOrderCmd } from './commands';
+import { duplicateCmd, groupCmd, pasteCmd, unionCmd, zOrderCmd } from './commands';
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
 import { renderPanels, type BrushPanelArg } from './panels';
@@ -32,8 +32,10 @@ const view: View = { zoom: 1, panX: 0, panY: 0 };
 let selectedId: string | null = null;
 let selectedIds: string[] = [];
 let selectedLayerId: string | null = null;
-let tool: 'select' | ShapeKind | 'text' | 'brush' = 'select';
+let tool: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'eraser' = 'select';
 let draft: Draft | null = null;
+let penPts: { x: number; y: number }[] = []; // vértices del lápiz en coords de mundo
+let eraserDrag: { obj: BitmapObj; start: NonNullable<BitmapObj['erase']>; moved: boolean } | null = null;
 let marquee: { x: number; y: number; w: number; h: number } | null = null;
 let clipboard: Obj[] = [];
 let guides: Guide[] = [];
@@ -56,7 +58,7 @@ function invalidate(): void {
   dirty = true;
   requestAnimationFrame(() => {
     dirty = false;
-    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, draft, marquee, guides, workspace: bg });
+    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, groupHandles: selectedIds.length > 1, draft, marquee, guides, workspace: bg });
     if (!pointerDownInInspector) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi, brushPanel);
   });
 }
@@ -109,9 +111,11 @@ type Drag =
   | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
   | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number; size?: number }; grab: { x: number; y: number } }
   | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number }
-  | { mode: 'guide'; index: number };
+  | { mode: 'guide'; index: number }
+  | { mode: 'erase' }
+  | { mode: 'groupresize'; objs: { obj: Obj; start: { x: number; y: number; w: number; h: number } }[]; start: { x: number; y: number; w: number; h: number }; role: HandleRole; grab: { x: number; y: number } };
 
-const NAMES: Record<ShapeKind, string> = { rect: t('obj_rect'), ellipse: t('obj_ellipse'), line: t('obj_line'), stroke: t('obj_stroke') };
+const NAMES: Record<ShapeKind, string> = { rect: t('obj_rect'), ellipse: t('obj_ellipse'), line: t('obj_line'), stroke: t('obj_stroke'), polygon: t('obj_polygon') };
 
 /** Añadir un objeto creado a la capa activa, con undo. */
 function pushCreateCmd(obj: Obj): void {
@@ -135,11 +139,42 @@ function pushCreateCmd(obj: Obj): void {
   invalidate();
 }
 
+/** Goma: añade un círculo borrado (normalizado al bbox) a un objeto bitmap. */
+function eraseAt(obj: BitmapObj, wx: number, wy: number): void {
+  (obj.erase ??= []).push({ x: (wx - obj.x) / obj.w, y: (wy - obj.y) / obj.h, r: 8 / view.zoom / obj.w });
+}
+
+/** Cerrar el polígono del lápiz: los vértices de mundo pasan a `poly` normalizada. */
+function finishPen(): void {
+  const pts = penPts;
+  penPts = [];
+  draft = null;
+  if (pts.length < 3) {
+    invalidate();
+    return;
+  }
+  const x0 = Math.min(...pts.map((p) => p.x)), y0 = Math.min(...pts.map((p) => p.y));
+  const w = Math.max(1, Math.max(...pts.map((p) => p.x)) - x0), h = Math.max(1, Math.max(...pts.map((p) => p.y)) - y0);
+  const obj: ShapeObj = {
+    id: uid(),
+    shape: 'polygon',
+    name: NAMES.polygon,
+    x: Math.round(x0), y: Math.round(y0), w: Math.round(w), h: Math.round(h),
+    fill: '#4f8cff',
+    stroke: null,
+    strokeWidth: 0,
+    poly: pts.map((p) => ({ x: (p.x - x0) / w, y: (p.y - y0) / h })),
+  };
+  pushCreateCmd(obj);
+  setTool('select');
+}
+
 let drag: Drag | null = null;
 
 // Modelo de herramientas de Fireworks: la herramienta define qué hace el arrastre.
-function setTool(t: 'select' | ShapeKind | 'text' | 'brush'): void {
+function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'eraser'): void {
   tool = t;
+  penPts = [];
   document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) => {
     const on = el.dataset.tool === t;
     el.classList.toggle('active', on);
@@ -242,7 +277,7 @@ bgGrid.addEventListener('change', () => {
 applyStaticI18n();
 
 document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) =>
-  el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | ShapeKind | 'text' | 'brush')),
+  el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'eraser')),
 );
 document.querySelector<HTMLElement>('#toolbar .tool[data-fit]')?.addEventListener('click', () => {
   fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
@@ -338,6 +373,15 @@ const exportRaster = (mime: string, ext: string): void => {
 document.querySelector<HTMLElement>('#export-menu [data-export-png]')?.addEventListener('click', () => { exportRaster('image/png', 'png'); exportMenu.hidden = true; });
 document.querySelector<HTMLElement>('#export-menu [data-export-jpeg]')?.addEventListener('click', () => { exportRaster('image/jpeg', 'jpg'); exportMenu.hidden = true; });
 document.querySelector<HTMLElement>('#export-menu [data-export-webp]')?.addEventListener('click', () => { exportRaster('image/webp', 'webp'); exportMenu.hidden = true; });
+// assets individuales: un PNG por objeto seleccionado (export de assets)
+document.querySelector<HTMLElement>('#export-menu [data-export-asset]')?.addEventListener('click', async () => {
+  const objs = selectedObjs();
+  for (const o of objs) {
+    const off = await renderer.exportObj(o);
+    off.toBlob((b) => b && downloadBlob(b, `${baseName()}-${o.name || o.id}.png`), 'image/png');
+  }
+  exportMenu.hidden = true;
+});
 
 renderer.onImgReady = invalidate;
 
@@ -391,7 +435,7 @@ renderer.onImgReady = invalidate;
 // ---- Texto (M4): clic con la herramienta → objeto editable en el acto ----
 
 function remeasureText(o: TextObj): void {
-  const m = measureText(canvas.getContext('2d')!, o.text, o.font, o.size);
+  const m = measureText(canvas.getContext('2d')!, o.text, o.font, o.size, o.bold, o.italic);
   o.w = m.w;
   o.h = m.h;
 }
@@ -515,6 +559,30 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
 
+  if (tool === 'pen') {
+    if (penPts.length >= 3 && Math.hypot(wx - penPts[0].x, wy - penPts[0].y) < 8 / view.zoom) {
+      finishPen(); // clic sobre el primer vértice = cerrar
+      return;
+    }
+    penPts.push({ x: wx, y: wy });
+    draft = { x: 0, y: 0, w: 0, h: 0, shape: 'polygon', poly: penPts };
+    invalidate();
+    return;
+  }
+
+  if (tool === 'eraser') {
+    const hit = hitTest(page, wx, wy, 4 / view.zoom);
+    const obj = hit ? findObj(page, hit.id) : null;
+    if (obj && obj.shape === 'bitmap') {
+      eraserDrag = { obj, start: [...(obj.erase ?? [])], moved: false };
+      drag = { mode: 'erase' };
+      eraseAt(obj, wx, wy);
+      invalidate();
+      return;
+    }
+    return;
+  }
+
   if (tool !== 'select') {
     drag = { mode: 'create', ox: wx, oy: wy };
     draft = { x: wx, y: wy, w: 0, h: 0, shape: tool, lineFrom: 'nw' };
@@ -532,6 +600,25 @@ canvas.addEventListener('pointerdown', (e) => {
 
   const sel = findObj(page, selectedId);
   const h = sel ? hitHandle(px, py, handles(sel, view)) : null;
+  if (!h && selectedIds.length > 1) {
+    // asas del bbox común: redimensionar todo el grupo a la vez
+    const objs = selectedObjs();
+    const gx = Math.min(...objs.map((o) => o.x)), gy = Math.min(...objs.map((o) => o.y));
+    const gw = Math.max(...objs.map((o) => o.x + o.w)) - gx, gh0 = Math.max(...objs.map((o) => o.y + o.h)) - gy;
+    const gh = handles({ ...objs[0], x: gx, y: gy, w: gw, h: gh0 } as Obj, view).filter((x) => x.role !== 'rot');
+    const ghHit = hitHandle(px, py, gh);
+    if (ghHit) {
+      drag = {
+        mode: 'groupresize',
+        objs: objs.map((o) => ({ obj: o, start: { x: o.x, y: o.y, w: o.w, h: o.h } })),
+        start: { x: gx, y: gy, w: gw, h: gh0 },
+        role: ghHit.role,
+        grab: { x: wx, y: wy },
+      };
+      canvas.style.cursor = RESIZE_CURSORS[ghHit.role];
+      return;
+    }
+  }
   if (h && sel && h.role === 'rot') {
     const cx = sel.x + sel.w / 2, cy = sel.y + sel.h / 2;
     drag = { mode: 'rotate', obj: sel, startRot: sel.rot ?? 0, grabAngle: Math.atan2(wy - cy, wx - cx) };
@@ -606,6 +693,16 @@ canvas.addEventListener('pointermove', (e) => {
     return;
   }
 
+  if (drag.mode === 'erase' && eraserDrag) {
+    const last = eraserDrag.obj.erase?.[eraserDrag.obj.erase.length - 1];
+    if (!last || Math.hypot(wx - (eraserDrag.obj.x + last.x * eraserDrag.obj.w), wy - (eraserDrag.obj.y + last.y * eraserDrag.obj.h)) > 4 / view.zoom) {
+      eraseAt(eraserDrag.obj, wx, wy);
+      eraserDrag.moved = true;
+    }
+    invalidate();
+    return;
+  }
+
   if (drag.mode === 'create' && draft) {
     draft = {
       x: Math.min(drag.ox, wx),
@@ -674,6 +771,23 @@ canvas.addEventListener('pointermove', (e) => {
     applyResize(drag.obj, drag.start, drag.role, wx - drag.grab.x, wy - drag.grab.y);
     if (drag.obj.shape === 'text') resizeText(drag.obj, { ...drag.start, size: drag.start.size ?? drag.obj.size } as { x: number; y: number; w: number; h: number; size: number }, drag.role); // escalar la fuente, no estirar glifos
     invalidate();
+    return;
+  }
+
+  if (drag.mode === 'groupresize') {
+    // cada objeto se escala en la misma proporción del bbox común
+    const dx = wx - drag.grab.x, dy = wy - drag.grab.y;
+    const s = { ...drag.start };
+    const target = { x: s.x, y: s.y, w: s.w, h: s.h };
+    applyResize(target as Obj, drag.start, drag.role, dx, dy);
+    const sx = target.w / Math.max(1, s.w), sy = target.h / Math.max(1, s.h);
+    for (const it of drag.objs) {
+      it.obj.x = Math.round(target.x + (it.start.x - s.x) * sx);
+      it.obj.y = Math.round(target.y + (it.start.y - s.y) * sy);
+      it.obj.w = Math.max(1, Math.round(it.start.w * sx));
+      it.obj.h = Math.max(1, Math.round(it.start.h * sy));
+    }
+    invalidate();
   }
 });
 
@@ -699,6 +813,34 @@ canvas.addEventListener('pointerup', (e) => {
 
   if (drag.mode === 'guide') {
     persist();
+    return;
+  }
+
+  if (drag.mode === 'erase' && eraserDrag) {
+    const { obj, start, moved } = eraserDrag;
+    eraserDrag = null;
+    if (moved) {
+      const now = [...(obj.erase ?? [])];
+      history.record({
+        label: 'goma',
+        do: () => { obj.erase = now; },
+        undo: () => { obj.erase = start.length ? start : undefined; },
+      });
+      persist();
+    }
+    invalidate();
+    return;
+  }
+
+  if (drag.mode === 'groupresize') {
+    const items = drag.objs.map((it) => ({ obj: it.obj, from: it.start, to: { x: it.obj.x, y: it.obj.y, w: it.obj.w, h: it.obj.h } }));
+    history.record({
+      label: 'redimensionar grupo',
+      do: () => items.forEach((it) => Object.assign(it.obj, it.to)),
+      undo: () => items.forEach((it) => Object.assign(it.obj, it.from)),
+    });
+    persist();
+    invalidate();
     return;
   }
 
@@ -823,7 +965,7 @@ const panelApi = {
       label: 'editar',
       do: () => {
         Object.assign(obj, patch);
-        if (obj.shape === 'text' && ('font' in patch || 'size' in patch)) remeasureText(obj);
+        if (obj.shape === 'text' && ('font' in patch || 'size' in patch || 'bold' in patch || 'italic' in patch)) remeasureText(obj);
       },
       undo: () => Object.assign(obj, before),
     });
@@ -930,6 +1072,15 @@ const panelApi = {
         do: () => moves.forEach((m) => Object.assign(m.obj, m.to)),
         undo: () => moves.forEach((m) => Object.assign(m.obj, m.from)),
       });
+      persist();
+    }
+    invalidate();
+  },
+  union(): void {
+    const u = unionCmd(activePage(doc), selectedObjs());
+    if (u) {
+      history.run(u.cmd);
+      select(u.result.id);
       persist();
     }
     invalidate();
@@ -1123,6 +1274,12 @@ window.addEventListener('keydown', (e) => {
     fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
     invalidate();
   } else if (e.key === 'Escape') {
+    if (penPts.length) {
+      penPts = [];
+      draft = null;
+      invalidate();
+      return;
+    }
     select(null);
     selectedLayerId = null;
     invalidate();
@@ -1138,6 +1295,19 @@ window.addEventListener('keydown', (e) => {
     setTool('text');
   } else if (e.key === 'b' || e.key === 'B') {
     setTool('brush');
+  } else if (e.key === 'p' || e.key === 'P') {
+    setTool('pen');
+  } else if (e.key === 'x' || e.key === 'X') {
+    setTool('eraser');
+  } else if (mod && (e.key === 'u' || e.key === 'U')) {
+    e.preventDefault();
+    const u = unionCmd(activePage(doc), selectedObjs());
+    if (u) {
+      history.run(u.cmd);
+      select(u.result.id);
+      persist();
+      invalidate();
+    }
   } else if (mod && (e.key === 'd' || e.key === 'D')) {
     e.preventDefault();
     const dup = duplicateCmd(activePage(doc), selectedObjs());

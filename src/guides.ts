@@ -1,5 +1,5 @@
-// Smart guides: imanes a bordes, centros y bordes de página (el corazón del maquetado en Fireworks).
-// ponytail: solo bordes/centros/página; la guía de "igual distancia" entre objetos entra cuando se note.
+// Smart guides: imanes a bordes, centros y bordes de página (el corazón del maquetado en Fireworks),
+// más la guía de "igual distancia": encajar el hueco justo entre dos objetos.
 
 export interface Box {
   x: number;
@@ -19,14 +19,24 @@ export interface Snap {
   guides: Guide[];
 }
 
-const anchors = (a: number, b: number): number[] => [a, (a + b) / 2, b];
+interface Target {
+  v: number;
+  lo: number; // la caja debe quedar dentro de [lo, hi] para usar este imán
+  hi: number;
+}
 
-function bestDelta(from: number[], targets: number[], tol: number): { d: number; at: number } | null {
+const anchors = (a: number, b: number): number[] => [a, (a + b) / 2, b];
+const ANY: Target = { v: 0, lo: -Infinity, hi: Infinity };
+const target = (v: number): Target => ({ ...ANY, v });
+
+function bestDelta(from: number[], targets: Target[], tol: number, size: number): { d: number; at: number } | null {
   let best: { d: number; at: number } | null = null;
   for (const t of targets) {
     for (const a of from) {
-      const d = t - a;
-      if (Math.abs(d) <= tol && (!best || Math.abs(d) < Math.abs(best.d))) best = { d, at: t };
+      const d = t.v - a;
+      // para un imán de hueco, la caja debe caber a un lado del punto medio
+      if (t.hi < Infinity && a + d < t.lo && a + d + size > t.hi) continue;
+      if (Math.abs(d) <= tol && (!best || Math.abs(d) < Math.abs(best.d))) best = { d, at: t.v };
     }
   }
   return best;
@@ -39,21 +49,30 @@ export function snapBox(
   page: { width: number; height: number; guides?: { axis: 'v' | 'h'; pos: number }[] },
   tol: number,
 ): Snap {
-  const xTargets = [0, page.width / 2, page.width];
-  const yTargets = [0, page.height / 2, page.height];
-  for (const g of page.guides ?? []) (g.axis === 'v' ? xTargets : yTargets).push(g.pos);
+  const xTargets: Target[] = [target(0), target(page.width / 2), target(page.width)];
+  const yTargets: Target[] = [target(0), target(page.height / 2), target(page.height)];
+  for (const g of page.guides ?? []) (g.axis === 'v' ? xTargets : yTargets).push(target(g.pos));
   for (const o of others) {
-    xTargets.push(...anchors(o.x, o.x + o.w));
-    yTargets.push(...anchors(o.y, o.y + o.h));
+    xTargets.push(...anchors(o.x, o.x + o.w).map(target));
+    yTargets.push(...anchors(o.y, o.y + o.h).map(target));
   }
+  // igual distancia: el punto medio entre anclas de dos objetos distintos = huecos iguales a ambos
+  const us = others;
+  for (let i = 0; i < us.length; i++)
+    for (let j = i + 1; j < us.length; j++) {
+      for (const [a, b] of [[us[i].x, us[j].x], [us[i].x + us[i].w, us[j].x + us[j].w], [us[i].x, us[j].x + us[j].w], [us[i].x + us[i].w, us[j].x]] as const)
+        if (Math.abs(b - a) >= 8) xTargets.push({ v: (a + b) / 2, lo: Math.min(a, b), hi: Math.max(a, b) });
+      for (const [a, b] of [[us[i].y, us[j].y], [us[i].y + us[i].h, us[j].y + us[j].h], [us[i].y, us[j].y + us[j].h], [us[i].y + us[i].h, us[j].y]] as const)
+        if (Math.abs(b - a) >= 8) yTargets.push({ v: (a + b) / 2, lo: Math.min(a, b), hi: Math.max(a, b) });
+    }
 
   const out: Snap = { dx: 0, dy: 0, guides: [] };
-  const bx = bestDelta(anchors(box.x, box.x + box.w), xTargets, tol);
+  const bx = bestDelta(anchors(box.x, box.x + box.w), xTargets, tol, box.w);
   if (bx) {
     out.dx = bx.d;
     out.guides.push({ axis: 'v', pos: bx.at });
   }
-  const by = bestDelta(anchors(box.y, box.y + box.h), yTargets, tol);
+  const by = bestDelta(anchors(box.y, box.y + box.h), yTargets, tol, box.h);
   if (by) {
     out.dy = by.d;
     out.guides.push({ axis: 'h', pos: by.at });

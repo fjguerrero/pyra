@@ -1,5 +1,5 @@
 import { flattenLayers } from './layers';
-import { lineEnds, type BrushShape, type Fx, type LineFrom, type Obj, type Page, type ShapeKind, type ShapeObj } from './model';
+import { lineEnds, polyPoints, type BrushShape, type Fx, type LineFrom, type Obj, type Page, type ShapeKind, type ShapeObj } from './model';
 import type { View } from './view';
 import type { Guide } from './guides';
 import { findObj, handles } from './hit';
@@ -18,6 +18,8 @@ export interface Draft {
   strokeWidth?: number;
   brush?: BrushShape;
   tip?: string | null;
+  /** Vértices del lápiz en coords de mundo (draft de polígono). */
+  poly?: { x: number; y: number }[];
 }
 
 export interface Scene {
@@ -28,6 +30,8 @@ export interface Scene {
   draft: Draft | null;
   /** Rectángulo de selección por marco (marquee) en coords de mundo. */
   marquee?: { x: number; y: number; w: number; h: number } | null;
+  /** Asas del bbox común de la selección múltiple (mover/redimensionar el grupo). */
+  groupHandles?: boolean;
   guides: Guide[];
   /** Fondo del área de trabajo: color sólido y/o rejilla de cuadrados. */
   workspace?: { color?: string; grid?: number };
@@ -144,6 +148,20 @@ export class Renderer {
           scene.draft.brush,
           scene.draft.tip,
         );
+      } else if (scene.draft.shape === 'polygon' && scene.draft.poly) {
+        ctx.strokeStyle = ACCENT;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        scene.draft.poly.forEach((p, i) => (i ? ctx.lineTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY) : ctx.moveTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY)));
+        ctx.closePath();
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = ACCENT;
+        for (const p of scene.draft.poly) {
+          ctx.beginPath();
+          ctx.arc(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
       } else {
         ctx.strokeStyle = ACCENT;
         ctx.setLineDash([4, 3]);
@@ -222,14 +240,27 @@ export class Renderer {
         ctx.strokeRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
       }
     }
-    // selección múltiple: contorno fino sin asas
-    for (const id of scene.selectedIds) {
-      if (id === scene.selectedId) continue;
-      const o = findObj(scene.page, id);
-      if (!o) continue;
+    // selección múltiple: contorno fino; con asas sobre el bbox común (grupo)
+    const multi = scene.selectedIds.filter((id) => id !== scene.selectedId);
+    if (multi.length) {
+      const objs = multi.map((id) => findObj(scene.page, id)).filter((o): o is Obj => o !== null);
+      const x0 = Math.min(...objs.map((o) => o.x)), y0 = Math.min(...objs.map((o) => o.y));
+      const x1 = Math.max(...objs.map((o) => o.x + o.w)), y1 = Math.max(...objs.map((o) => o.y + o.h));
       ctx.strokeStyle = ACCENT;
       ctx.lineWidth = 1;
-      ctx.strokeRect(o.x * v.zoom + v.panX - 0.5, o.y * v.zoom + v.panY - 0.5, o.w * v.zoom + 1, o.h * v.zoom + 1);
+      for (const o of objs) ctx.strokeRect(o.x * v.zoom + v.panX - 0.5, o.y * v.zoom + v.panY - 0.5, o.w * v.zoom + 1, o.h * v.zoom + 1);
+      if (scene.groupHandles && objs.length > 1) {
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(x0 * v.zoom + v.panX - 0.5, y0 * v.zoom + v.panY - 0.5, (x1 - x0) * v.zoom + 1, (y1 - y0) * v.zoom + 1);
+        ctx.setLineDash([]);
+        const gh = handles({ id: '', shape: 'rect', name: '', x: x0, y: y0, w: x1 - x0, h: y1 - y0, fill: '', stroke: null, strokeWidth: 0 } as Obj, v);
+        for (const hd of gh) {
+          if (hd.role === 'rot') continue;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
+          ctx.strokeRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
+        }
+      }
     }
   }
 
@@ -273,6 +304,33 @@ export class Renderer {
     return off;
   }
 
+  /** Render de un solo objeto a un canvas de su bbox (export de assets individuales). */
+  async exportObj(o: Obj): Promise<HTMLCanvasElement> {
+    const off = document.createElement('canvas');
+    off.width = Math.max(1, Math.round(o.w));
+    off.height = Math.max(1, Math.round(o.h));
+    const c2 = off.getContext('2d');
+    if (!c2) throw new Error('canvas 2d no disponible');
+    const saved = this.ctx;
+    this.ctx = c2;
+    try {
+      this.drawObj(o, { zoom: 1, panX: -o.x, panY: -o.y });
+      await new Promise<void>((res) => {
+        if ([...this.imgs.values()].every((i) => i.ready)) return res();
+        const prev = this.onImgReady;
+        this.onImgReady = () => {
+          if ([...this.imgs.values()].every((i) => i.ready)) {
+            this.onImgReady = prev;
+            res();
+          }
+        };
+      });
+    } finally {
+      this.ctx = saved;
+    }
+    return off;
+  }
+
   private path(o: { x: number; y: number; w: number; h: number; shape: ShapeKind }, v: View): void {
     const ctx = this.ctx;
     const x = o.x * v.zoom + v.panX;
@@ -286,6 +344,10 @@ export class Renderer {
       const e = lineEnds(o);
       ctx.moveTo(e.x1 * v.zoom + v.panX, e.y1 * v.zoom + v.panY);
       ctx.lineTo(e.x2 * v.zoom + v.panX, e.y2 * v.zoom + v.panY);
+    } else if (o.shape === 'polygon') {
+      const pts = polyPoints(o);
+      pts.forEach((p, i) => (i ? ctx.lineTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY) : ctx.moveTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY)));
+      ctx.closePath();
     } else {
       ctx.rect(x, y, w, h);
     }
@@ -358,6 +420,17 @@ export class Renderer {
         ctx.shadowOffsetY = (s.y ?? 0) * v.zoom;
       }
       ctx.drawImage(im.el, c.x, c.y, c.w, c.h, o.x * v.zoom + v.panX, o.y * v.zoom + v.panY, o.w * v.zoom, o.h * v.zoom);
+      if (o.erase?.length) {
+        // goma: huecos reales en la imagen (destination-out), como el Paint Eraser de Fireworks
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        for (const e of o.erase) {
+          ctx.beginPath();
+          ctx.arc((o.x + e.x * o.w) * v.zoom + v.panX, (o.y + e.y * o.h) * v.zoom + v.panY, e.r * o.w * v.zoom, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
       if (filters.length) ctx.filter = 'none';
       if (shadow) {
         ctx.shadowColor = 'transparent';
@@ -385,6 +458,7 @@ export class Renderer {
     if (o.fill) {
       ctx.fillStyle = o.gradient ? gradientFill(ctx, o, o.gradient, v.zoom, v.panX, v.panY) : o.fill;
       ctx.fill();
+      if (o.fx?.bevel) this.drawBevel(o, v, o.fx.bevel);
     }
     if (o.stroke && o.strokeWidth > 0) {
       const ga = ctx.globalAlpha * (o.strokeOpacity ?? 1);
@@ -399,6 +473,30 @@ export class Renderer {
       ctx.globalAlpha = ga / (o.strokeOpacity ?? 1);
     }
     this.clearFx(what);
+  }
+
+  /** Bisel interior: luz arriba/izquierda y sombra abajo/derecha recortada a la forma. */
+  private drawBevel(o: { x: number; y: number; w: number; h: number; shape: ShapeKind }, v: View, b: number): void {
+    const ctx = this.ctx;
+    const bw = Math.max(1, b * v.zoom);
+    ctx.save();
+    this.path(o, v);
+    ctx.clip();
+    ctx.lineWidth = bw;
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.shadowColor = 'rgba(255,255,255,0.55)';
+    ctx.shadowBlur = bw;
+    ctx.shadowOffsetX = bw / 2;
+    ctx.shadowOffsetY = bw / 2;
+    this.path(o, v);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowOffsetX = -bw / 2;
+    ctx.shadowOffsetY = -bw / 2;
+    this.path(o, v);
+    ctx.stroke();
+    ctx.restore();
   }
 
   /** Traza del pincel: polilínea con ancho por presión; `tip` estampa una imagen en cada punto. */

@@ -1,6 +1,6 @@
 // Comandos de edición sobre la selección: duplicar, pegar, orden de apilado.
 // Cada uno devuelve un Command undoable listo para history.run().
-import { uid, type Obj, type Page } from './model';
+import { convexHull, lineEnds, polyPoints, uid, type Obj, type Page, type ShapeObj } from './model';
 import type { Command } from './history';
 
 function cloneInto(page: Page, o: Obj, dx: number, dy: number): { clone: Obj; layerIndex: number } | null {
@@ -79,5 +79,62 @@ export function groupCmd(objs: Obj[], group: string | undefined): Command {
     label: group ? 'agrupar' : 'desagrupar',
     do: () => objs.forEach((o) => { o.group = group; }),
     undo: () => before.forEach(({ o, group }) => { o.group = group; }),
+  };
+}
+
+/** Puntos de contorno de una forma para la unión. */
+function outline(o: Obj): { x: number; y: number }[] {
+  if (o.shape === 'ellipse') {
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    return Array.from({ length: 16 }, (_, i) => ({
+      x: cx + (o.w / 2) * Math.cos((i * Math.PI) / 8),
+      y: cy + (o.h / 2) * Math.sin((i * Math.PI) / 8),
+    }));
+  }
+  if (o.shape === 'polygon') return polyPoints(o);
+  if (o.shape === 'line') { const e = lineEnds(o); return [{ x: e.x1, y: e.y1 }, { x: e.x2, y: e.y2 }]; }
+  if (o.shape === 'stroke') return (o.points ?? []).map((p) => ({ x: o.x + p.x * o.w, y: o.y + p.y * o.h }));
+  return [{ x: o.x, y: o.y }, { x: o.x + o.w, y: o.y }, { x: o.x + o.w, y: o.y + o.h }, { x: o.x, y: o.y + o.h }];
+}
+
+/** Unión booleana aproximada (hull convexo) de las formas seleccionadas: una sola. */
+export function unionCmd(page: Page, objs: Obj[]): { cmd: Command; result: ShapeObj } | null {
+  if (objs.length < 2) return null;
+  const layerIndex = page.layers.findIndex((l) => l.objects.includes(objs[0]));
+  if (layerIndex < 0) return null;
+  const layer = page.layers[layerIndex];
+  if (objs.some((o) => !layer.objects.includes(o))) return null;
+  const hull = convexHull(objs.flatMap(outline));
+  if (hull.length < 3) return null;
+  const x0 = Math.min(...hull.map((p) => p.x)), y0 = Math.min(...hull.map((p) => p.y));
+  const w = Math.max(1, Math.max(...hull.map((p) => p.x)) - x0), h = Math.max(1, Math.max(...hull.map((p) => p.y)) - y0);
+  const first = objs[0] as Partial<ShapeObj>;
+  const result: ShapeObj = {
+    id: uid(),
+    shape: 'polygon',
+    name: 'Unión',
+    x: Math.round(x0), y: Math.round(y0), w: Math.round(w), h: Math.round(h),
+    fill: first.fill ?? '#4f8cff',
+    stroke: first.stroke ?? null,
+    strokeWidth: first.strokeWidth ?? 0,
+    gradient: first.gradient ?? null,
+    fx: first.fx ? structuredClone(first.fx) : undefined,
+    poly: hull.map((p) => ({ x: (p.x - x0) / w, y: (p.y - y0) / h })),
+  };
+  const removed = objs.map((o) => ({ o, index: layer.objects.indexOf(o) }));
+  return {
+    result,
+    cmd: {
+      label: 'unión',
+      do: () => {
+        for (const r of [...removed].reverse()) layer.objects.splice(r.index, 1);
+        layer.objects.push(result);
+      },
+      undo: () => {
+        const i = layer.objects.indexOf(result);
+        if (i >= 0) layer.objects.splice(i, 1);
+        for (const r of removed) layer.objects.splice(Math.min(r.index, layer.objects.length), 0, r.o);
+      },
+    },
   };
 }

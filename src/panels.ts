@@ -20,6 +20,7 @@ export interface PanelApi {
   moveLayer(layerId: string, delta: number): void;
   reorderLayer(layerId: string, targetId: string, mode: 'before' | 'after' | 'child'): void;
   align(kind: AlignKind): void;
+  union(): void;
   selectPage(pageId: string): void;
   editPage(patch: { width?: number; height?: number }): void;
   addPage(): void;
@@ -346,6 +347,18 @@ export function renderPanels(
       fontWrap.appendChild(fontSel);
       insp.appendChild(fontWrap);
 
+      const styleRow = document.createElement('div');
+      styleRow.className = 'field';
+      const boldBtn = btn('', 'B', t('bold'), Boolean(obj.bold), () => api.editObj(obj, { bold: !obj.bold } as Partial<TextObj>));
+      boldBtn.dataset.act = 'bold';
+      boldBtn.style.fontWeight = 'bold';
+      styleRow.appendChild(boldBtn);
+      const italicBtn = btn('', 'I', t('italic'), Boolean(obj.italic), () => api.editObj(obj, { italic: !obj.italic } as Partial<TextObj>));
+      italicBtn.dataset.act = 'italic';
+      italicBtn.style.fontStyle = 'italic';
+      styleRow.appendChild(italicBtn);
+      insp.appendChild(styleRow);
+
       const sizeWrap = document.createElement('label');
       sizeWrap.className = 'field';
       sizeWrap.innerHTML = `<span>${t('size')}</span>`;
@@ -429,6 +442,7 @@ export function renderPanels(
       insp.appendChild(wrap);
     };
     numField(t('blur'), fx.blur, (v) => editFx({ blur: Math.max(0, v) }));
+    numField(t('bevel'), fx.bevel ?? 0, (v) => editFx({ bevel: Math.max(0, v) }));
     insp.appendChild(btn('', fx.shadow ? t('remove_shadow') : t('add_shadow'), t('shadow_hint'), Boolean(fx.shadow), () =>
       editFx({ shadow: fx.shadow ? null : { x: 4, y: 4, blur: 8, color: '#00000080' } }),
     ));
@@ -478,6 +492,11 @@ export function renderPanels(
     grid.appendChild(ab2);
   }
   ab.appendChild(grid);
+  if (selectedIds.length >= 2) {
+    const ub = btn('', t('union'), t('union_hint'), false, () => api.union());
+    ub.dataset.act = 'union';
+    ab.appendChild(ub);
+  }
   const hint = document.createElement('div');
   hint.className = 'hint';
   hint.textContent = selectedIds.length >= 3 ? t('align_hint_multi') : t('align_hint_single');

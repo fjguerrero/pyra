@@ -1,5 +1,5 @@
 import { flattenLayers } from './layers';
-import { lineEnds, type Layer, type Obj, type Page } from './model';
+import { lineEnds, polyPoints, type Layer, type Obj, type Page } from './model';
 import type { View } from './view';
 
 export function hitTest(page: Page, wx: number, wy: number, tol = 0): Obj | null {
@@ -28,7 +28,6 @@ export function hitObj(o: Obj, wx: number, wy: number, tol = 0): boolean {
   }
   if (wx < o.x - tol || wx > o.x + o.w + tol || wy < o.y - tol || wy > o.y + o.h + tol) return false;
   if (o.shape === 'rect' || o.shape === 'bitmap' || o.shape === 'text') return true;
-  if (o.shape === 'stroke') return true; // ponytail: trazo libre por bbox; hit por polilínea si molesta
 
   const cx = o.x + o.w / 2;
   const cy = o.y + o.h / 2;
@@ -37,6 +36,30 @@ export function hitObj(o: Obj, wx: number, wy: number, tol = 0): boolean {
   if (rx <= 0 || ry <= 0) return false;
 
   if (o.shape === 'ellipse') return ((wx - cx) / rx) ** 2 + ((wy - cy) / ry) ** 2 <= 1;
+
+  if (o.shape === 'polygon') {
+    // inside por ray casting
+    const pts = polyPoints(o);
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      if (pts[i].y > wy !== pts[j].y > wy && wx < ((pts[j].x - pts[i].x) * (wy - pts[i].y)) / (pts[j].y - pts[i].y) + pts[i].x)
+        inside = !inside;
+    }
+    return inside;
+  }
+
+  if (o.shape === 'stroke') {
+    // hit por polilínea: cerca de cualquier segmento de la traza (grosor real + margen)
+    const half = (o.strokeWidth ?? 1) / 2 + tol;
+    const pts = (o.points ?? []).map((p) => ({ x: o.x + p.x * o.w, y: o.y + p.y * o.h }));
+    for (let i = 1; i < pts.length; i++) {
+      const dx = pts[i].x - pts[i - 1].x, dy = pts[i].y - pts[i - 1].y;
+      const len2 = dx * dx + dy * dy;
+      const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((wx - pts[i - 1].x) * dx + (wy - pts[i - 1].y) * dy) / len2));
+      if (Math.hypot(wx - (pts[i - 1].x + t * dx), wy - (pts[i - 1].y + t * dy)) <= half) return true;
+    }
+    return pts.length === 1 && Math.hypot(wx - pts[0].x, wy - pts[0].y) <= half;
+  }
 
   // línea: cerca del segmento real (sus extremos según la esquina de inicio)
   const { x1: x0, y1: y0, x2: x1, y2: y1 } = lineEnds(o);

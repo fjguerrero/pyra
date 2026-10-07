@@ -29,8 +29,20 @@ export interface TextMetrics {
   lineHeight: number;
 }
 
-export function measureText(ctx: CanvasRenderingContext2D, text: string, font: string, size: number): TextMetrics {
-  ctx.font = `${size}px ${font}`;
+/** El CSS font completo: un único constructor para que medir y dibujar coincidan. */
+export function fontCss(font: string, size: number, bold = false, italic = false): string {
+  return `${italic ? 'italic ' : ''}${bold ? 'bold ' : ''}${size}px ${font}`;
+}
+
+export function measureText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  font: string,
+  size: number,
+  bold = false,
+  italic = false,
+): TextMetrics {
+  ctx.font = fontCss(font, size, bold, italic);
   const lines = text.split('\n');
   const m = ctx.measureText(lines[0] || ' ');
   const w = Math.max(1, ...lines.map((l) => ctx.measureText(l || ' ').width));
@@ -39,10 +51,10 @@ export function measureText(ctx: CanvasRenderingContext2D, text: string, font: s
 }
 
 export function drawTextObj(ctx: CanvasRenderingContext2D, o: TextObj, zoom: number, panX: number, panY: number): void {
-  ctx.font = `${o.size * zoom}px ${o.font}`;
+  ctx.font = fontCss(o.font, o.size * zoom, o.bold, o.italic);
   ctx.fillStyle = o.fill;
   ctx.textBaseline = 'alphabetic';
-  const m = measureText(ctx, o.text, o.font, o.size * zoom);
+  const m = measureText(ctx, o.text, o.font, o.size * zoom, o.bold, o.italic);
   o.text.split('\n').forEach((line, i) => {
     ctx.fillText(line, o.x * zoom + panX, o.y * zoom + panY + m.ascent + i * m.lineHeight);
   });

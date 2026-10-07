@@ -2,7 +2,7 @@
 // ponytail: M3 (bitmap) y M4 (texto) ampliarán el union; todo lo que consume objetos
 // (hit, asas, resize, align, guías) trabaja solo sobre el bbox x/y/w/h.
 
-export type ShapeKind = 'rect' | 'ellipse' | 'line' | 'stroke';
+export type ShapeKind = 'rect' | 'ellipse' | 'line' | 'stroke' | 'polygon';
 
 /** Punta del pincel: 'round' = punta redonda, 'square' = punta cuadrada. */
 export type BrushShape = 'round' | 'square';
@@ -24,6 +24,8 @@ export interface Fx {
   shadow: { x: number; y: number; blur: number; color: string } | null;
   glow: { blur: number; color: string } | null;
   blur: number; // px de desenfoque aplicado al dibujar, 0 = ninguno
+  /** Bisel: grosor del relieve interior dibujado al rellenar, 0 = ninguno. */
+  bevel?: number;
 }
 
 /** Efectos en vivo no destructivos: válidos para cualquier objeto. */
@@ -62,6 +64,8 @@ export interface ShapeObj {
   points?: { x: number; y: number; p: number }[];
   /** Imagen usada como punta del pincel (SVG o bitmap), estampada a lo largo de la traza. */
   tip?: string | null;
+  /** Polígono (pen tool): vértices normalizados 0..1 dentro del bbox; se escala con el bbox. */
+  poly?: { x: number; y: number }[];
   /** Opacidad del trazo (1 = opaco). */
   strokeOpacity?: number;
   /** Esquina de inicio del trazo de una línea; undefined = 'nw'. */
@@ -85,6 +89,8 @@ export interface BitmapObj {
   rot?: number;
   /** Id de grupo: los objetos con el mismo id se seleccionan y mueven juntos (Ctrl+G). */
   group?: string;
+  /** Goma de borrar: círculos borrados en coordenadas normalizadas 0..1 del bbox. */
+  erase?: { x: number; y: number; r: number }[];
 }
 
 export type Obj = ShapeObj | BitmapObj | TextObj;
@@ -104,8 +110,32 @@ export function lineEnds(o: { x: number; y: number; w: number; h: number; lineFr
   };
 }
 
-/** Líneas y trazas de pincel: se pintan con trazo, no con relleno. */
+/** Líneas y trazos de pincel: se pintan con trazo, no con relleno. */
 export const isLineLike = (o: { shape: string }): boolean => o.shape === 'line' || o.shape === 'stroke';
+
+/** Vértices de mundo de un polígono (pen tool). */
+export const polyPoints = (o: { x: number; y: number; w: number; h: number; poly?: { x: number; y: number }[] }): { x: number; y: number }[] =>
+  (o.poly ?? []).map((p) => ({ x: o.x + p.x * o.w, y: o.y + p.y * o.h }));
+
+/** Hull convexo (Andrew's monotone chain): la unión aproximada de varias formas. */
+export function convexHull(pts: { x: number; y: number }[]): { x: number; y: number }[] {
+  const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  if (p.length < 3) return p;
+  const cross = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) =>
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lower: { x: number; y: number }[] = [];
+  for (const q of p) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop();
+    lower.push(q);
+  }
+  const upper: { x: number; y: number }[] = [];
+  for (let i = p.length - 1; i >= 0; i--) {
+    const q = p[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop();
+    upper.push(q);
+  }
+  return lower.slice(0, -1).concat(upper.slice(0, -1));
+}
 
 /** Texto: bbox medido desde el contenido; se edita como objeto normal. */
 export interface TextObj {
@@ -119,6 +149,8 @@ export interface TextObj {
   text: string;
   font: string; // CSS font-family
   size: number; // px
+  bold?: boolean;
+  italic?: boolean;
   fill: string;
   fx?: Fx;
   rot?: number;
