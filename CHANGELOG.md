@@ -1,5 +1,25 @@
 # Pyra — registro de versiones
 
+## v0.2 — 2026-10-07
+
+### Herramientas y objetos
+- Pincel (B): puntas redonda/cuadrada, tamaño/presión/opacidad configurables, presión real con lápiz; puntas personalizadas SVG/bitmap estampadas a lo largo del trazo.
+- Líneas: sentido real del arrastre en las cuatro direcciones (`lineFrom` + `lineEnds` para render y hit-test).
+- Texto: selector de 14 fuentes del sistema con previsualización; re-medición del bbox al cambiar fuente o tamaño.
+
+### Color y paletas
+- Color con alfa (`#rrggbbaa`) en el inspector.
+- Dos paletas: recientes (auto, deduplicada, tope 12) y personalizados persistentes; ambas ordenables por drag y eliminables.
+
+### Export e interfaz
+- Export JPEG y WebP además de `.f.png` y PNG plano.
+- Toolbar rediseñada con iconos SVG lineales; zoom centrado editable; fondo con rejilla configurable.
+- i18n completo en 15 idiomas (incl. RTL árabe); tema claro/oscuro/sistema.
+- Sliders con edición numérica; correcciones de layout (color picker, scroll único de paneles, alpha redondeado).
+
+### Calidad
+- 185 tests unitarios + 25 e2e; build de producción verificado (~34 kB gzip JS).
+
 ## v0.1 — 2026-10-06
 
 Clon web de Fireworks: bitmap y vector en el mismo lienzo, local-first, sin cuenta ni servidor.

@@ -76,6 +76,25 @@ M0–M6 completados, más lo que hace que se sienta como Fireworks:
 
 Verificación: `tsc --noEmit` limpio, 172 tests unitarios, 17 e2e Playwright (×2 pasadas sin flakies).
 
-Fuera de v1 (candidatos v1.1): pen tool, unión booleana, bevel, distribución de objetos,
-multi-selección con asas de grupo, export de assets individuales, dirty-rects/offscreen
-(para miles de objetos), "igual distancia" en smart guides.
+## Estado v1.1 (2026-10-07)
+
+- Pincel (B): redondo/cuadrado, tamaño/presión/opacidad, presión real con lápiz, puntas personalizadas SVG/bitmap.
+- Líneas con sentido real del arrastre (`lineFrom`/`lineEnds`).
+- Texto con selector de 14 fuentes del sistema y re-medición del bbox.
+- Color con alfa; paletas recientes + personalizados (drag/eliminar); export JPEG/WebP.
+- Toolbar con iconos SVG, zoom editable, fondo con rejilla, i18n 15 idiomas, tema claro/oscuro.
+
+Verificación: `tsc --noEmit` limpio, 185 tests unitarios, 25 e2e Playwright, `vite build` correcto (34 kB gzip JS).
+
+## Pendientes
+
+- Deuda técnica:
+  - Hit-test de trazos de pincel por bbox (`ponytail:` en `hit.ts`) → pulir a polilínea si molesta.
+  - Export SVG (requiere serializador vectorial propio).
+  - Panel ALINEAR bajo scroll en ventanas de poca altura.
+- Funcionalidad (candidatos v1.2):
+  - Goma de borrar bitmap (Eraser E, como Fireworks) sobre imágenes importadas.
+  - Pen tool, unión booleana, bevel, distribución con selección de grupo.
+  - Multi-selección con asas de grupo, export de assets individuales.
+  - Dirty-rects/offscreen para miles de objetos, "igual distancia" en smart guides.
+  - Fuentes web descargables y negrita/cursiva en texto.
