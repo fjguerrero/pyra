@@ -26,6 +26,7 @@ function fixture(): { doc: Doc; view: View; api: PanelApi; calls: string[] } {
     moveLayer: vi.fn((_id, d) => calls.push(`moveLayer:${d}`)),
     reorderLayer: vi.fn((_id, _t, _m) => calls.push('reorderLayer')),
     align: vi.fn((k) => calls.push(`align:${k}`)),
+    order: vi.fn((k) => calls.push(`order:${k}`)),
     union: vi.fn(() => calls.push('union')),
     selectPage: vi.fn((_id) => calls.push('selectPage')),
     editPage: vi.fn(),
@@ -70,11 +71,11 @@ describe('Alinear: 8 botones reales, uno por cada operación', () => {
     ['vdist', 'vdist'],
   ];
 
-  it('existen exactamente 8 botones y son <button> con aria-pressed', () => {
+  it('existen exactamente 12 botones y son <button> con aria-pressed', () => {
     const f = fixture();
     mount(f.doc, null, null, [], f.view, f.api);
     const bs = buttonsIn('#align-body');
-    expect(bs.length).toBe(8);
+    expect(bs.length).toBe(12);
     expect(bs.every((b) => b.tagName === 'BUTTON' && b.type === 'button')).toBe(true);
     expect(bs.every((b) => b.hasAttribute('aria-pressed'))).toBe(true);
     expect(bs.every((b) => b.title.length > 0)).toBe(true);
@@ -92,6 +93,13 @@ describe('Alinear: 8 botones reales, uno por cada operación', () => {
     mount(f.doc, null, null, [], f.view, f.api);
     clickByAttr('#align-body', 'data-align', 'left');
     expect(f.api.selectLayer).not.toHaveBeenCalled();
+  });
+
+  it.each(['front', 'up', 'down', 'back'])('el botón de orden %s invoca order(%s)', (kind) => {
+    const f = fixture();
+    mount(f.doc, null, null, [], f.view, f.api);
+    clickByAttr('#align-body', 'data-order', kind);
+    expect(f.api.order).toHaveBeenCalledWith(kind);
   });
 });
 

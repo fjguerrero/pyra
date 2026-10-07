@@ -90,7 +90,7 @@ describe('smart guides: arrastrar engancha a bordes, centros y bordes de página
   it('engancha el borde izquierdo al borde de página', () => {
     const s = snapBox({ x: 4, y: 200, w: 100, h: 50 }, [], PAGE, TOL);
     expect(s.dx).toBe(-4);
-    expect(s.guides).toContainEqual({ axis: 'v', pos: 0 });
+    expect(s.guides).toContainEqual({ axis: 'v', pos: 0, kind: 'page' });
   });
 
   it('engancha el centro al centro de página', () => {
@@ -129,7 +129,7 @@ describe('smart guides: arrastrar engancha a bordes, centros y bordes de página
     // centro 158 (d=-8) y borde derecho 218 (d=-18) quedan fuera de TOL=6.
     const s = snapBox({ x: 98, y: 400, w: 120, h: 40 }, [other], PAGE, TOL);
     expect(s.dx).toBe(2);
-    expect(s.guides.filter((g) => g.axis === 'v')).toEqual([{ axis: 'v', pos: 100 }]);
+    expect(s.guides.filter((g) => g.axis === 'v')).toEqual([{ axis: 'v', pos: 100, kind: 'obj' }]);
   });
 
   it('el desplazamiento devuelto aplica el imán exactamente', () => {

@@ -80,4 +80,11 @@ describe('guía de igual distancia', () => {
     const s = snapBox({ x: 52, y: 0, w: 20, h: 20 }, [], { width: 200, height: 200 }, 6);
     expect(s.dx).toBe(0);
   });
+
+  it('los imanes a página y guías manuales se marcan page (no se dibujan); los de objeto, obj', () => {
+    const page = { width: 200, height: 200, guides: [{ axis: 'v' as const, pos: 60 }] };
+    const s = snapBox({ x: 57, y: 123, w: 20, h: 20 }, [], page, 6);
+    expect(s.dx).toBe(3); // engancha a la guía manual
+    expect(s.guides).toEqual([{ axis: 'v', pos: 60, kind: 'page' }]);
+  });
 });
