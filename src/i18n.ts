@@ -37,6 +37,7 @@ type Msg = {
   styles: string; save_style: string; save_style_hint: string; delete_style: string;
   align_left: string; align_hcenter: string; align_right: string; align_top: string; align_vcenter: string; align_bottom: string;
   dist_h: string; dist_v: string; align_hint_multi: string; align_hint_single: string;
+  order_front: string; order_up: string; order_down: string; order_back: string;
   status_selection: string; status_objects: string;
   obj_rect: string; obj_ellipse: string; obj_line: string; obj_text: string; default_layer: string; default_page: string;
   settings: string; theme: string; theme_system: string; theme_light: string; theme_dark: string;
@@ -44,11 +45,14 @@ type Msg = {
   alpha: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
   export_menu: string; export_jpeg: string; export_webp: string; export_quality: string;
   tool_brush: string; tool_eraser: string; export_asset: string; obj_stroke: string; brush_size: string; brush_pressure: string; brush_opacity: string;
-  bevel: string; tool_pen: string; obj_polygon: string; union: string; union_hint: string;
+  bevel: string; tool_pen: string; tool_pencil: string; pencil_continuous: string; pencil_smooth: string; pen_curved: string; pen_straight: string; pencil_polygon: string; poly_freehand: string; poly_straight: string; stroke_width: string; stroke_style: string; stroke_solid: string; stroke_dashed: string; no_fill: string; obj_polygon: string; union: string; union_hint: string;
+  help: string; help_html: string;
   brush_round: string; brush_square: string; brush_tip: string; brush_tip_none: string;
 };
 
 const en: Msg = {
+  order_front: 'Bring to front', order_up: 'Bring forward', order_down: 'Send backward', order_back: 'Send to back',
+  tool_pencil: 'Pencil (N)', pencil_continuous: 'Continuous', pencil_smooth: 'Smoothed', pen_curved: 'Curved', pen_straight: 'Straight', pencil_polygon: 'Polygon pencil', poly_freehand: 'Freehand', poly_straight: 'Straight lines', stroke_width: 'Stroke width', stroke_style: 'Stroke style', stroke_solid: 'Solid', stroke_dashed: 'Dashed', no_fill: 'No fill',
   tool_select: 'Selection (V)', tool_rect: 'Rectangle (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Line (L)', tool_text: 'Text (T)',
   import_image: 'Import image', export_fpng: 'Export .f.png', export_png: 'Export flat PNG', fit_zoom: 'Fit zoom (0)', change_lang: 'Change language',
   panel_layers: 'Layers', panel_pages: 'Pages', panel_inspector: 'Properties', panel_align: 'Align',
@@ -68,16 +72,26 @@ const en: Msg = {
   status_selection: 'selection', status_objects: 'objects',
   obj_rect: 'Rectangle', obj_ellipse: 'Ellipse', obj_line: 'Line', obj_text: 'Text', default_layer: 'Layer 1', default_page: 'Page',
   settings: 'Settings', theme: 'Theme', theme_system: 'System', theme_light: 'Light', theme_dark: 'Dark',
-  language: 'Language', zoom: 'Zoom', bg: 'Background', bg_grid: 'Checker grid', bg_none: 'Solid',
+  language: 'Language', zoom: 'Zoom', bg: 'Background', bg_grid: 'Grid', bg_none: 'Solid',
   alpha: 'Alpha', recent_colors: 'Recent colors', custom_colors: 'Custom colors', add_color: 'Add current color to custom palette', remove_color: 'Remove color',
   export_menu: 'Export', export_jpeg: 'Export JPEG', export_webp: 'Export WebP', export_quality: 'Quality (JPEG/WebP)',
     tool_brush: 'Paint brush (B)', tool_eraser: 'Eraser (X)', export_asset: 'Export selection as PNG', obj_stroke: 'Brush stroke',
   bevel: 'Bevel', tool_pen: 'Pen (P)', obj_polygon: 'Polygon', union: 'Union', union_hint: 'Merge selected shapes into one', brush_size: 'Size', brush_pressure: 'Pressure', brush_opacity: 'Opacity',
+  help: 'Help', help_html: `<h4>Tools</h4><p><code>V</code> select · <code>R</code> rectangle · <code>E</code> ellipse · <code>L</code> line · <code>P</code> pen (click vertices, Shift toggles curved/straight, click first point or Enter to close) · <code>N</code> pencil (freehand stroke: continuous or smoothed) · <code>G</code> poly-pen (draw polygons freehand: straight or stylized, separate stroke and fill) · <code>B</code> paint brush (size/pressure/opacity, custom SVG/bitmap tips) · <code>T</code> text · <code>X</code> eraser (bitmap).</p>
+<h4>Selection & editing</h4><p>Click or marquee-drag to select; Shift adds. Move/resize with handles; Shift while dragging locks to one axis; Ctrl disables snapping. Arrow keys nudge (Shift=10px). <code>Ctrl+D</code> duplicate, <code>Ctrl+C/V</code> copy-paste, <code>Ctrl+G</code>/<code>Ctrl+Shift+G</code> group/ungroup, <code>[</code>/<code>]</code> z-order, <code>Ctrl+U</code> union of shapes, <code>Delete</code> delete. <code>Ctrl+Z</code>/<code>Ctrl+Shift+Z</code> undo/redo everything.</p>
+<h4>Smart guides & snapping</h4><p>Guides appear only against real references (other objects, page rules, manual guides). Snaps to them; hold <code>Ctrl</code> while dragging to move freely. Right-click the canvas creates a manual guide; right-click on it deletes it; drag it to move.</p>
+<h4>Layers & pages</h4><p>Layers panel: visibility, lock, opacity, drag to reorder/nest, z-order buttons. Pages panel: multiple pages per document. Panels are collapsible and reorderable.</p>
+<h4>Fills, styles & effects</h4><p>Solid color with alpha, linear gradients, reusable Styles (save from an object, apply to another), live effects: shadow, glow, blur, bevel. Polygon objects keep stroke and fill independent (color, width, dashed, no-fill).</p>
+<h4>Text</h4><p>Double-click to edit; system font picker; bold/italic; bbox re-measured.</p>
+<h4>Files</h4><p>Import images (PNG/JPEG/WebP/GIF/SVG). <code>.f.png</code> export/import keeps the full editable document. Export flat PNG, JPEG, WebP (quality configurable) or one PNG per selected object. Autosaves to your browser (IndexedDB).</p>
+<h4>View & settings</h4><p>Scroll to zoom, middle-drag or Space to pan, <code>0</code> fit page. Settings (bottom-left): language (15), theme (light/dark/system), workspace background color and grid.</p>`,
   brush_round: 'Round tip', brush_square: 'Square tip', brush_tip: 'Custom tip (SVG or image)', brush_tip_none: 'Remove custom tip',
 };
 
 const es: Partial<Msg> = {
   ...en,
+  order_front: 'Traer al frente', order_up: 'Traer adelante', order_down: 'Enviar atrás', order_back: 'Enviar al fondo',
+  tool_pencil: 'Lápiz (N)', pencil_continuous: 'Continuo', pencil_smooth: 'Suavizado', pen_curved: 'Curvado', pen_straight: 'Recto', pencil_polygon: 'Lápiz de polígonos', poly_freehand: 'A mano alzada', poly_straight: 'Líneas rectas', stroke_width: 'Grosor del trazo', stroke_style: 'Estilo del trazo', stroke_solid: 'Sólido', stroke_dashed: 'Discontinuo', no_fill: 'Sin relleno',
   tool_select: 'Selección (V)', tool_rect: 'Rectángulo (R)', tool_ellipse: 'Elipse (E)', tool_line: 'Línea (L)', tool_text: 'Texto (T)',
   import_image: 'Importar imagen', export_fpng: 'Exportar .f.png', export_png: 'Exportar PNG plano', fit_zoom: 'Zoom ajustar (0)', change_lang: 'Cambiar idioma',
   panel_layers: 'Capas', panel_pages: 'Páginas', panel_inspector: 'Propiedades', panel_align: 'Alinear',
@@ -102,11 +116,21 @@ const es: Partial<Msg> = {
   export_menu: 'Exportar', export_jpeg: 'Exportar JPEG', export_webp: 'Exportar WebP', export_quality: 'Calidad (JPEG/WebP)',
   tool_brush: 'Pincel (B)', tool_eraser: 'Goma de borrar (X)', export_asset: 'Exportar selección como PNG', obj_stroke: 'Trazo de pincel', brush_size: 'Tamaño', brush_pressure: 'Presión', brush_opacity: 'Opacidad',
   bevel: 'Bisel', tool_pen: 'Lápiz (P)', obj_polygon: 'Polígono', union: 'Unión', union_hint: 'Unir las formas seleccionadas en una sola',
+  help: 'Ayuda', help_html: `<h4>Herramientas</h4><p><code>V</code> seleccionar · <code>R</code> rectángulo · <code>E</code> elipse · <code>L</code> línea · <code>P</code> pluma (clic en vértices, Shift alterna curvo/recto, clic en el primer punto o Enter para cerrar) · <code>N</code> lápiz (trazo libre: continuo o suavizado) · <code>G</code> polilápiz (dibuja polígonos a mano alzada: rectos o estilizados, borde y relleno independientes) · <code>B</code> pincel (tamaño/presión/opacidad, puntas SVG/bitmap) · <code>T</code> texto · <code>X</code> goma (bitmap).</p>
+<h4>Selección y edición</h4><p>Clic o arrastre por marco para seleccionar; Shift añade. Mueve y redimensiona con las asas; Shift durante el arrastre bloquea a un eje; Ctrl desactiva el snap. Flechas mueven (Shift=10px). <code>Ctrl+D</code> duplicar, <code>Ctrl+C/V</code> copiar/pegar, <code>Ctrl+G</code>/<code>Ctrl+Shift+G</code> agrupar/desagrupar, <code>[</code>/<code>]</code> orden de apilado, <code>Ctrl+U</code> unión de formas, <code>Supr</code> eliminar. <code>Ctrl+Z</code>/<code>Ctrl+Shift+Z</code> deshacer/rehacer de todo.</p>
+<h4>Guías inteligentes y snap</h4><p>Las guías aparecen solo ante referencias reales (otros objetos, reglas de página, guías manuales) y atraen el snap; mantén <code>Ctrl</code> durante el arrastre para moverte libre. Clic derecho en el lienzo crea una guía manual; clic derecho sobre ella la borra; arrástrala para moverla.</p>
+<h4>Capas y páginas</h4><p>Panel de capas: visibilidad, bloqueo, opacidad, drag para reordenar/anidar, botones de orden. Panel de páginas: varias páginas por documento. Los paneles se colapsan y reordenan.</p>
+<h4>Rellenos, estilos y efectos</h4><p>Color sólido con alfa, degradados lineales, Styles reutilizables (guardar desde un objeto, aplicar a otro), efectos en vivo: sombra, glow, blur, bisel. Los polígonos mantienen borde y relleno independientes (color, grosor, discontinuo, sin relleno).</p>
+<h4>Texto</h4><p>Doble clic para editar; selector de fuentes del sistema; negrita/cursiva; el bbox se re-mide.</p>
+<h4>Archivos</h4><p>Importa imágenes (PNG/JPEG/WebP/GIF/SVG). Exportar/importar <code>.f.png</code> conserva el documento editable completo. Exporta PNG plano, JPEG, WebP (calidad configurable) o un PNG por objeto seleccionado. Autoguardado en el navegador (IndexedDB).</p>
+<h4>Vista y ajustes</h4><p>Rueda para zoom, arrastre con rueda/Space para mover, <code>0</code> ajustar a página. Ajustes (abajo a la izquierda): idioma (15), tema (claro/oscuro/sistema), color de fondo del área de trabajo y cuadrícula.</p>`,
   brush_round: 'Punta redonda', brush_square: 'Punta cuadrada', brush_tip: 'Punta personalizada (SVG o imagen)', brush_tip_none: 'Quitar punta personalizada',
 };
 
 const zh: Partial<Msg> = {
   ...en,
+  order_front: '置于顶层', order_up: '上移一层', order_down: '下移一层', order_back: '置于底层',
+  tool_pencil: '铅笔 (N)', pencil_continuous: '连续', pencil_smooth: '平滑', pen_curved: '曲线', pen_straight: '直线', pencil_polygon: '多边形铅笔', poly_freehand: '手绘', poly_straight: '直线', stroke_width: '描边宽度', stroke_style: '描边样式', stroke_solid: '实线', stroke_dashed: '虚线', no_fill: '无填充',
   tool_select: '选择 (V)', tool_rect: '矩形 (R)', tool_ellipse: '椭圆 (E)', tool_line: '直线 (L)', tool_text: '文本 (T)',
   import_image: '导入图像', export_fpng: '导出 .f.png', export_png: '导出平面 PNG', fit_zoom: '缩放适配 (0)', change_lang: '更改语言',
   panel_layers: '图层', panel_pages: '页面', panel_inspector: '属性', panel_align: '对齐',
@@ -129,6 +153,8 @@ const zh: Partial<Msg> = {
 
 const hi: Partial<Msg> = {
   ...en,
+  order_front: 'सामने लाएँ', order_up: 'आगे लाएँ', order_down: 'पीछे भेजें', order_back: 'पीछे भेजें',
+  tool_pencil: 'पेंसिल (N)', pencil_continuous: 'निरंतर', pencil_smooth: 'कोमल', pen_curved: 'वक्र', pen_straight: 'सीधा', pencil_polygon: 'बहुभुज पेंसिल', poly_freehand: 'हस्तचित्र', poly_straight: 'सीधी रेखाएँ', stroke_width: 'स्ट्रोक चौड़ाई', stroke_style: 'स्ट्रोक शैली', stroke_solid: 'ठोस', stroke_dashed: 'डैश', no_fill: 'कोई भराव नहीं',
   tool_select: 'चयन (V)', tool_rect: 'आयत (R)', tool_ellipse: 'अंडाकार (E)', tool_line: 'रेखा (L)', tool_text: 'पाठ (T)',
   import_image: 'छवि आयात करें', export_fpng: '.f.png निर्यात करें', export_png: 'सपाट PNG निर्यात करें', fit_zoom: 'ज़ूम फ़िट (0)', change_lang: 'भाषा बदलें',
   panel_layers: 'लेयर', panel_pages: 'पृष्ठ', panel_inspector: 'गुण', panel_align: 'संरेखित करें',
@@ -151,6 +177,8 @@ const hi: Partial<Msg> = {
 
 const ar: Partial<Msg> = {
   ...en,
+  order_front: 'إحضار إلى المقدمة', order_up: 'إحضار للأمام', order_down: 'إرسال للخلف', order_back: 'إرسال إلى المؤخرة',
+  tool_pencil: 'رصاص (N)', pencil_continuous: 'متصل', pencil_smooth: 'ناعم', pen_curved: 'منحني', pen_straight: 'مستقيم', pencil_polygon: 'رصاص المضلعات', poly_freehand: 'حر', poly_straight: 'خطوط مستقيمة', stroke_width: 'سماكة الخط', stroke_style: 'نمط الخط', stroke_solid: 'متصل', stroke_dashed: 'متقطع', no_fill: 'بدون تعبئة',
   tool_select: 'تحديد (V)', tool_rect: 'مستطيل (R)', tool_ellipse: 'قطع ناقص (E)', tool_line: 'خط (L)', tool_text: 'نص (T)',
   import_image: 'استيراد صورة', export_fpng: 'تصدير ‎.f.png', export_png: 'تصدير PNG مسطحة', fit_zoom: 'تكييف التكبير (0)', change_lang: 'تغيير اللغة',
   panel_layers: 'الطبقات', panel_pages: 'الصفحات', panel_inspector: 'الخصائص', panel_align: 'محاذاة',
@@ -173,6 +201,8 @@ const ar: Partial<Msg> = {
 
 const pt: Partial<Msg> = {
   ...en,
+  order_front: 'Trazer para a frente', order_up: 'Trazer para frente', order_down: 'Enviar para trás', order_back: 'Enviar para o fundo',
+  tool_pencil: 'Lápis (N)', pencil_continuous: 'Contínuo', pencil_smooth: 'Suavizado', pen_curved: 'Curvado', pen_straight: 'Reto', pencil_polygon: 'Lápis de polígonos', poly_freehand: 'À mão livre', poly_straight: 'Linhas retas', stroke_width: 'Espessura do traço', stroke_style: 'Estilo do traço', stroke_solid: 'Sólido', stroke_dashed: 'Tracejado', no_fill: 'Sem preenchimento',
   tool_select: 'Seleção (V)', tool_rect: 'Retângulo (R)', tool_ellipse: 'Elipse (E)', tool_line: 'Linha (L)', tool_text: 'Texto (T)',
   import_image: 'Importar imagem', export_fpng: 'Exportar .f.png', export_png: 'Exportar PNG plano', fit_zoom: 'Ajustar zoom (0)', change_lang: 'Mudar idioma',
   panel_layers: 'Camadas', panel_pages: 'Páginas', panel_inspector: 'Propriedades', panel_align: 'Alinhar',
@@ -195,6 +225,8 @@ const pt: Partial<Msg> = {
 
 const ru: Partial<Msg> = {
   ...en,
+  order_front: 'На передний план', order_up: 'Назад на один слой', order_down: 'Вперёд на один слой', order_back: 'На задний план',
+  tool_pencil: 'Карандаш (N)', pencil_continuous: 'Непрерывный', pencil_smooth: 'Сглаженный', pen_curved: 'Изогнутый', pen_straight: 'Прямой', pencil_polygon: 'Карандаш полигонов', poly_freehand: 'От руки', poly_straight: 'Прямые линии', stroke_width: 'Толщина штриха', stroke_style: 'Стиль штриха', stroke_solid: 'Сплошной', stroke_dashed: 'Штриховой', no_fill: 'Без заливки',
   tool_select: 'Выделение (V)', tool_rect: 'Прямоугольник (R)', tool_ellipse: 'Эллипс (E)', tool_line: 'Линия (L)', tool_text: 'Текст (T)',
   import_image: 'Импорт изображения', export_fpng: 'Экспорт .f.png', export_png: 'Экспорт плоского PNG', fit_zoom: 'Вписать масштаб (0)', change_lang: 'Сменить язык',
   panel_layers: 'Слои', panel_pages: 'Страницы', panel_inspector: 'Свойства', panel_align: 'Выравнивание',
@@ -217,6 +249,8 @@ const ru: Partial<Msg> = {
 
 const ja: Partial<Msg> = {
   ...en,
+  order_front: '最前面へ', order_up: '手前に移動', order_down: '奥に移動', order_back: '最背面へ',
+  tool_pencil: 'ペンシル (N)', pencil_continuous: '連続', pencil_smooth: '滑らか', pen_curved: '曲線', pen_straight: '直線', pencil_polygon: 'ポリゴンペンシル', poly_freehand: 'フリーハンド', poly_straight: '直線', stroke_width: '線幅', stroke_style: '線の種類', stroke_solid: '実線', stroke_dashed: '破線', no_fill: '塗りなし',
   tool_select: '選択 (V)', tool_rect: '長方形 (R)', tool_ellipse: '楕円 (E)', tool_line: '直線 (L)', tool_text: 'テキスト (T)',
   import_image: '画像を読み込む', export_fpng: '.f.png として書き出す', export_png: 'フラット PNG を書き出す', fit_zoom: 'ズーム調整 (0)', change_lang: '言語を変更',
   panel_layers: 'レイヤー', panel_pages: 'ページ', panel_inspector: 'プロパティ', panel_align: '整列',
@@ -239,6 +273,8 @@ const ja: Partial<Msg> = {
 
 const fr: Partial<Msg> = {
   ...en,
+  order_front: 'Envoyer à l\'avant', order_up: 'Avancer', order_down: 'Reculer', order_back: 'Envoyer à l\'arrière',
+  tool_pencil: 'Crayon (N)', pencil_continuous: 'Continu', pencil_smooth: 'Adouci', pen_curved: 'Courbé', pen_straight: 'Droit', pencil_polygon: 'Crayon de polygones', poly_freehand: 'À main levée', poly_straight: 'Lignes droites', stroke_width: 'Épaisseur du trait', stroke_style: 'Style du trait', stroke_solid: 'Plein', stroke_dashed: 'Pointillés', no_fill: 'Sans remplissage',
   tool_select: 'Sélection (V)', tool_rect: 'Rectangle (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Ligne (L)', tool_text: 'Texte (T)',
   import_image: 'Importer une image', export_fpng: 'Exporter .f.png', export_png: 'Exporter PNG à plat', fit_zoom: 'Ajuster le zoom (0)', change_lang: 'Changer de langue',
   panel_layers: 'Calques', panel_pages: 'Pages', panel_inspector: 'Propriétés', panel_align: 'Aligner',
@@ -261,6 +297,8 @@ const fr: Partial<Msg> = {
 
 const de: Partial<Msg> = {
   ...en,
+  order_front: 'In den Vordergrund', order_up: 'Nach vorne', order_down: 'Nach hinten', order_back: 'In den Hintergrund',
+  tool_pencil: 'Bleistift (N)', pencil_continuous: 'Durchgehend', pencil_smooth: 'Geglättet', pen_curved: 'Gebogen', pen_straight: 'Gerade', pencil_polygon: 'Polygonstift', poly_freehand: 'Freihand', poly_straight: 'Gerade Linien', stroke_width: 'Strichstärke', stroke_style: 'Strichstil', stroke_solid: 'Durchgehend', stroke_dashed: 'Gestrichelt', no_fill: 'Keine Füllung',
   tool_select: 'Auswahl (V)', tool_rect: 'Rechteck (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Linie (L)', tool_text: 'Text (T)',
   import_image: 'Bild importieren', export_fpng: '.f.png exportieren', export_png: 'Flaches PNG exportieren', fit_zoom: 'Zoom anpassen (0)', change_lang: 'Sprache wechseln',
   panel_layers: 'Ebenen', panel_pages: 'Seiten', panel_inspector: 'Eigenschaften', panel_align: 'Ausrichten',
@@ -283,6 +321,8 @@ const de: Partial<Msg> = {
 
 const ko: Partial<Msg> = {
   ...en,
+  order_front: '맨 앞으로', order_up: '앞으로 이동', order_down: '뒤로 이동', order_back: '맨 뒤로',
+  tool_pencil: '연필 (N)', pencil_continuous: '연속', pencil_smooth: '부드럽게', pen_curved: '곡선', pen_straight: '직선', pencil_polygon: '다각형 연필', poly_freehand: '손그림', poly_straight: '직선', stroke_width: '선 두께', stroke_style: '선 스타일', stroke_solid: '실선', stroke_dashed: '점선', no_fill: '채우기 없음',
   tool_select: '선택 (V)', tool_rect: '사각형 (R)', tool_ellipse: '타원 (E)', tool_line: '선 (L)', tool_text: '텍스트 (T)',
   import_image: '이미지 가져오기', export_fpng: '.f.png 내보내기', export_png: '플랫 PNG 내보내기', fit_zoom: '확대 맞춤 (0)', change_lang: '언어 변경',
   panel_layers: '레이어', panel_pages: '페이지', panel_inspector: '속성', panel_align: '정렬',
@@ -305,6 +345,8 @@ const ko: Partial<Msg> = {
 
 const it: Partial<Msg> = {
   ...en,
+  order_front: 'Porta in primo piano', order_up: 'Porta avanti', order_down: 'Porta indietro', order_back: 'Porta in fondo',
+  tool_pencil: 'Matita (N)', pencil_continuous: 'Continuo', pencil_smooth: 'Levigato', pen_curved: 'Curvo', pen_straight: 'Dritto', pencil_polygon: 'Matita poligoni', poly_freehand: 'A mano libera', poly_straight: 'Linee rette', stroke_width: 'Spessore tratto', stroke_style: 'Stile tratto', stroke_solid: 'Continuo', stroke_dashed: 'Tratteggiato', no_fill: 'Nessun riempimento',
   tool_select: 'Selezione (V)', tool_rect: 'Rettangolo (R)', tool_ellipse: 'Ellisse (E)', tool_line: 'Linea (L)', tool_text: 'Testo (T)',
   import_image: 'Importa immagine', export_fpng: 'Esporta .f.png', export_png: 'Esporta PNG piatta', fit_zoom: 'Adatta zoom (0)', change_lang: 'Cambia lingua',
   panel_layers: 'Livelli', panel_pages: 'Pagine', panel_inspector: 'Proprietà', panel_align: 'Allinea',
@@ -327,6 +369,8 @@ const it: Partial<Msg> = {
 
 const tr: Partial<Msg> = {
   ...en,
+  order_front: 'Öne getir', order_up: 'Öne taşı', order_down: 'Geriye taşı', order_back: 'Arkaya gönder',
+  tool_pencil: 'Kalem (N)', pencil_continuous: 'Sürekli', pencil_smooth: 'Yumuşatılmış', pen_curved: 'Eğri', pen_straight: 'Düz', pencil_polygon: 'Çokgen kalemi', poly_freehand: 'Serbest el', poly_straight: 'Düz çizgiler', stroke_width: 'Kontur kalınlığı', stroke_style: 'Kontur stili', stroke_solid: 'Düz', stroke_dashed: 'Kesik çizgi', no_fill: 'Dolgu yok',
   tool_select: 'Seçim (V)', tool_rect: 'Dikdörtgen (R)', tool_ellipse: 'Elips (E)', tool_line: 'Çizgi (L)', tool_text: 'Metin (T)',
   import_image: 'Görüntü içe aktar', export_fpng: '.f.png dışa aktar', export_png: 'Düz PNG dışa aktar', fit_zoom: 'Yakınlaştırmayı sığdır (0)', change_lang: 'Dili değiştir',
   panel_layers: 'Katmanlar', panel_pages: 'Sayfalar', panel_inspector: 'Özellikler', panel_align: 'Hizala',
@@ -349,6 +393,8 @@ const tr: Partial<Msg> = {
 
 const vi: Partial<Msg> = {
   ...en,
+  order_front: 'Đưa lên trước', order_up: 'Đưa lên trước một lớp', order_down: 'Đưa xuống sau một lớp', order_back: 'Đưa xuống dưới cùng',
+  tool_pencil: 'Bút chì (N)', pencil_continuous: 'Liên tục', pencil_smooth: 'Làm mượt', pen_curved: 'Cong', pen_straight: 'Thẳng', pencil_polygon: 'Bút chì đa giác', poly_freehand: 'Vẽ tay', poly_straight: 'Đường thẳng', stroke_width: 'Độ nét', stroke_style: 'Kiểu nét', stroke_solid: 'Liền', stroke_dashed: 'Nét đứt', no_fill: 'Không tô',
   tool_select: 'Chọn (V)', tool_rect: 'Hình chữ nhật (R)', tool_ellipse: 'Hình elip (E)', tool_line: 'Đường thẳng (L)', tool_text: 'Văn bản (T)',
   import_image: 'Nhập ảnh', export_fpng: 'Xuất .f.png', export_png: 'Xuất PNG phẳng', fit_zoom: 'Vừa zoom (0)', change_lang: 'Đổi ngôn ngữ',
   panel_layers: 'Lớp', panel_pages: 'Trang', panel_inspector: 'Thuộc tính', panel_align: 'Căn chỉnh',
@@ -371,6 +417,8 @@ const vi: Partial<Msg> = {
 
 const nl: Partial<Msg> = {
   ...en,
+  order_front: 'Naar de voorgrond', order_up: 'Naar voren', order_down: 'Naar achteren', order_back: 'Naar de achtergrond',
+  tool_pencil: 'Potlood (N)', pencil_continuous: 'Doorlopend', pencil_smooth: 'Vloog', pen_curved: 'Gebogen', pen_straight: 'Recht', pencil_polygon: 'Polygoonpotlood', poly_freehand: 'Vrije hand', poly_straight: 'Rechte lijnen', stroke_width: 'Lijndikte', stroke_style: 'Lijnstijl', stroke_solid: 'Doorlopend', stroke_dashed: 'Gestippeld', no_fill: 'Geen vulling',
   tool_select: 'Selectie (V)', tool_rect: 'Rechthoek (R)', tool_ellipse: 'Ellips (E)', tool_line: 'Lijn (L)', tool_text: 'Tekst (T)',
   import_image: 'Afbeelding importeren', export_fpng: '.f.png exporteren', export_png: 'Platte PNG exporteren', fit_zoom: 'Zoom aanpassen (0)', change_lang: 'Taal wisselen',
   panel_layers: 'Lagen', panel_pages: 'Pagina\u2019s', panel_inspector: 'Eigenschappen', panel_align: 'Uitlijnen',

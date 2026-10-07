@@ -77,6 +77,18 @@ describe('Renderer.draw: workspace y página', () => {
     expect(rects[1]).toEqual([40, 20, 400, 300]);
   });
 
+  it('la cuadrícula del fondo son líneas, no cuadrados rellenos', () => {
+    const s = scene({ workspace: { color: '#111111', grid: 20 } });
+    const ops = draw(s);
+    const gridIdx = ops.findIndex((o) => o.op === 'set:strokeStyle' && String(o.args[0]).includes('128'));
+    expect(gridIdx).toBeGreaterThan(-1);
+    // tras el color de fondo, la cuadrícula se traza con moveTo/lineTo + stroke
+    const bgIdx = ops.findIndex((o) => o.op === 'fillRect');
+    expect(gridIdx).toBeGreaterThan(bgIdx);
+    expect(ops.some((o, i) => i > gridIdx && o.op === 'lineTo')).toBe(true);
+    expect(ops.some((o, i) => i > gridIdx && o.op === 'stroke')).toBe(true);
+  });
+
   it('recorta a la página antes de dibujar los objetos', () => {
     const s = scene();
     s.page.layers[0].objects.push(rect(10, 10, 30, 30));

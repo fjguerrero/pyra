@@ -100,6 +100,22 @@ input[type="range"] { accent-color: var(--accent); }
   min-width: 200px; box-shadow: 0 6px 24px rgb(0 0 0 / .35);
 }
 #settings-menu[hidden] { display: none; }
+#help-btn { text-align: left; background: none; border: 0; color: var(--text); font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 5px; cursor: pointer; }
+#help-btn:hover { background: var(--panel-2); }
+#help-modal {
+  position: fixed; inset: 0; z-index: 30; display: grid; place-items: center;
+  background: rgb(0 0 0 / .45);
+}
+#help-modal[hidden] { display: none; }
+#help-modal .card {
+  max-width: 640px; max-height: 82vh; overflow-y: auto; padding: 18px 22px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / .5); font-size: 13px; line-height: 1.5; color: var(--text);
+}
+#help-modal h4 { margin: 14px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+#help-modal h4:first-child { margin-top: 0; }
+#help-modal p { margin: 0; }
+#help-modal code { background: var(--panel-2); border-radius: 4px; padding: 1px 4px; }
 #settings-menu label { color: var(--dim); font-size: 11px; }
 #settings-menu select { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
 

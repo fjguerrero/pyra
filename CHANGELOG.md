@@ -4,6 +4,9 @@
 
 ### Herramientas y objetos
 - Lápiz (P): polígono clic a clic, cierre en el primer vértice o con Enter; Escape descarta.
+- Lápiz (N): dos modos — continuo (trazo tipo MS Paint) y suavizado (Catmull-Rom); crea un objeto `stroke` vectorial editable (grosor/color en el inspector), undoable.
+- Polilápiz (G): dibuja polígonos vectoriales arrastrando a mano alzada; modo recto (simplificación RDP → líneas rectas) o estilizado (curvas suaves). Borde y relleno independientes (color, grosor, línea discontinua, sin relleno), configurables en el panel de la herramienta y en el inspector del objeto.
+- Pluma (P) con vértices curvos/rectos alternables con Shift durante el trazado.
 - Goma de borrar (X) bitmap: borra píxeles reales de imágenes importadas (`destination-out`), undoable, como el Paint Eraser de Fireworks.
 - Unión booleana (Ctrl+U o botón en ALINEAR): fusiona las formas seleccionadas en un polígono, undoable.
 - Bisel: campo en efectos en vivo (luz/sombra interior recortada a la forma).
@@ -16,6 +19,7 @@
 
 ### Export
 - Export de assets individuales: un PNG por objeto seleccionado (menú Exportar).
+- Fondo del área de trabajo: cuadrícula de líneas (no cuadrados rellenos). Botón de Ayuda en el menú de configuración (abajo a la izquierda) con la documentación completa de la app (es/en; el resto de idiomas usa el texto en inglés).
 
 
 ## v0.2 — 2026-10-07

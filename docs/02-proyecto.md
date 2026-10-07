@@ -79,6 +79,7 @@ Verificación: `tsc --noEmit` limpio, 172 tests unitarios, 17 e2e Playwright (×
 ## Estado v1.1 (2026-10-07)
 
 - Pincel (B): redondo/cuadrado, tamaño/presión/opacidad, presión real con lápiz, puntas personalizadas SVG/bitmap.
+- Lápiz (N): trazo continuo o suavizado (objeto `stroke` vectorial con grosor/color). Polilápiz (G): polígonos a mano alzada, rectos (RDP) o estilizados (Catmull-Rom), borde y relleno independientes. Helpers en `src/freehand.ts` (rdpSimplify, smoothPolyline, smoothClosedPolygon).
 - Líneas con sentido real del arrastre (`lineFrom`/`lineEnds`).
 - Texto con selector de 14 fuentes del sistema y re-medición del bbox.
 - Color con alfa; paletas recientes + personalizados (drag/eliminar); export JPEG/WebP.
