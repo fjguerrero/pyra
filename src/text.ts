@@ -2,6 +2,26 @@
 // se pinta en pantalla coincidan exactamente.
 import type { TextObj } from './model';
 
+//** Fuentes del selector: todas del sistema, sin descargas. */
+export const FONTS: { label: string; css: string }[] = [
+  { label: 'System UI', css: 'system-ui, sans-serif' },
+  { label: 'Arial / Helvetica', css: 'Arial, Helvetica, sans-serif' },
+  { label: 'Verdana', css: 'Verdana, Geneva, sans-serif' },
+  { label: 'Tahoma', css: 'Tahoma, Geneva, sans-serif' },
+  { label: 'Trebuchet MS', css: "'Trebuchet MS', Tahoma, sans-serif" },
+  { label: 'Georgia', css: 'Georgia, serif' },
+  { label: 'Times New Roman', css: "'Times New Roman', Times, serif" },
+  { label: 'Palatino', css: 'Palatino, "Palatino Linotype", serif' },
+  { label: 'Garamond', css: 'Garamond, serif' },
+  { label: 'Courier New', css: "'Courier New', monospace" },
+  { label: 'Consolas / Monaco', css: 'Consolas, Monaco, monospace' },
+  { label: 'Impact', css: 'Impact, Haettenschweiler, sans-serif' },
+  { label: 'Comic Sans MS', css: "'Comic Sans MS', cursive" },
+  { label: 'Brush Script MT', css: "'Brush Script MT', cursive" },
+];
+
+export const DEFAULT_FONT = FONTS[0].css;
+
 export interface TextMetrics {
   w: number;
   h: number;

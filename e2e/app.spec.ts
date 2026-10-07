@@ -114,6 +114,26 @@ test('texto: crear con la herramienta T y editar con doble clic', async ({ page 
   // el inspector de un texto: contenido, tamaño y color
   await expect(page.locator('#inspector-body textarea')).toHaveValue('Text');
   await expect(page.locator('#inspector-body')).toContainText('Size');
+  // fuente: el selector cambia la fuente del objeto
+  const fontSel = page.locator('#inspector-body select');
+  await expect(fontSel.locator('option')).toHaveCount(14);
+  await fontSel.selectOption({ index: 9 }); // Courier New
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          new Promise<string>((resolve) => {
+            const open = indexedDB.open('pyra');
+            open.onsuccess = () => {
+              const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+              req.onsuccess = () => resolve(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.font ?? '');
+              req.onerror = () => resolve('');
+            };
+            open.onerror = () => resolve('');
+          }),
+      ),
+    )
+    .toContain('Courier New');
 
   page.once('dialog', (d) => void d.accept('Hola Pyra'));
   await page.locator('#canvas').dblclick({ position: { x: 210, y: 160 } });

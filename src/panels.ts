@@ -1,3 +1,4 @@
+import { FONTS } from './text';
 import { activePage, isLineLike, NO_FX, type BitmapObj, type BrushSettings, type Doc, type Fx, type Layer, type Obj, type ShapeObj, type TextObj } from './model';
 import { findObj } from './hit';
 import type { View } from './view';
@@ -328,6 +329,22 @@ export function renderPanels(
       ta.addEventListener('change', () => api.editObj(obj, { text: ta.value }));
       taWrap.appendChild(ta);
       insp.appendChild(taWrap);
+
+      const fontWrap = document.createElement('label');
+      fontWrap.className = 'field';
+      fontWrap.innerHTML = `<span>${t('font')}</span>`;
+      const fontSel = document.createElement('select');
+      for (const f of FONTS) {
+        const opt = document.createElement('option');
+        opt.value = f.css;
+        opt.textContent = f.label;
+        opt.style.fontFamily = f.css; // previsualizar cada fuente en la lista
+        fontSel.appendChild(opt);
+      }
+      fontSel.value = obj.font;
+      fontSel.addEventListener('change', () => api.editObj(obj, { font: fontSel.value } as Partial<TextObj>));
+      fontWrap.appendChild(fontSel);
+      insp.appendChild(fontWrap);
 
       const sizeWrap = document.createElement('label');
       sizeWrap.className = 'field';

@@ -7,7 +7,7 @@ import { addLayer, moveLayer, reorderLayer } from './layers';
 import { snapBox, type Guide } from './guides';
 import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
-import { measureText } from './text';
+import { DEFAULT_FONT, measureText } from './text';
 import { duplicateCmd, groupCmd, pasteCmd, zOrderCmd } from './commands';
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
@@ -389,7 +389,6 @@ renderer.onImgReady = invalidate;
 }
 
 // ---- Texto (M4): clic con la herramienta → objeto editable en el acto ----
-const DEFAULT_FONT = 'system-ui, sans-serif';
 
 function remeasureText(o: TextObj): void {
   const m = measureText(canvas.getContext('2d')!, o.text, o.font, o.size);
@@ -822,7 +821,10 @@ const panelApi = {
     if (typeof c === 'string' && /^#[0-9a-f]{6,8}$/i.test(c)) lastStroke = c;
     history.run({
       label: 'editar',
-      do: () => Object.assign(obj, patch),
+      do: () => {
+        Object.assign(obj, patch);
+        if (obj.shape === 'text' && ('font' in patch || 'size' in patch)) remeasureText(obj);
+      },
       undo: () => Object.assign(obj, before),
     });
     persist();
