@@ -43,6 +43,8 @@ type Msg = {
   language: string; zoom: string; bg: string; bg_grid: string; bg_none: string;
   alpha: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
   export_menu: string; export_jpeg: string; export_webp: string;
+  tool_brush: string; obj_stroke: string; brush_size: string; brush_pressure: string; brush_opacity: string;
+  brush_round: string; brush_square: string; brush_tip: string; brush_tip_none: string;
 };
 
 const en: Msg = {
@@ -68,6 +70,8 @@ const en: Msg = {
   language: 'Language', zoom: 'Zoom', bg: 'Background', bg_grid: 'Checker grid', bg_none: 'Solid',
   alpha: 'Alpha', recent_colors: 'Recent colors', custom_colors: 'Custom colors', add_color: 'Add current color to custom palette', remove_color: 'Remove color',
   export_menu: 'Export', export_jpeg: 'Export JPEG', export_webp: 'Export WebP',
+  tool_brush: 'Paint brush (B)', obj_stroke: 'Brush stroke', brush_size: 'Size', brush_pressure: 'Pressure', brush_opacity: 'Opacity',
+  brush_round: 'Round tip', brush_square: 'Square tip', brush_tip: 'Custom tip (SVG or image)', brush_tip_none: 'Remove custom tip',
 };
 
 const es: Partial<Msg> = {
@@ -94,6 +98,8 @@ const es: Partial<Msg> = {
   language: 'Idioma', zoom: 'Zoom', bg: 'Fondo', bg_grid: 'Cuadrícula', bg_none: 'Sólido',
   alpha: 'Alfa', recent_colors: 'Colores recientes', custom_colors: 'Colores personalizados', add_color: 'Añadir el color actual a la paleta personalizada', remove_color: 'Eliminar color',
   export_menu: 'Exportar', export_jpeg: 'Exportar JPEG', export_webp: 'Exportar WebP',
+  tool_brush: 'Pincel (B)', obj_stroke: 'Trazo de pincel', brush_size: 'Tamaño', brush_pressure: 'Presión', brush_opacity: 'Opacidad',
+  brush_round: 'Punta redonda', brush_square: 'Punta cuadrada', brush_tip: 'Punta personalizada (SVG o imagen)', brush_tip_none: 'Quitar punta personalizada',
 };
 
 const zh: Partial<Msg> = {

@@ -289,6 +289,86 @@ test('color con alfa: el inspector emite #rrggbbaa y aparece en recientes', asyn
   await expect(page.locator('#inspector-body .swatch').first()).toHaveAttribute('title', /80$/);
 });
 
+/** ¿Hay píxeles del color del trazo cerca de un punto del lienzo? */
+async function inkNear(page: Page, x: number, y: number, r = 8): Promise<boolean> {
+  return page.evaluate(
+    ([x, y, r]) => {
+      const c = document.getElementById('canvas') as HTMLCanvasElement;
+      const dpr = devicePixelRatio;
+      const ctx = c.getContext('2d')!;
+      const x0 = Math.max(0, Math.round((x - r) * dpr)), y0 = Math.max(0, Math.round((y - r) * dpr));
+      const w = Math.round(2 * r * dpr), h = Math.round(2 * r * dpr);
+      const d = ctx.getImageData(x0, y0, w, h).data;
+      for (let i = 0; i < d.length; i += 4)
+        if (Math.abs(d[i] - 0x4f) < 40 && Math.abs(d[i + 1] - 0x8c) < 40 && Math.abs(d[i + 2] - 0xff) < 40) return true;
+      return false;
+    },
+    [x, y, r],
+  );
+}
+
+test('líneas: el trazo sigue el sentido del arrastre en las cuatro direcciones', async ({ page }) => {
+  const box = await canvas(page).boundingBox();
+  if (!box) throw new Error('canvas sin tamaño');
+  const A: [number, number] = [120, 320];
+  const B: [number, number] = [340, 120];
+  const mid = (a: [number, number], b: [number, number]): [number, number] => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+
+  // arrastre ↗: A→B. El trazo real pasa por el punto medio; la diagonal opuesta queda limpia.
+  await page.keyboard.press('l');
+  await drag(page, A, B);
+  await page.keyboard.press('Escape'); // sin contorno de selección: solo el objeto
+  await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+  await expect(inkNear(page, ...mid(A, B))).resolves.toBe(true);
+  await expect(inkNear(page, A[0], B[1])).resolves.toBe(false); // esquina NW del bbox: fuera del trazo
+  await expect(inkNear(page, B[0], A[1])).resolves.toBe(false); // esquina SE
+});
+
+test('pincel: pintar libre crea un trazo y su inspector trae tamaño, presión y opacidad', async ({ page }) => {
+  await page.keyboard.press('b');
+  // sin dibujar: el inspector contextual muestra los ajustes del pincel
+  const size = page.locator('#inspector-body .field:has(span:text-is("Size")) input[type=number]');
+  await expect(size).toHaveValue('8');
+  await expect(page.locator('#inspector-body .field:has(span:text-is("Pressure")) input[type=number]')).toHaveValue('1');
+  await expect(page.locator('#inspector-body .field:has(span:text-is("Opacity")) input[type=number]')).toHaveValue('1');
+
+  await drag(page, [150, 150], [250, 250]); // arrastre en diagonal
+  await expect(layerCount(page)).toContainText('· 1');
+  // el objeto creado trae su propio pincel editable
+  await expect(size).toHaveValue('8');
+  await page.locator('#inspector-body .field:has(span:text-is("Size")) input[type=number]').fill('24');
+  await page.locator('#inspector-body .field:has(span:text-is("Size")) input[type=number]').dispatchEvent('change');
+  await expect(size).toHaveValue('24');
+});
+
+test('pincel personalizado: una punta SVG se estampa a lo largo del trazo', async ({ page }) => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="8" fill="#ff00aa"/></svg>';
+  await page.keyboard.press('b');
+  await page.locator('#inspector-body input[type=file]').setInputFiles({
+    name: 'tip.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from(svg),
+  });
+  const size = page.locator('#inspector-body .field:has(span:text-is("Size")) input[type=number]');
+  await size.fill('40');
+  await size.dispatchEvent('change');
+  await drag(page, [420, 140], [560, 220]);
+  await page.keyboard.press('Escape');
+  // la punta es una imagen: se pinta cuando carga
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        const c = document.getElementById('canvas') as HTMLCanvasElement;
+        const dpr = devicePixelRatio;
+        const d = c.getContext('2d')!.getImageData(410 * dpr, 130 * dpr, 170 * dpr, 110 * dpr).data;
+        let magenta = 0;
+        for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] < 60 && d[i + 2] > 150) magenta++;
+        return magenta;
+      });
+    })
+    .toBeGreaterThan(200);
+});
+
 test('guías manuales: clic derecho crea, clic derecho sobre ella borra', async ({ page }) => {
   const box = await canvas(page).boundingBox();
   await page.mouse.click(box!.x + 300, box!.y + 200, { button: 'right' });

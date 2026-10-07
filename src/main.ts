@@ -1,5 +1,6 @@
-import { activePage, newDoc, uid, type BitmapObj, type Doc, type Obj, type ShapeKind, type ShapeObj, type Style, type TextObj } from './model';
+import { activePage, isLineLike, newDoc, uid, type BitmapObj, type BrushSettings, type Doc, type LineFrom, type Obj, type ShapeKind, type ShapeObj, type Style, type TextObj } from './model';
 import { History, type Command } from './history';
+import type { Draft } from './render';
 import { fitAll, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
 import { addLayer, moveLayer, reorderLayer } from './layers';
@@ -10,18 +11,29 @@ import { measureText } from './text';
 import { duplicateCmd, groupCmd, pasteCmd, zOrderCmd } from './commands';
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
-import { renderPanels } from './panels';
+import { renderPanels, type BrushPanelArg } from './panels';
 import { icon } from './icons';
 import { LANGS, currentLang, setLang, t } from './i18n';
 
 const doc: Doc = (await loadDoc()) ?? newDoc();
+// Color de trazo: el último color usado (lo que pinta el inspector).
+let lastStroke = '#4f8cff';
+const brushColor = (): string => lastStroke;
+
+// Pincel: tamaño, presión y opacidad (como las Options de los Paint Tools de Fireworks).
+const brush: BrushSettings = { size: 8, pressure: 1, opacity: 1, shape: 'round', tip: null };
+let brushPanel: BrushPanelArg | undefined;
+function setBrush(patch: Partial<BrushSettings>): void {
+  Object.assign(brush, patch);
+  invalidate();
+}
 const history = new History();
 const view: View = { zoom: 1, panX: 0, panY: 0 };
 let selectedId: string | null = null;
 let selectedIds: string[] = [];
 let selectedLayerId: string | null = null;
-let tool: 'select' | ShapeKind | 'text' = 'select';
-let draft: { x: number; y: number; w: number; h: number; shape: ShapeKind } | null = null;
+let tool: 'select' | ShapeKind | 'text' | 'brush' = 'select';
+let draft: Draft | null = null;
 let marquee: { x: number; y: number; w: number; h: number } | null = null;
 let clipboard: Obj[] = [];
 let guides: Guide[] = [];
@@ -45,7 +57,7 @@ function invalidate(): void {
   requestAnimationFrame(() => {
     dirty = false;
     renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, draft, marquee, guides, workspace: bg });
-    if (!pointerDownInInspector) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi);
+    if (!pointerDownInInspector) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi, brushPanel);
   });
 }
 
@@ -92,18 +104,41 @@ function selectedObjs(): Obj[] {
 type Drag =
   | { mode: 'pan'; sx: number; sy: number; panX: number; panY: number }
   | { mode: 'create'; ox: number; oy: number }
+  | { mode: 'paint'; pts: { x: number; y: number; p: number }[] }
   | { mode: 'marquee'; ox: number; oy: number; additive: boolean }
   | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
   | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number; size?: number }; grab: { x: number; y: number } }
   | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number }
   | { mode: 'guide'; index: number };
 
-const NAMES: Record<ShapeKind, string> = { rect: t('obj_rect'), ellipse: t('obj_ellipse'), line: t('obj_line') };
+const NAMES: Record<ShapeKind, string> = { rect: t('obj_rect'), ellipse: t('obj_ellipse'), line: t('obj_line'), stroke: t('obj_stroke') };
+
+/** Añadir un objeto creado a la capa activa, con undo. */
+function pushCreateCmd(obj: Obj): void {
+  const page = activePage(doc);
+  const layer =
+    (selectedLayerId ? page.layers.find((l) => l.id === selectedLayerId && !l.locked) : null) ??
+    page.layers.find((l) => l.visible && !l.locked);
+  if (!layer) return;
+  const cmd: Command = {
+    label: `crear ${obj.shape}`,
+    do: () => layer.objects.push(obj),
+    undo: () => {
+      const i = layer.objects.indexOf(obj);
+      if (i >= 0) layer.objects.splice(i, 1);
+      if (selectedId === obj.id) select(null);
+    },
+  };
+  history.run(cmd);
+  select(obj.id);
+  persist();
+  invalidate();
+}
 
 let drag: Drag | null = null;
 
 // Modelo de herramientas de Fireworks: la herramienta define qué hace el arrastre.
-function setTool(t: 'select' | ShapeKind | 'text'): void {
+function setTool(t: 'select' | ShapeKind | 'text' | 'brush'): void {
   tool = t;
   document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) => {
     const on = el.dataset.tool === t;
@@ -111,6 +146,8 @@ function setTool(t: 'select' | ShapeKind | 'text'): void {
     el.setAttribute('aria-pressed', String(on));
   });
   canvas.style.cursor = t === 'select' ? 'default' : 'crosshair';
+  brushPanel = t === 'brush' ? { s: brush, set: setBrush } : undefined;
+  invalidate();
 }
 // ---- i18n: textos estáticos del HTML + selector de idioma ----
 function applyStaticI18n(): void {
@@ -205,7 +242,7 @@ bgGrid.addEventListener('change', () => {
 applyStaticI18n();
 
 document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) =>
-  el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | ShapeKind | 'text')),
+  el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | ShapeKind | 'text' | 'brush')),
 );
 document.querySelector<HTMLElement>('#toolbar .tool[data-fit]')?.addEventListener('click', () => {
   fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
@@ -473,9 +510,15 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
 
+  if (tool === 'brush') {
+    drag = { mode: 'paint', pts: [{ x: wx, y: wy, p: brush.pressure }] };
+    invalidate();
+    return;
+  }
+
   if (tool !== 'select') {
     drag = { mode: 'create', ox: wx, oy: wy };
-    draft = { x: wx, y: wy, w: 0, h: 0, shape: tool };
+    draft = { x: wx, y: wy, w: 0, h: 0, shape: tool, lineFrom: 'nw' };
     invalidate();
     return;
   }
@@ -554,6 +597,16 @@ canvas.addEventListener('pointermove', (e) => {
 
   const { wx, wy } = localXY(e);
 
+  if (drag.mode === 'paint') {
+    const last = drag.pts[drag.pts.length - 1];
+    // un punto cada ~2px de mundo: suficiente para una traza suave sin explotar el tamaño
+    if (Math.hypot(wx - last.x, wy - last.y) > 2 / view.zoom)
+      // presión real solo con lápiz; el ratón reporta 0.5 constante
+      drag.pts.push({ x: wx, y: wy, p: e.pointerType === 'pen' && e.pressure > 0 ? e.pressure : brush.pressure });
+    invalidate();
+    return;
+  }
+
   if (drag.mode === 'create' && draft) {
     draft = {
       x: Math.min(drag.ox, wx),
@@ -561,6 +614,8 @@ canvas.addEventListener('pointermove', (e) => {
       w: Math.abs(wx - drag.ox),
       h: Math.abs(wy - drag.oy),
       shape: draft.shape,
+      // desde qué esquina se arrastra: ↘='nw' ↖='se' ↗='sw' ↙='ne'
+      lineFrom: (`${wy < drag.oy ? 'n' : 's'}${wx < drag.ox ? 'w' : 'e'}`) as LineFrom,
     };
     invalidate();
     return;
@@ -648,11 +703,33 @@ canvas.addEventListener('pointerup', (e) => {
     return;
   }
 
-  if (drag.mode === 'create' && draft) {
+  if (drag.mode === 'paint') {
+    guides = [];
+    const pts = drag.pts;
+    if (pts.length > 1) {
+      const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+      const x0 = Math.min(...xs), y0 = Math.min(...ys);
+      const w = Math.max(1, Math.max(...xs) - x0), h = Math.max(1, Math.max(...ys) - y0);
+      const obj: ShapeObj = {
+        id: uid(),
+        shape: 'stroke',
+        name: NAMES.stroke,
+        x: Math.round(x0), y: Math.round(y0), w: Math.round(w), h: Math.round(h),
+        fill: '',
+        stroke: brushColor(),
+        strokeWidth: brush.size,
+        strokeOpacity: brush.opacity,
+        brush: brush.shape,
+        tip: brush.tip,
+        points: pts.map((p) => ({ x: (p.x - x0) / w, y: (p.y - y0) / h, p: p.p })),
+      };
+      pushCreateCmd(obj);
+    }
+  } else if (drag.mode === 'create' && draft) {
     const d = draft;
     draft = null;
     guides = [];
-    const big = d.shape === 'line' ? Math.hypot(d.w, d.h) > 2 : d.w > 2 && d.h > 2;
+    const big = isLineLike(d) ? Math.hypot(d.w, d.h) > 2 : d.w > 2 && d.h > 2;
     if (big) {
       const layer =
         (selectedLayerId ? page.layers.find((l) => l.id === selectedLayerId && !l.locked) : null) ??
@@ -666,9 +743,10 @@ canvas.addEventListener('pointerup', (e) => {
           y: Math.round(d.y),
           w: Math.round(d.w),
           h: Math.round(d.h),
-          fill: d.shape === 'line' ? '' : '#4f8cff',
-          stroke: d.shape === 'line' ? '#4f8cff' : null,
+          fill: isLineLike(d) ? '' : '#4f8cff',
+          stroke: isLineLike(d) ? brushColor() : null,
           strokeWidth: d.shape === 'line' ? 2 : 0,
+          lineFrom: d.lineFrom,
         };
         const cmd: Command = {
           label: `crear ${d.shape}`,
@@ -681,7 +759,7 @@ canvas.addEventListener('pointerup', (e) => {
         };
         history.run(cmd);
         select(obj.id);
-        setTool('select'); // como Fireworks: tras dibujar, vuelve a la selección
+        if (obj.shape !== 'stroke') setTool('select'); // como Fireworks: tras dibujar, vuelve a la selección
         persist();
       }
     }
@@ -739,6 +817,9 @@ canvas.addEventListener('pointerup', (e) => {
 const panelApi = {
   editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj>): void {
     const before = { ...obj };
+    // recordar el último color usado: es el que pintan el pincel y las líneas
+    const c = (patch as { stroke?: string | null }).stroke ?? (patch as { fill?: string }).fill;
+    if (typeof c === 'string' && /^#[0-9a-f]{6,8}$/i.test(c)) lastStroke = c;
     history.run({
       label: 'editar',
       do: () => Object.assign(obj, patch),
@@ -926,7 +1007,8 @@ const panelApi = {
       do: () => {
         for (const o of objs) {
           const patch: Partial<ShapeObj> = { fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, gradient: style.gradient ?? null };
-          if (o.shape !== 'line') Object.assign(o, patch);
+          if (isLineLike(o)) Object.assign(o, { stroke: style.stroke, strokeWidth: style.strokeWidth });
+          else Object.assign(o, patch);
           o.fx = style.fx ? structuredClone(style.fx) : undefined;
         }
       },
@@ -1052,6 +1134,8 @@ window.addEventListener('keydown', (e) => {
     setTool('line');
   } else if (e.key === 't' || e.key === 'T') {
     setTool('text');
+  } else if (e.key === 'b' || e.key === 'B') {
+    setTool('brush');
   } else if (mod && (e.key === 'd' || e.key === 'D')) {
     e.preventDefault();
     const dup = duplicateCmd(activePage(doc), selectedObjs());

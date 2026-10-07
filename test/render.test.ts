@@ -167,6 +167,51 @@ describe('Renderer.draw: formas vectoriales', () => {
     expect(ops.some((o) => o.op === 'fill')).toBe(false); // una línea no se rellena
   });
 
+  it('una línea arrastrada hacia arriba respeta su sentido: no se refleja', () => {
+    const mk = (lineFrom: 'nw' | 'sw') => {
+      const o = rect(10, 20, 100, 60, '');
+      o.shape = 'line';
+      o.stroke = '#000000';
+      o.strokeWidth = 1;
+      o.lineFrom = lineFrom;
+      return o;
+    };
+    const down = draw(Object.assign(scene(), { page: (() => { const s = scene(); s.page.layers[0].objects.push(mk('nw')); return s.page; })() }));
+    expect(lines(down)).toContainEqual([10, 20]);
+    expect(lines(down)).toContainEqual([110, 80]);
+
+    const s2 = scene();
+    s2.page.layers[0].objects.push(mk('sw')); // trazo (10,80) → (110,20)
+    const up = draw(s2);
+    expect(lines(up)).toContainEqual([10, 80]);
+    expect(lines(up)).toContainEqual([110, 20]);
+    expect(lines(up)).not.toContainEqual([10, 20]);
+  });
+
+  it('un trazo de pincel se pinta como polilínea con grosor por presión', () => {
+    const o = rect(0, 0, 100, 100, '');
+    o.shape = 'stroke';
+    o.stroke = '#123456';
+    o.strokeWidth = 10;
+    o.brush = 'square';
+    o.points = [
+      { x: 0, y: 0, p: 1 },
+      { x: 0.5, y: 0.5, p: 0.5 },
+      { x: 1, y: 1, p: 1 },
+    ];
+    const s = scene();
+    s.page.layers[0].objects.push(o);
+    const ops = draw(s);
+    expect(styleOrder(ops, 'strokeStyle')).toContain('#123456');
+    // un segmento por cada par de puntos, con el grosor medio de sus presiones
+    const widths = styleOrder(ops, 'lineWidth').filter((w) => w === 10 || w === 7.5);
+    expect(widths.length).toBe(2);
+    expect(lines(ops)).toContainEqual([0, 0]);
+    expect(lines(ops)).toContainEqual([50, 50]);
+    expect(lines(ops)).toContainEqual([100, 100]);
+    expect(ops.some((o) => o.op === 'fill')).toBe(false); // un trazo no se rellena
+  });
+
   it('el borrador de una elipse se traza como elipse, no como rectángulo', () => {
     const s = scene({ draft: { x: 10, y: 10, w: 40, h: 30, shape: 'ellipse' } });
     const ops = draw(s);

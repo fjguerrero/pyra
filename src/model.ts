@@ -2,7 +2,23 @@
 // ponytail: M3 (bitmap) y M4 (texto) ampliarán el union; todo lo que consume objetos
 // (hit, asas, resize, align, guías) trabaja solo sobre el bbox x/y/w/h.
 
-export type ShapeKind = 'rect' | 'ellipse' | 'line';
+export type ShapeKind = 'rect' | 'ellipse' | 'line' | 'stroke';
+
+/** Punta del pincel: 'round' = punta redonda, 'square' = punta cuadrada. */
+export type BrushShape = 'round' | 'square';
+
+/** Ajustes de la herramienta pincel (como las Options de los Paint Tools de Fireworks). */
+export interface BrushSettings {
+  size: number;
+  pressure: number; // 0..1: grosor de la traza
+  opacity: number; // 0..1
+  shape: BrushShape;
+  /** Imagen usada como punta (SVG o bitmap en data URL); null = punta vectorial. */
+  tip: string | null;
+}
+
+/** Esquina del bbox donde empieza una línea: el arrastre puede ir en cualquier signo (↖↗↙↘). */
+export type LineFrom = 'nw' | 'ne' | 'sw' | 'se';
 
 export interface Fx {
   shadow: { x: number; y: number; blur: number; color: string } | null;
@@ -40,6 +56,16 @@ export interface ShapeObj {
   rot?: number;
   /** Id de grupo: los objetos con el mismo id se seleccionan y mueven juntos (Ctrl+G). */
   group?: string;
+  /** Pincel del trazo; undefined = redondo. */
+  brush?: BrushShape;
+  /** Traza del pincel: puntos normalizados 0..1 dentro del bbox, con su presión (1 = completo). */
+  points?: { x: number; y: number; p: number }[];
+  /** Imagen usada como punta del pincel (SVG o bitmap), estampada a lo largo de la traza. */
+  tip?: string | null;
+  /** Opacidad del trazo (1 = opaco). */
+  strokeOpacity?: number;
+  /** Esquina de inicio del trazo de una línea; undefined = 'nw'. */
+  lineFrom?: LineFrom;
 }
 
 /** Bitmap: la imagen se guarda embebida (data URL); crop son píxeles de la fuente original. */
@@ -62,6 +88,24 @@ export interface BitmapObj {
 }
 
 export type Obj = ShapeObj | BitmapObj | TextObj;
+
+/** Extremos reales de una línea según su bbox y su esquina de inicio. */
+export function lineEnds(o: { x: number; y: number; w: number; h: number; lineFrom?: LineFrom }): {
+  x1: number; y1: number; x2: number; y2: number;
+} {
+  const from = o.lineFrom ?? 'nw';
+  const west = from === 'nw' || from === 'sw';
+  const north = from === 'nw' || from === 'ne';
+  return {
+    x1: west ? o.x : o.x + o.w,
+    y1: north ? o.y : o.y + o.h,
+    x2: west ? o.x + o.w : o.x,
+    y2: north ? o.y + o.h : o.y,
+  };
+}
+
+/** Líneas y trazas de pincel: se pintan con trazo, no con relleno. */
+export const isLineLike = (o: { shape: string }): boolean => o.shape === 'line' || o.shape === 'stroke';
 
 /** Texto: bbox medido desde el contenido; se edita como objeto normal. */
 export interface TextObj {

@@ -1,5 +1,5 @@
 import { flattenLayers } from './layers';
-import type { Fx, Obj, Page, ShapeKind } from './model';
+import { lineEnds, type BrushShape, type Fx, type LineFrom, type Obj, type Page, type ShapeKind, type ShapeObj } from './model';
 import type { View } from './view';
 import type { Guide } from './guides';
 import { findObj, handles } from './hit';
@@ -11,6 +11,13 @@ export interface Draft {
   w: number;
   h: number;
   shape: ShapeKind;
+  lineFrom?: LineFrom;
+  /** Traza del pincel en curso, en coordenadas de mundo. */
+  pts?: { x: number; y: number; p: number }[];
+  stroke?: string;
+  strokeWidth?: number;
+  brush?: BrushShape;
+  tip?: string | null;
 }
 
 export interface Scene {
@@ -129,11 +136,21 @@ export class Renderer {
     }
 
     if (scene.draft) {
-      ctx.strokeStyle = ACCENT;
-      ctx.setLineDash([4, 3]);
-      this.path(scene.draft, v);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      if (scene.draft.shape === 'stroke' && scene.draft.pts) {
+        this.paintStroke(
+          scene.draft.pts.map((p) => ({ x: p.x * v.zoom + v.panX, y: p.y * v.zoom + v.panY, p: p.p })),
+          (scene.draft.strokeWidth ?? 4) * v.zoom,
+          scene.draft.stroke ?? ACCENT,
+          scene.draft.brush,
+          scene.draft.tip,
+        );
+      } else {
+        ctx.strokeStyle = ACCENT;
+        ctx.setLineDash([4, 3]);
+        this.path(scene.draft, v);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
 
     if (scene.marquee) {
@@ -266,8 +283,9 @@ export class Renderer {
     if (o.shape === 'ellipse') {
       ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
     } else if (o.shape === 'line') {
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + w, y + h);
+      const e = lineEnds(o);
+      ctx.moveTo(e.x1 * v.zoom + v.panX, e.y1 * v.zoom + v.panY);
+      ctx.lineTo(e.x2 * v.zoom + v.panX, e.y2 * v.zoom + v.panY);
     } else {
       ctx.rect(x, y, w, h);
     }
@@ -355,16 +373,80 @@ export class Renderer {
       this.clearFx(what);
       return;
     }
+    if (o.shape === 'stroke') {
+      const ga = ctx.globalAlpha * (o.strokeOpacity ?? 1);
+      ctx.globalAlpha = ga;
+      this.drawStroke(o, v);
+      ctx.globalAlpha = ga / (o.strokeOpacity ?? 1);
+      this.clearFx(what);
+      return;
+    }
     this.path(o, v);
     if (o.fill) {
       ctx.fillStyle = o.gradient ? gradientFill(ctx, o, o.gradient, v.zoom, v.panX, v.panY) : o.fill;
       ctx.fill();
     }
     if (o.stroke && o.strokeWidth > 0) {
+      const ga = ctx.globalAlpha * (o.strokeOpacity ?? 1);
+      ctx.globalAlpha = ga;
       ctx.strokeStyle = o.stroke;
       ctx.lineWidth = o.strokeWidth * v.zoom;
+      ctx.lineCap = o.brush === 'square' ? 'butt' : 'round';
+      ctx.lineJoin = o.brush === 'square' ? 'miter' : 'round';
       ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+      ctx.globalAlpha = ga / (o.strokeOpacity ?? 1);
     }
     this.clearFx(what);
+  }
+
+  /** Traza del pincel: polilínea con ancho por presión; `tip` estampa una imagen en cada punto. */
+  private drawStroke(o: ShapeObj, v: View): void {
+    if ((o.points?.length ?? 0) < 2) return;
+    this.paintStroke(
+      o.points!.map((p) => ({
+        x: (o.x + p.x * o.w) * v.zoom + v.panX,
+        y: (o.y + p.y * o.h) * v.zoom + v.panY,
+        p: Math.max(0.05, p.p),
+      })),
+      Math.max(0.5, o.strokeWidth * v.zoom),
+      o.stroke ?? '#000000',
+      o.brush,
+      o.tip,
+    );
+  }
+
+  private paintStroke(
+    P: { x: number; y: number; p: number }[],
+    w: number,
+    color: string,
+    brush: BrushShape | undefined,
+    tip: string | null | undefined,
+  ): void {
+    const ctx = this.ctx;
+    ctx.strokeStyle = color;
+    ctx.lineCap = brush === 'square' ? 'butt' : 'round';
+    ctx.lineJoin = brush === 'square' ? 'miter' : 'round';
+    for (let i = 1; i < P.length; i++) {
+      ctx.lineWidth = w * (P[i].p + P[i - 1].p) / 2;
+      ctx.beginPath();
+      ctx.moveTo(P[i - 1].x, P[i - 1].y);
+      ctx.lineTo(P[i].x, P[i].y);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'miter';
+    if (tip) {
+      const im = this.img(tip);
+      if (im?.ready) {
+        for (const p of P) {
+          const d = w * p.p;
+          ctx.globalAlpha *= p.p;
+          ctx.drawImage(im.el, p.x - d / 2, p.y - d / 2, d, d);
+          ctx.globalAlpha /= p.p;
+        }
+      }
+    }
   }
 }

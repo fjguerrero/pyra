@@ -153,6 +153,29 @@ describe('hitObj: la detección sigue la forma del objeto', () => {
     expect(hitObj(o, 105, 10.5, 12)).toBe(true); // junto al extremo sí
   });
 
+  it('una línea arrastrada hacia arriba-derecha traza hacia arriba-derecha, no reflejada', () => {
+    // bbox 0,0 → 100,100 pero el arrastre fue de (100,100) a (0,0): lineFrom 'se'
+    const o = { ...shape('line', 0, 0, 100, 100), lineFrom: 'se' as const };
+    expect(hitObj(o, 50, 50)).toBe(true); // la diagonal sigue siendo la misma
+    expect(hitObj(o, 90, 10)).toBe(false);
+    // la otra diagonal (↙→↗) es la que capta estos puntos
+    const up = { ...shape('line', 0, 0, 100, 100), lineFrom: 'sw' as const };
+    expect(hitObj(up, 90, 10)).toBe(true); // trazo (0,100)→(100,0)
+    expect(hitObj(up, 10, 90)).toBe(true);
+    expect(hitObj(up, 50, 50)).toBe(true);
+    expect(hitObj(up, 90, 90)).toBe(false); // fuera del trazo real
+  });
+
+  it('las cuatro esquinas de inicio cubren los cuatro sentidos del arrastre', () => {
+    const o = (from: 'nw' | 'ne' | 'sw' | 'se') => ({ ...shape('line', 0, 0, 100, 100), lineFrom: from });
+    expect(hitObj(o('nw'), 80, 80)).toBe(true); // (0,0)→(100,100)
+    expect(hitObj(o('se'), 80, 80)).toBe(true); // (100,100)→(0,0): mismo trazo
+    expect(hitObj(o('sw'), 80, 20)).toBe(true); // (0,100)→(100,0)
+    expect(hitObj(o('ne'), 80, 20)).toBe(true);
+    expect(hitObj(o('nw'), 80, 20)).toBe(false);
+    expect(hitObj(o('sw'), 80, 80)).toBe(false);
+  });
+
   it('la tolerancia amplía la zona capturable sin volverla sólida', () => {
     const o = shape('line', 0, 0, 100, 100);
     // (90,84) está a ~4.2 del trazo y=x

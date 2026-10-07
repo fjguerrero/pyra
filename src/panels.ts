@@ -1,4 +1,4 @@
-import { activePage, NO_FX, type BitmapObj, type Doc, type Fx, type Layer, type Obj, type ShapeObj, type TextObj } from './model';
+import { activePage, isLineLike, NO_FX, type BitmapObj, type BrushSettings, type Doc, type Fx, type Layer, type Obj, type ShapeObj, type TextObj } from './model';
 import { findObj } from './hit';
 import type { View } from './view';
 import { statusText, t } from './i18n';
@@ -6,6 +6,9 @@ import { flattenLayers } from './layers';
 import type { AlignKind } from './align';
 import { icon, hasIcon } from './icons';
 import { addCustom, addRecent, loadSwatches, moveSwatch, removeSwatch, type SwatchStore } from './swatches';
+
+/** Ajustes del pincel cuando la herramienta activa es el pincel. */
+export type BrushPanelArg = { s: BrushSettings; set: (patch: Partial<BrushSettings>) => void };
 
 export interface PanelApi {
   editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj> | Partial<TextObj> | { fx: Fx }): void;
@@ -155,6 +158,38 @@ function swatchPalette(insp: HTMLElement, current: string, pick: (color: string)
   }, 'plus'));
 }
 
+/** Ajustes del pincel: tamaño/presión/opacidad + punta redonda/cuadrada + punta imagen. */
+function brushFields(s: BrushSettings, set: (patch: Partial<BrushSettings>) => void, withPressure: boolean): void {
+  const insp = $('inspector-body');
+  sliderField(t('brush_size'), s.size, 1, 200, 1, (v) => set({ size: Math.max(1, Math.round(v)) }));
+  if (withPressure) sliderField(t('brush_pressure'), s.pressure, 0.05, 1, 0.05, (v) => set({ pressure: v }));
+  sliderField(t('brush_opacity'), s.opacity, 0.05, 1, 0.05, (v) => set({ opacity: v }));
+  const row = document.createElement('div');
+  row.className = 'field';
+  row.append(
+    btn('', t('brush_round'), t('brush_round'), s.shape !== 'square', () => set({ shape: 'round' }), 'brushRound'),
+    btn('', t('brush_square'), t('brush_square'), s.shape === 'square', () => set({ shape: 'square' }), 'brushSquare'),
+  );
+  insp.appendChild(row);
+  if (s.tip) insp.appendChild(btn('', t('brush_tip_none'), t('brush_tip_none'), false, () => set({ tip: null }), 'close'));
+  const file = document.createElement('input');
+  file.type = 'file';
+  file.accept = 'image/svg+xml,image/*';
+  file.title = t('brush_tip');
+  file.addEventListener('change', () => {
+    const f = file.files?.[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => set({ tip: String(r.result) });
+    r.readAsDataURL(f);
+  });
+  insp.appendChild(file);
+}
+
+function renderBrushPanel(bp: BrushPanelArg): void {
+  brushFields(bp.s, bp.set, true);
+}
+
 let renderNow: () => void = () => {};
 
 // slider + campo numérico: siempre editable a mano
@@ -197,15 +232,20 @@ export function renderPanels(
   selectedIds: string[],
   view: View,
   api: PanelApi,
+  brushPanel?: BrushPanelArg,
 ): void {
   const page = activePage(doc);
   const obj = findObj(page, selectedId);
 
-  renderNow = () => renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, api);
+  renderNow = () => renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, api, brushPanel);
 
-  // ---- Property Inspector contextual: documento → objeto (como Fireworks) ----
+  // ---- Property Inspector contextual: pincel → documento → objeto (como Fireworks) ----
   const insp = $('inspector-body');
   insp.innerHTML = '';
+  if (brushPanel && !obj) {
+    renderBrushPanel(brushPanel);
+    return;
+  }
   if (!obj) {
     const layer = page.layers.find((l) => l.id === selectedLayerId) ?? null;
     if (layer) {
@@ -306,8 +346,21 @@ export function renderPanels(
       colorField(t('color'), obj.fill, (v) => api.editObj(obj, { fill: v }));
     } else {
       // una línea no se rellena: su color es el trazo
-      const colorKey = obj.shape === 'line' ? 'stroke' : 'fill';
-      colorField(obj.shape === 'line' ? t('stroke_color') : t('fill'), (obj[colorKey] as string) || '#000000', (v) => api.editObj(obj, { [colorKey]: v } as Partial<ShapeObj>));
+      const colorKey = isLineLike(obj) ? 'stroke' : 'fill';
+      colorField(isLineLike(obj) ? t('stroke_color') : t('fill'), (obj[colorKey] as string) || '#000000', (v) => api.editObj(obj, { [colorKey]: v } as Partial<ShapeObj>));
+      if (isLineLike(obj)) {
+        // el pincel del objeto: tamaño = grosor del trazo
+        brushFields(
+          { size: obj.strokeWidth, pressure: 1, opacity: obj.strokeOpacity ?? 1, shape: obj.brush ?? 'round', tip: obj.tip ?? null },
+          (patch) => api.editObj(obj, {
+            ...(patch.size !== undefined ? { strokeWidth: patch.size } : {}),
+            ...(patch.opacity !== undefined ? { strokeOpacity: patch.opacity } : {}),
+            ...(patch.shape !== undefined ? { brush: patch.shape } : {}),
+            ...(patch.tip !== undefined ? { tip: patch.tip } : {}),
+          } as Partial<ShapeObj>),
+          false,
+        );
+      }
       const rotWrap = document.createElement('label');
       rotWrap.className = 'field';
       rotWrap.innerHTML = `<span>${t('rotation')}</span>`;
@@ -320,7 +373,7 @@ export function renderPanels(
 
 
       // ---- Degradado lineal (solo formas con relleno) ----
-      if (obj.shape !== 'line') {
+      if (!isLineLike(obj)) {
         const g = obj.gradient ?? null;
         insp.appendChild(btn('', g ? t('remove_gradient') : t('add_gradient'), t('gradient_hint'), false, () =>
           api.editObj(obj, { gradient: g ? null : { from: obj.fill, to: '#ffffff', angle: 0 } })));

@@ -1,5 +1,5 @@
 import { flattenLayers } from './layers';
-import type { Layer, Obj, Page } from './model';
+import { lineEnds, type Layer, type Obj, type Page } from './model';
 import type { View } from './view';
 
 export function hitTest(page: Page, wx: number, wy: number, tol = 0): Obj | null {
@@ -28,6 +28,7 @@ export function hitObj(o: Obj, wx: number, wy: number, tol = 0): boolean {
   }
   if (wx < o.x - tol || wx > o.x + o.w + tol || wy < o.y - tol || wy > o.y + o.h + tol) return false;
   if (o.shape === 'rect' || o.shape === 'bitmap' || o.shape === 'text') return true;
+  if (o.shape === 'stroke') return true; // ponytail: trazo libre por bbox; hit por polilínea si molesta
 
   const cx = o.x + o.w / 2;
   const cy = o.y + o.h / 2;
@@ -37,11 +38,8 @@ export function hitObj(o: Obj, wx: number, wy: number, tol = 0): boolean {
 
   if (o.shape === 'ellipse') return ((wx - cx) / rx) ** 2 + ((wy - cy) / ry) ** 2 <= 1;
 
-  // línea: cerca del segmento que va de la esquina superior-izquierda a la inferior-derecha
-  const x0 = o.x;
-  const y0 = o.y;
-  const x1 = o.x + o.w;
-  const y1 = o.y + o.h;
+  // línea: cerca del segmento real (sus extremos según la esquina de inicio)
+  const { x1: x0, y1: y0, x2: x1, y2: y1 } = lineEnds(o);
   const dx = x1 - x0;
   const dy = y1 - y0;
   const len2 = dx * dx + dy * dy;
