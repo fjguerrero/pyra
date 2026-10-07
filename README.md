@@ -4,6 +4,8 @@ Un clon web de **Macromedia/Adobe Fireworks**: editor híbrido vector + bitmap p
 
 Herramientas: selección, rectángulo, elipse, línea, pluma (vértices curvos/rectos), lápiz (trazo continuo o suavizado), polilápiz (polígonos a mano alzada, rectos o estilizados), pincel, goma, texto; capas y páginas, guías inteligentes con snap, estilos reutilizables, efectos (sombra/glow/blur/bisel), unión de formas, undo/redo completo, importación de imágenes, exportación PNG/JPEG/WebP y `.f.png` (documento editable embebido en un PNG). Interfaz en 15 idiomas.
 
+**Demo en ejecución:** [https://fjguerrero.github.io/pyra/](https://fjguerrero.github.io/pyra/) (build publicado en la rama `gh-pages` → GitHub Pages).
+
 ## Construido con Hermes Agent
 
 Este proyecto está **enteramente construido por [Hermes Agent](https://hermes-agent.nousresearch.com) ([Nous Research](https://nousresearch.com))** — el agente escribió el código, los tests y la documentación en sesiones de trabajo iterativas.
