@@ -506,7 +506,7 @@ function resizeText(obj: TextObj, start: { x: number; y: number; w: number; h: n
 // doble clic sobre un texto → editarlo (como el rename de capas)
 canvas.addEventListener('dblclick', (e) => {
   const { wx, wy } = localXY(e);
-  const hit = hitTest(activePage(doc), wx, wy, 4 / view.zoom);
+  const hit = hitTest(activePage(doc), wx, wy, 4 / view.zoom, selectedIds);
   if (!hit || hit.shape !== 'text') return;
   const newText = window.prompt(t('text'), hit.text);
   if (newText === null) return;
@@ -550,7 +550,7 @@ function hoverCursor(px: number, py: number, wx: number, wy: number): string {
   const sel = findObj(page, selectedId);
   const h = sel ? hitHandle(px, py, handles(sel, view)) : null;
   if (h) return RESIZE_CURSORS[h.role];
-  if (hitTest(page, wx, wy, 4 / view.zoom)) return 'move';
+  if (hitTest(page, wx, wy, 4 / view.zoom, selectedIds)) return 'move';
   return 'default';
 }
 
@@ -656,7 +656,7 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
 
-  const hit = hitTest(page, wx, wy, 4 / view.zoom); // margen constante en pantalla
+  const hit = hitTest(page, wx, wy, 4 / view.zoom, e.shiftKey ? undefined : selectedIds); // margen constante en pantalla
   if (hit) {
     if (e.shiftKey) select(hit.id, true);
     else if (!selectedIds.includes(hit.id)) select(hit.id);

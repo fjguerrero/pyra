@@ -70,6 +70,22 @@ test('seleccionar y mover un objeto con el ratón', async ({ page }) => {
   await expect(layerCount(page)).toContainText('· 1'); // sigue habiendo un solo objeto
 });
 
+test('objeto seleccionado tiene prioridad al manipularlo aunque otro lo tape', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [300, 250]); // A
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('r');
+  await drag(page, [200, 200], [400, 350]); // B, encima y solapado
+  const box = (await canvas(page).boundingBox())!;
+  // seleccionar A desde una zona que solo cubre A
+  await page.mouse.click(box.x + 150, box.y + 150);
+  const aX = await inspNum(page).inputValue();
+  // arrancar desde la zona común (donde B tapa a A): debe moverse A, el seleccionado
+  await drag(page, [250, 250], [320, 260]);
+  await expect(inspNum(page)).not.toHaveValue(aX);
+  await expect(layerCount(page)).toContainText('· 2'); // sigue habiendo dos objetos
+});
+
 test('undo/redo con Ctrl+Z / Ctrl+Shift+Z', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [300, 250]);

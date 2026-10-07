@@ -79,6 +79,19 @@ describe('selección: el punto devuelve el objeto visible más cercano a la supe
     expect(hitTest(page, -1, 25)).toBeNull();
   });
 
+  it('un objeto seleccionado tiene prioridad aunque otro lo tape por encima', () => {
+    const { page } = docWithLayers(1);
+    const bajo = rect(0, 0, 200, 200, 'bajo');
+    const alto = rect(100, 100, 200, 200, 'alto');
+    page.layers[0].objects.push(bajo, alto);
+
+    // sin selección gana el de encima; con `bajo` seleccionado gana `bajo`
+    expect(hitTest(page, 150, 150, 0, [])?.id).toBe(alto.id);
+    expect(hitTest(page, 150, 150, 0, [bajo.id])?.id).toBe(bajo.id);
+    // y fuera del seleccionado sigue ganando el de encima
+    expect(hitTest(page, 250, 250, 0, [bajo.id])?.id).toBe(alto.id);
+  });
+
   it('los bordes del rectángulo son seleccionables', () => {
     const { page } = docWithLayers(1);
     const o = rect(10, 10, 100, 60);

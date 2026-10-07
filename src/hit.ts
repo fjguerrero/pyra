@@ -2,17 +2,24 @@ import { flattenLayers } from './layers';
 import { lineEnds, polyPoints, type Layer, type Obj, type Page } from './model';
 import type { View } from './view';
 
-export function hitTest(page: Page, wx: number, wy: number, tol = 0): Obj | null {
+/**
+ * Objeto bajo el punto. `prefer` (ids ya seleccionados) tiene prioridad: un objeto
+ * seleccionado se sigue capturando aunque haya otros por encima (como Fireworks).
+ */
+export function hitTest(page: Page, wx: number, wy: number, tol = 0, prefer?: string[]): Obj | null {
   const flat = flattenLayers(page.layers);
+  let fallback: Obj | null = null;
   for (let i = flat.length - 1; i >= 0; i--) {
     const l = flat[i];
     if (!l.visible || l.locked) continue;
     for (let j = l.objects.length - 1; j >= 0; j--) {
       const o = l.objects[j];
-      if (hitObj(o, wx, wy, tol)) return o;
+      if (!hitObj(o, wx, wy, tol)) continue;
+      if (prefer?.includes(o.id)) return o;
+      fallback ??= o;
     }
   }
-  return null;
+  return fallback;
 }
 
 /** Punto dentro del objeto según su forma. `tol` es un margen en unidades de mundo. */
