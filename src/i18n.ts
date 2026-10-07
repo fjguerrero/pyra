@@ -42,7 +42,7 @@ type Msg = {
   settings: string; theme: string; theme_system: string; theme_light: string; theme_dark: string;
   language: string; zoom: string; bg: string; bg_grid: string; bg_none: string;
   alpha: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
-  export_menu: string; export_jpeg: string; export_webp: string;
+  export_menu: string; export_jpeg: string; export_webp: string; export_quality: string;
   tool_brush: string; tool_eraser: string; export_asset: string; obj_stroke: string; brush_size: string; brush_pressure: string; brush_opacity: string;
   bevel: string; tool_pen: string; obj_polygon: string; union: string; union_hint: string;
   brush_round: string; brush_square: string; brush_tip: string; brush_tip_none: string;
@@ -70,7 +70,7 @@ const en: Msg = {
   settings: 'Settings', theme: 'Theme', theme_system: 'System', theme_light: 'Light', theme_dark: 'Dark',
   language: 'Language', zoom: 'Zoom', bg: 'Background', bg_grid: 'Checker grid', bg_none: 'Solid',
   alpha: 'Alpha', recent_colors: 'Recent colors', custom_colors: 'Custom colors', add_color: 'Add current color to custom palette', remove_color: 'Remove color',
-  export_menu: 'Export', export_jpeg: 'Export JPEG', export_webp: 'Export WebP',
+  export_menu: 'Export', export_jpeg: 'Export JPEG', export_webp: 'Export WebP', export_quality: 'Quality (JPEG/WebP)',
     tool_brush: 'Paint brush (B)', tool_eraser: 'Eraser (X)', export_asset: 'Export selection as PNG', obj_stroke: 'Brush stroke',
   bevel: 'Bevel', tool_pen: 'Pen (P)', obj_polygon: 'Polygon', union: 'Union', union_hint: 'Merge selected shapes into one', brush_size: 'Size', brush_pressure: 'Pressure', brush_opacity: 'Opacity',
   brush_round: 'Round tip', brush_square: 'Square tip', brush_tip: 'Custom tip (SVG or image)', brush_tip_none: 'Remove custom tip',
@@ -99,7 +99,7 @@ const es: Partial<Msg> = {
   settings: 'Configuración', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Claro', theme_dark: 'Oscuro',
   language: 'Idioma', zoom: 'Zoom', bg: 'Fondo', bg_grid: 'Cuadrícula', bg_none: 'Sólido',
   alpha: 'Alfa', recent_colors: 'Colores recientes', custom_colors: 'Colores personalizados', add_color: 'Añadir el color actual a la paleta personalizada', remove_color: 'Eliminar color',
-  export_menu: 'Exportar', export_jpeg: 'Exportar JPEG', export_webp: 'Exportar WebP',
+  export_menu: 'Exportar', export_jpeg: 'Exportar JPEG', export_webp: 'Exportar WebP', export_quality: 'Calidad (JPEG/WebP)',
   tool_brush: 'Pincel (B)', tool_eraser: 'Goma de borrar (X)', export_asset: 'Exportar selección como PNG', obj_stroke: 'Trazo de pincel', brush_size: 'Tamaño', brush_pressure: 'Presión', brush_opacity: 'Opacidad',
   bevel: 'Bisel', tool_pen: 'Lápiz (P)', obj_polygon: 'Polígono', union: 'Unión', union_hint: 'Unir las formas seleccionadas en una sola',
   brush_round: 'Punta redonda', brush_square: 'Punta cuadrada', brush_tip: 'Punta personalizada (SVG o imagen)', brush_tip_none: 'Quitar punta personalizada',

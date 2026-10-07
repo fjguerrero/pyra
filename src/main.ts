@@ -375,9 +375,17 @@ document.querySelector<HTMLElement>('#export-menu [data-export]')?.addEventListe
   downloadBlob(await exportFpng(doc, renderer), `${baseName()}.f.png`);
   exportMenu.hidden = true;
 });
+const exportQuality = document.getElementById('export-quality') as HTMLInputElement;
+exportQuality.value = localStorage.getItem('pyra:export-quality') ?? '92';
+exportQuality.addEventListener('change', () => {
+  const v = Math.min(100, Math.max(10, Number(exportQuality.value) || 92));
+  exportQuality.value = String(v);
+  localStorage.setItem('pyra:export-quality', String(v));
+});
+const exportQualityValue = (): number => Number(exportQuality.value) / 100;
 const exportRaster = (mime: string, ext: string): void => {
   void renderer.exportPage(activePage(doc)).then((off) => {
-    off.toBlob((b) => b && downloadBlob(b, `${baseName()}.${ext}`), mime, mime === 'image/jpeg' ? 0.92 : undefined);
+    off.toBlob((b) => b && downloadBlob(b, `${baseName()}.${ext}`), mime, mime === 'image/png' ? undefined : exportQualityValue());
   });
 };
 document.querySelector<HTMLElement>('#export-menu [data-export-png]')?.addEventListener('click', () => { exportRaster('image/png', 'png'); exportMenu.hidden = true; });
