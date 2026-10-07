@@ -111,7 +111,7 @@ type Drag =
   | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean }
   | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number; size?: number }; grab: { x: number; y: number } }
   | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number }
-  | { mode: 'guide'; index: number }
+  | { mode: 'guide'; index: number; startPos: number }
   | { mode: 'erase' }
   | { mode: 'groupresize'; objs: { obj: Obj; start: { x: number; y: number; w: number; h: number } }[]; start: { x: number; y: number; w: number; h: number }; role: HandleRole; grab: { x: number; y: number } };
 
@@ -294,10 +294,20 @@ importFile.addEventListener('change', () => {
   void (async () => {
     const restored = await importFpng(file); // ¿PNG con fuente Pyra? → reabrir documento
     if (restored) {
-      doc.name = restored.name;
-      doc.pages = restored.pages;
-      doc.activePageId = restored.activePageId;
-      history.clear();
+      const before = { name: doc.name, pages: doc.pages, activePageId: doc.activePageId };
+      history.run({
+        label: 'importar documento',
+        do: () => {
+          doc.name = restored.name;
+          doc.pages = restored.pages;
+          doc.activePageId = restored.activePageId;
+        },
+        undo: () => {
+          doc.name = before.name;
+          doc.pages = before.pages;
+          doc.activePageId = before.activePageId;
+        },
+      });
       select(null);
       await saveDoc(doc);
       invalidate();
@@ -593,7 +603,7 @@ canvas.addEventListener('pointerdown', (e) => {
   // guías manuales: arrastrar con V para mover
   const gi = (page.guides ?? []).findIndex((g) => Math.abs((g.axis === 'v' ? wx : wy) - g.pos) <= 5 / view.zoom);
   if (gi >= 0) {
-    drag = { mode: 'guide', index: gi };
+    drag = { mode: 'guide', index: gi, startPos: page.guides![gi].pos };
     canvas.style.cursor = 'grabbing';
     return;
   }
@@ -797,10 +807,20 @@ canvas.addEventListener('contextmenu', (e) => {
   const { wx, wy } = localXY(e);
   const gi = (page.guides ?? []).findIndex((g) => Math.abs((g.axis === 'v' ? wx : wy) - g.pos) <= 5 / view.zoom);
   if (gi >= 0) {
-    page.guides!.splice(gi, 1);
+    const [g] = page.guides!.splice(gi, 1);
+    history.record({
+      label: 'eliminar guía',
+      do: () => { const j = (page.guides ?? []).indexOf(g); if (j >= 0) page.guides!.splice(j, 1); },
+      undo: () => (page.guides ??= []).splice(gi, 0, g),
+    });
   } else {
-    const axis = Math.abs(wx - page.width / 2) < Math.abs(wy - page.height / 2) ? 'v' : 'h';
-    (page.guides ??= []).push({ axis, pos: Math.round(axis === 'v' ? wx : wy) });
+    const axis: 'v' | 'h' = Math.abs(wx - page.width / 2) < Math.abs(wy - page.height / 2) ? 'v' : 'h';
+    const g = { axis, pos: Math.round(axis === 'v' ? wx : wy) };
+    history.run({
+      label: 'crear guía',
+      do: () => (page.guides ??= []).push(g),
+      undo: () => { const j = (page.guides ?? []).indexOf(g); if (j >= 0) page.guides!.splice(j, 1); },
+    });
   }
   persist();
   invalidate();
@@ -812,6 +832,16 @@ canvas.addEventListener('pointerup', (e) => {
   { const { px, py, wx, wy } = localXY(e); canvas.style.cursor = hoverCursor(px, py, wx, wy); }
 
   if (drag.mode === 'guide') {
+    const g = page.guides![drag.index];
+    const startPos = drag.startPos;
+    if (g && g.pos !== startPos) {
+      const end = g.pos;
+      history.record({
+        label: 'mover guía',
+        do: () => { g.pos = end; },
+        undo: () => { g.pos = startPos; },
+      });
+    }
     persist();
     return;
   }
@@ -1113,7 +1143,15 @@ const panelApi = {
       height: base.height,
       layers: [{ id: uid(), name: t('default_layer'), visible: true, locked: false, opacity: 1, objects: [] }],
     };
-    doc.pages.push(page);
+    history.run({
+      label: 'crear página',
+      do: () => doc.pages.push(page),
+      undo: () => {
+        const i = doc.pages.indexOf(page);
+        if (i >= 0) doc.pages.splice(i, 1);
+        if (doc.activePageId === page.id) doc.activePageId = base.id;
+      },
+    });
     doc.activePageId = page.id;
     select(null);
     selectedLayerId = null;
@@ -1124,8 +1162,20 @@ const panelApi = {
     if (doc.pages.length <= 1) return;
     const i = doc.pages.findIndex((p) => p.id === pageId);
     if (i < 0) return;
-    doc.pages.splice(i, 1);
-    if (doc.activePageId === pageId) doc.activePageId = doc.pages[Math.max(0, i - 1)].id;
+    const page = doc.pages[i];
+    const prevActive = doc.activePageId;
+    history.run({
+      label: 'eliminar página',
+      do: () => {
+        const j = doc.pages.indexOf(page);
+        if (j >= 0) doc.pages.splice(j, 1);
+        if (doc.activePageId === pageId) doc.activePageId = doc.pages[Math.max(0, j - 1)].id;
+      },
+      undo: () => {
+        doc.pages.splice(i, 0, page);
+        doc.activePageId = prevActive;
+      },
+    });
     select(null);
     selectedLayerId = null;
     persist();
@@ -1143,7 +1193,14 @@ const panelApi = {
       gradient: shape.gradient ?? null,
       fx: obj.fx ? structuredClone(obj.fx) : undefined,
     };
-    doc.styles.push(style);
+    history.run({
+      label: 'crear estilo',
+      do: () => doc.styles!.push(style),
+      undo: () => {
+        const i = doc.styles!.indexOf(style);
+        if (i >= 0) doc.styles!.splice(i, 1);
+      },
+    });
     persist();
     invalidate();
   },
@@ -1178,7 +1235,15 @@ const panelApi = {
   removeStyle(styleId: string): void {
     const i = (doc.styles ?? []).findIndex((s) => s.id === styleId);
     if (i >= 0) {
-      doc.styles!.splice(i, 1);
+      const style = doc.styles![i];
+      history.run({
+        label: 'eliminar estilo',
+        do: () => {
+          const j = doc.styles!.findIndex((s) => s.id === styleId);
+          if (j >= 0) doc.styles!.splice(j, 1);
+        },
+        undo: () => doc.styles!.splice(i, 0, style),
+      });
       persist();
       invalidate();
     }

@@ -591,7 +591,7 @@ test('export de assets: un PNG por objeto seleccionado', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [300, 150], [420, 260]);
   await page.keyboard.press('Escape');
-  const box = await canvas(page).boundingBox()!;
+  const box = (await canvas(page).boundingBox())!;
   await page.mouse.click(box.x + 150, box.y + 150);
   await page.keyboard.down('Shift');
   await page.mouse.click(box.x + 350, box.y + 200);
@@ -603,4 +603,67 @@ test('export de assets: un PNG por objeto seleccionado', async ({ page }) => {
   await page.locator('#export-menu [data-export-asset]').click();
   const names = await downloads;
   expect(names.filter((n) => n.endsWith('.png')).length).toBe(2);
+});
+
+/** Nº de guías manuales de la página activa en el documento persistido. */
+function guideCount(page: Page): () => Promise<number> {
+  return () =>
+    page.evaluate(() =>
+      new Promise<number>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve(req.result?.pages?.[0]?.guides?.length ?? 0);
+          req.onerror = () => resolve(-1);
+        };
+        open.onerror = () => resolve(-1);
+      }),
+    );
+}
+
+test('guías: crear, eliminar y deshacer ambas', async ({ page }) => {
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + 150, box.y + 150, { button: 'right' });
+  await expect.poll(guideCount(page), { timeout: 5000 }).toBe(1);
+  await page.keyboard.press('Control+z');
+  await expect.poll(guideCount(page), { timeout: 5000 }).toBe(0);
+  // crear otra y eliminarla por clic derecho encima
+  await page.mouse.click(box.x + 150, box.y + 150, { button: 'right' });
+  await expect.poll(guideCount(page), { timeout: 5000 }).toBe(1);
+  await page.mouse.click(box.x + 150, box.y + 150, { button: 'right' });
+  await expect.poll(guideCount(page), { timeout: 5000 }).toBe(0);
+  await page.keyboard.press('Control+z');
+  await expect.poll(guideCount(page), { timeout: 5000 }).toBe(1);
+});
+
+test('páginas: crear y eliminar con undo', async ({ page }) => {
+  await page.locator('#pages-body [data-act="addpage"]').click();
+  await expect(page.locator('#pages-body .row')).toHaveCount(2);
+  await canvas(page).click(); // el foco debe estar en el lienzo para los atajos
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('#pages-body .row')).toHaveCount(1);
+  await page.locator('#pages-body [data-act="addpage"]').click();
+  await expect(page.locator('#pages-body .row')).toHaveCount(2);
+  await page.locator('#pages-body .row').last().locator('[data-act="delpage"]').dispatchEvent('click');
+  await expect(page.locator('#pages-body .row')).toHaveCount(1);
+  await canvas(page).click();
+  await page.keyboard.press('Control+z'); // undo del borrado
+  await expect(page.locator('#pages-body .row')).toHaveCount(2);
+  await page.keyboard.press('Control+Shift+z'); // redo
+  await expect(page.locator('#pages-body .row')).toHaveCount(1);
+});
+
+test('estilos: guardar y eliminar con undo', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 200]);
+  await page.locator('#inspector-body button', { hasText: 'Save style' }).dispatchEvent('click');
+  await expect(page.locator('#inspector-body')).toContainText('Estilo 1');
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('#inspector-body')).not.toContainText('Estilo 1');
+  await page.locator('#inspector-body button', { hasText: 'Save style' }).dispatchEvent('click');
+  await expect(page.locator('#inspector-body')).toContainText('Estilo 1');
+  await page.locator('#inspector-body [data-act="delstyle"]').dispatchEvent('click');
+  await expect(page.locator('#inspector-body')).not.toContainText('Estilo 1');
+  await page.keyboard.press('Control+z'); // undo del borrado
+  await expect(page.locator('#inspector-body')).toContainText('Estilo 1');
 });
