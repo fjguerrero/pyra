@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pyra</title>
+    <script type="module" crossorigin src="./assets/index-C1CN9ARk.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DcY-mu59.css">
+  </head>
+  <body>
+    <div id="app">
+      <div id="main">
+        <div id="toolbar">
+          <button type="button" class="tool active" data-tool="select" data-icon="cursor" aria-pressed="true" data-i18n-title="tool_select"></button>
+          <button type="button" class="tool" data-tool="rect" data-icon="rect" aria-pressed="false" data-i18n-title="tool_rect"></button>
+          <button type="button" class="tool" data-tool="ellipse" data-icon="ellipse" aria-pressed="false" data-i18n-title="tool_ellipse"></button>
+          <button type="button" class="tool" data-tool="line" data-icon="line" aria-pressed="false" data-i18n-title="tool_line"></button>
+          <button type="button" class="tool" data-tool="pen" data-icon="pen" aria-pressed="false" data-i18n-title="tool_pen"></button>
+          <button type="button" class="tool" data-tool="pencil" data-icon="pencil" aria-pressed="false" data-i18n-title="tool_pencil"></button>
+          <button type="button" class="tool" data-tool="polypen" data-icon="polypen" aria-pressed="false" data-i18n-title="pencil_polygon"></button>
+          <button type="button" class="tool" data-tool="eraser" data-icon="eraser" aria-pressed="false" data-i18n-title="tool_eraser"></button>
+          <button type="button" class="tool" data-tool="brush" data-icon="brush" aria-pressed="false" data-i18n-title="tool_brush"></button>
+          <button type="button" class="tool" data-tool="text" data-icon="text" aria-pressed="false" data-i18n-title="tool_text"></button>
+          <div class="tsep"></div>
+          <button type="button" class="tool" data-import data-icon="import" data-i18n-title="import_image"></button>
+          <button type="button" class="tool" data-export-menu data-icon="export" data-i18n-title="export_menu"></button>
+          <button type="button" class="tool" data-fit data-icon="fit" data-i18n-title="fit_zoom"></button>
+          <div id="export-menu" hidden>
+            <button type="button" data-export data-i18n="export_fpng"></button>
+            <button type="button" data-export-png data-i18n="export_png"></button>
+            <button type="button" data-export-jpeg data-i18n="export_jpeg"></button>
+            <button type="button" data-export-webp data-i18n="export_webp"></button>
+            <button type="button" data-export-asset data-i18n="export_asset"></button>
+            <label class="field" data-i18n="export_quality" for="export-quality"></label>
+            <input type="number" id="export-quality" min="10" max="100" step="5" />
+          </div>
+        </div>
+        <div id="canvas-wrap"><canvas id="canvas"></canvas></div>
+        <div id="side">
+          <div class="panel" data-panel="layers">
+            <div class="panel-title" data-i18n="panel_layers">Capas</div>
+            <div id="layers-body"></div>
+          </div>
+          <div class="panel" data-panel="pages">
+            <div class="panel-title" data-i18n="panel_pages">Páginas</div>
+            <div id="pages-body"></div>
+          </div>
+          <div class="panel" data-panel="inspector">
+            <div class="panel-title" data-i18n="panel_inspector">Propiedades</div>
+            <div id="inspector-body"></div>
+          </div>
+          <div class="panel" data-panel="align">
+            <div class="panel-title" data-i18n="panel_align">Alinear</div>
+            <div id="align-body"></div>
+          </div>
+        </div>
+      </div>
+      <div id="status">
+        <span id="status-text"></span>
+        <div id="zoom-ctl">
+          <button type="button" id="zoom-btn" data-icon="zoom" data-i18n-title="zoom"></button>
+          <input type="number" id="zoom-num" min="5" max="1000" step="5" title="Zoom" />
+          <div id="zoom-pop" hidden><input type="range" id="zoom-range" min="5" max="400" step="1" /></div>
+        </div>
+        <span id="status-end"></span>
+      </div>
+      <button type="button" id="settings-btn" data-icon="settings" data-i18n-title="settings"></button>
+      <div id="settings-menu" hidden>
+        <label data-i18n="language"></label>
+        <select id="lang"></select>
+        <label data-i18n="theme"></label>
+        <select id="theme">
+          <option value="system"></option>
+          <option value="light"></option>
+          <option value="dark"></option>
+        </select>
+        <label data-i18n="bg"></label>
+        <div class="bg-row">
+          <input type="color" id="bg-color" />
+          <select id="bg-grid">
+            <option value="0" data-i18n="bg_none"></option>
+            <option value="10">10px</option>
+            <option value="20">20px</option>
+            <option value="50">50px</option>
+            <option value="100">100px</option>
+          </select>
+        </div>
+        <button type="button" id="help-btn" data-i18n="help"></button>
+      </div>
+      <div id="help-modal" hidden></div>
+    </div>
+    <input type="file" id="import-file" accept="image/*" hidden />
+  </body>
+</html>
