@@ -595,6 +595,39 @@ test('polilápiz: un trazo libre se convierte en polígono vectorial con borde y
   expect(poly.fill).toBeTruthy();
 });
 
+test('polilápiz estilizado: RDP + curvas reales (pocos vértices, smooth activo)', async ({ page }) => {
+  await page.keyboard.press('g');
+  await page.locator('#inspector-body button[data-mode="stylized"]').click();
+  const box = (await canvas(page).boundingBox())!;
+  // triángulo a mano alzada con vibración: 33 puntos crudos deben quedar en pocos vértices
+  const path: [number, number][] = [];
+  for (let i = 0; i <= 10; i++) path.push([150 + i * 15, 120 + (i % 2) * 3]);
+  for (let i = 0; i <= 10; i++) path.push([300 - i * 7, 120 + i * 16 + (i % 2) * 3]);
+  for (let i = 0; i <= 10; i++) path.push([300 - i * 15, 280 - (i % 2) * 3]);
+  await page.mouse.move(box.x + path[0][0], box.y + path[0][1]);
+  await page.mouse.down();
+  for (const [x, y] of path.slice(1)) await page.mouse.move(box.x + x, box.y + y);
+  await page.mouse.up();
+  await expect.poll(docShape(page)).toBe('polygon');
+  const poly = await page.evaluate(() =>
+    new Promise<{ smooth: boolean; n: number }>((resolve) => {
+      const open = indexedDB.open('pyra');
+      open.onsuccess = () => {
+        const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+        req.onsuccess = () => {
+          const o = req.result?.pages?.[0]?.layers?.[0]?.objects?.[0];
+          resolve({ smooth: !!o?.smooth, n: o?.poly?.length ?? 0 });
+        };
+        req.onerror = () => resolve({ smooth: false, n: 0 });
+      };
+      open.onerror = () => resolve({ smooth: false, n: 0 });
+    }),
+  );
+  expect(poly.smooth).toBe(true); // se dibuja con curvas Catmull-Rom, no con segmentos rectos
+  expect(poly.n).toBeLessThanOrEqual(10); // RDP: la vibración de 3px no genera vértices
+  expect(poly.n).toBeGreaterThanOrEqual(3);
+});
+
 test('unión: Ctrl+U fusiona dos rectángulos seleccionados en un polígono', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [260, 220]);
@@ -649,6 +682,42 @@ test('goma bitmap: borrar píxeles de una imagen importada deja huecos reales', 
   await expect.poll(eraseCount, { timeout: 5000 }).toBeGreaterThan(0);
   await page.keyboard.press('Control+z');
   await expect.poll(eraseCount, { timeout: 5000 }).toBe(-1);
+});
+
+test('goma continua: un salto rápido entre frames borra todo el surco, sin huecos', async ({ page }) => {
+  const dataUrl = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 1200; c.height = 1200;
+    const g = c.getContext('2d')!;
+    g.fillStyle = 'red';
+    g.fillRect(0, 0, 1200, 1200);
+    return c.toDataURL('image/png');
+  });
+  await page.setInputFiles('#import-file', { name: 'rojo.png', mimeType: 'image/png', buffer: Buffer.from(dataUrl.split(',')[1], 'base64') });
+  const box = (await canvas(page).boundingBox())!;
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  await page.locator('#canvas').click();
+  await page.keyboard.press('x');
+  await page.mouse.move(cx - 150, cy); // dentro de la imagen (1200px centrada, zoom de ajuste ~0.7)
+  await page.mouse.down();
+  await page.mouse.move(cx + 150, cy); // UN solo evento de puntero: antes dejaba hueco central
+  await page.mouse.up();
+  const coversCenter = () =>
+    page.evaluate(() =>
+      new Promise<boolean>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => {
+            const erase = req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.erase ?? [];
+            resolve(erase.some((s: any) => Math.abs(s.x - 0.5) < s.r && Math.abs(s.y - 0.5) < s.r));
+          };
+          req.onerror = () => resolve(false);
+        };
+        open.onerror = () => resolve(false);
+      }),
+    );
+  await expect.poll(coversCenter, { timeout: 5000 }).toBe(true); // stamps interpolados: el punto medio del salto queda borrado
 });
 
 test('negrita/cursiva: el inspector de texto tiene los botones y persisten', async ({ page }) => {

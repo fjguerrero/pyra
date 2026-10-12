@@ -227,7 +227,9 @@ function renderBrushPanel(bp: BrushPanelArg): void {
     const row = document.createElement('div');
     row.className = 'field';
     for (const m of bp.modes) {
-      row.append(btn('', t(m.labelKey as never), t(m.labelKey as never), bp.mode === m.value, () => bp.setMode!(m.value), m.value === 'curved' || m.value === 'smooth' || m.value === 'stylized' ? 'pen' : 'line'));
+      const b = btn('', t(m.labelKey as never), t(m.labelKey as never), bp.mode === m.value, () => bp.setMode!(m.value), m.value === 'curved' || m.value === 'smooth' || m.value === 'stylized' ? 'pen' : 'line');
+      b.dataset.mode = m.value; // seleccionable en tests y atajos futuros
+      row.append(b);
     }
     insp.appendChild(row);
   }
