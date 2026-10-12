@@ -45,14 +45,16 @@ type Msg = {
   alpha: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
   export_menu: string; export_jpeg: string; export_webp: string; export_quality: string;
   tool_brush: string; tool_eraser: string; export_asset: string; obj_stroke: string; brush_size: string; brush_pressure: string; brush_opacity: string;
-  bevel: string; tool_pen: string; tool_pencil: string; pencil_continuous: string; pencil_smooth: string; pen_curved: string; pen_straight: string; pencil_polygon: string; poly_freehand: string; poly_straight: string; stroke_width: string; stroke_style: string; stroke_solid: string; stroke_dashed: string; no_fill: string; obj_polygon: string; union: string; union_hint: string;
+  bevel: string; tool_pen: string; tool_pencil: string; pencil_continuous: string; pencil_smooth: string; pen_curved: string; pen_straight: string; pencil_polygon: string; poly_freehand: string; poly_straight: string; poly_stylized: string; stroke_width: string; stroke_style: string; stroke_solid: string; stroke_dashed: string; no_fill: string; obj_polygon: string; union: string; union_hint: string;
+  preset_pencil: string; preset_pen: string; preset_marker: string; preset_brush: string; brush_stabilizer: string; brush_taper: string; eraser_size: string;
   help: string; help_html: string;
   brush_round: string; brush_square: string; brush_tip: string; brush_tip_none: string;
 };
 
 const en: Msg = {
   order_front: 'Bring to front', order_up: 'Bring forward', order_down: 'Send backward', order_back: 'Send to back',
-  tool_pencil: 'Pencil (N)', pencil_continuous: 'Continuous', pencil_smooth: 'Smoothed', pen_curved: 'Curved', pen_straight: 'Straight', pencil_polygon: 'Polygon pencil', poly_freehand: 'Freehand', poly_straight: 'Straight lines', stroke_width: 'Stroke width', stroke_style: 'Stroke style', stroke_solid: 'Solid', stroke_dashed: 'Dashed', no_fill: 'No fill',
+  tool_pencil: 'Pencil (N)', pencil_continuous: 'Continuous', pencil_smooth: 'Smoothed', pen_curved: 'Curved', pen_straight: 'Straight', pencil_polygon: 'Polygon pencil', poly_freehand: 'Freehand', poly_straight: 'Straight lines', poly_stylized: 'Stylized', stroke_width: 'Stroke width', stroke_style: 'Stroke style', stroke_solid: 'Solid', stroke_dashed: 'Dashed', no_fill: 'No fill',
+  preset_pencil: 'Pencil', preset_pen: 'Ink pen', preset_marker: 'Marker', preset_brush: 'Soft brush', brush_stabilizer: 'Stabilizer', brush_taper: 'End taper', eraser_size: 'Eraser size',
   tool_select: 'Selection (V)', tool_rect: 'Rectangle (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Line (L)', tool_text: 'Text (T)',
   import_image: 'Import image', export_fpng: 'Export .f.png', export_png: 'Export flat PNG', fit_zoom: 'Fit zoom (0)', change_lang: 'Change language',
   panel_layers: 'Layers', panel_pages: 'Pages', panel_inspector: 'Properties', panel_align: 'Align',
@@ -91,7 +93,8 @@ const en: Msg = {
 const es: Partial<Msg> = {
   ...en,
   order_front: 'Traer al frente', order_up: 'Traer adelante', order_down: 'Enviar atrás', order_back: 'Enviar al fondo',
-  tool_pencil: 'Lápiz (N)', pencil_continuous: 'Continuo', pencil_smooth: 'Suavizado', pen_curved: 'Curvado', pen_straight: 'Recto', pencil_polygon: 'Lápiz de polígonos', poly_freehand: 'A mano alzada', poly_straight: 'Líneas rectas', stroke_width: 'Grosor del trazo', stroke_style: 'Estilo del trazo', stroke_solid: 'Sólido', stroke_dashed: 'Discontinuo', no_fill: 'Sin relleno',
+  tool_pencil: 'Lápiz (N)', pencil_continuous: 'Continuo', pencil_smooth: 'Suavizado', pen_curved: 'Curvado', pen_straight: 'Recto', pencil_polygon: 'Lápiz de polígonos', poly_freehand: 'A mano alzada', poly_straight: 'Líneas rectas', poly_stylized: 'Estilizado', stroke_width: 'Grosor del trazo', stroke_style: 'Estilo del trazo', stroke_solid: 'Sólido', stroke_dashed: 'Discontinuo', no_fill: 'Sin relleno',
+  preset_pencil: 'Lápiz', preset_pen: 'Pluma de tinta', preset_marker: 'Marcador', preset_brush: 'Pincel suave', brush_stabilizer: 'Estabilizador', brush_taper: 'Afinado final', eraser_size: 'Tamaño de goma',
   tool_select: 'Selección (V)', tool_rect: 'Rectángulo (R)', tool_ellipse: 'Elipse (E)', tool_line: 'Línea (L)', tool_text: 'Texto (T)',
   import_image: 'Importar imagen', export_fpng: 'Exportar .f.png', export_png: 'Exportar PNG plano', fit_zoom: 'Zoom ajustar (0)', change_lang: 'Cambiar idioma',
   panel_layers: 'Capas', panel_pages: 'Páginas', panel_inspector: 'Propiedades', panel_align: 'Alinear',

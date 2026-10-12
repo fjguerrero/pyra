@@ -3,7 +3,8 @@ import { lineEnds, polyPoints, type BrushShape, type Fx, type LineFrom, type Obj
 import type { View } from './view';
 import type { Guide } from './guides';
 import { findObj, handles } from './hit';
-import { smoothClosedPolygon, smoothPolyline } from './freehand';
+import { smoothClosedPolygon } from './freehand';
+import { resampleSmooth, strokeOutline, type WPt } from './brush-engine';
 import { drawTextObj } from './text';
 import { gradientFill } from './gradient';
 export interface Draft {
@@ -147,11 +148,11 @@ export class Renderer {
 
     if (scene.draft) {
       if (scene.draft.shape === 'stroke' && scene.draft.pts) {
-        const raw = scene.draft.pts.map((p) => ({ x: p.x * v.zoom + v.panX, y: p.y * v.zoom + v.panY, p: p.p }));
-        const pts = scene.draft.smooth
-          ? smoothPolyline(raw, 8).map((q) => ({ x: q.x, y: q.y, p: 1 }))
-          : raw;
-        this.paintStroke(pts, (scene.draft.strokeWidth ?? 4) * v.zoom, scene.draft.stroke ?? ACCENT, scene.draft.brush, scene.draft.tip);
+        const base = (scene.draft.strokeWidth ?? 4) * v.zoom;
+        const raw = scene.draft.pts.map((p) => ({ x: p.x * v.zoom + v.panX, y: p.y * v.zoom + v.panY, w: base * Math.max(0.05, p.p) }));
+        const dense = scene.draft.smooth ? resampleSmooth(raw, 2) : raw;
+        this.fillRibbon(dense, scene.draft.stroke ?? ACCENT, 1);
+        if (scene.draft.tip) this.paintStroke(raw.map((q) => ({ x: q.x, y: q.y, p: q.w / base })), base, scene.draft.stroke ?? ACCENT, scene.draft.brush, scene.draft.tip);
       } else if (scene.draft.shape === 'polygon' && scene.draft.poly) {
         const verts = scene.draft.smooth ? smoothClosedPolygon(scene.draft.poly, 10) : scene.draft.poly;
         ctx.strokeStyle = ACCENT;
@@ -506,24 +507,41 @@ export class Renderer {
     ctx.restore();
   }
 
-  /** Traza del pincel: polilínea con ancho por presión; `tip` estampa una imagen en cada punto. */
+  /** Traza del pincel: cinta de ancho variable (relleno, alfa uniforme);
+   * `tip` mantiene el estampado de imagen punto a punto. */
   private drawStroke(o: ShapeObj, v: View): void {
-    if ((o.points?.length ?? 0) < 2) return;
-    const raw = o.points!.map((p) => ({
+    if (!o.points?.length) return;
+    const base = Math.max(0.5, o.strokeWidth * v.zoom);
+    const raw: WPt[] = o.points.map((p) => ({
       x: (o.x + p.x * o.w) * v.zoom + v.panX,
       y: (o.y + p.y * o.h) * v.zoom + v.panY,
-      p: Math.max(0.05, p.p),
+      w: base * Math.max(0.05, p.p),
     }));
-    const pts = o.smooth
-      ? smoothPolyline(raw, 8).map((q) => ({ x: q.x, y: q.y, p: 1 }))
-      : raw;
-    this.paintStroke(
-      pts,
-      Math.max(0.5, o.strokeWidth * v.zoom),
-      o.stroke ?? '#000000',
-      o.brush,
-      o.tip,
-    );
+    if (o.tip) {
+      this.paintStroke(raw.map((q) => ({ x: q.x, y: q.y, p: q.w / base })), base, o.stroke ?? '#000000', o.brush, o.tip);
+      return;
+    }
+    const dense = o.smooth ? resampleSmooth(raw, 2) : raw;
+    this.fillRibbon(dense, o.stroke ?? '#000000', o.strokeOpacity ?? 1);
+  }
+
+  /** Rellena la cinta del trazo: quads + círculos en un solo fill → uniones
+   * redondas y alfa uniforme sin doble oscurecimiento en las juntas. */
+  private fillRibbon(P: WPt[], color: string, alpha: number): void {
+    const ctx = this.ctx;
+    ctx.save();
+    if (alpha < 1) ctx.globalAlpha *= alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (const op of strokeOutline(P)) {
+      if (op.op === 'arc') {
+        ctx.moveTo(op.x + op.r, op.y);
+        ctx.arc(op.x, op.y, op.r, 0, Math.PI * 2);
+      } else if (op.op === 'move') ctx.moveTo(op.x, op.y);
+      else ctx.lineTo(op.x, op.y);
+    }
+    ctx.fill();
+    ctx.restore();
   }
 
   private paintStroke(

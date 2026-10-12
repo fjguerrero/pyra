@@ -200,12 +200,11 @@ describe('Renderer.draw: formas vectoriales', () => {
     expect(lines(up)).not.toContainEqual([10, 20]);
   });
 
-  it('un trazo de pincel se pinta como polilínea con grosor por presión', () => {
+  it('un trazo de pincel se pinta como cinta rellena: alfa uniforme, uniones redondas', () => {
     const o = rect(0, 0, 100, 100, '');
     o.shape = 'stroke';
     o.stroke = '#123456';
     o.strokeWidth = 10;
-    o.brush = 'square';
     o.points = [
       { x: 0, y: 0, p: 1 },
       { x: 0.5, y: 0.5, p: 0.5 },
@@ -214,14 +213,13 @@ describe('Renderer.draw: formas vectoriales', () => {
     const s = scene();
     s.page.layers[0].objects.push(o);
     const ops = draw(s);
-    expect(styleOrder(ops, 'strokeStyle')).toContain('#123456');
-    // un segmento por cada par de puntos, con el grosor medio de sus presiones
-    const widths = styleOrder(ops, 'lineWidth').filter((w) => w === 10 || w === 7.5);
-    expect(widths.length).toBe(2);
-    expect(lines(ops)).toContainEqual([0, 0]);
-    expect(lines(ops)).toContainEqual([50, 50]);
-    expect(lines(ops)).toContainEqual([100, 100]);
-    expect(ops.some((o) => o.op === 'fill')).toBe(false); // un trazo no se rellena
+    expect(styleOrder(ops, 'fillStyle')).toContain('#123456');
+    // un círculo por punto (radios según presión: 5, 2.5, 5) y UN solo fill
+    const arcs = shapePaths(ops, 'arc');
+    expect(arcs.length).toBe(3);
+    expect(arcs.map((a) => a[2])).toEqual([5, 2.5, 5]);
+    expect(ops.filter((o) => o.op === 'fill').length).toBe(1);
+    expect(ops.some((o) => o.op === 'stroke')).toBe(false); // nada de stroke por segmento: cero doble alfa
   });
 
   it('el borrador de una elipse se traza como elipse, no como rectángulo', () => {

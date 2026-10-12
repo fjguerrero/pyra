@@ -6,6 +6,7 @@ import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } fr
 import { addLayer, moveLayer, reorderLayer } from './layers';
 import { snapBox, type Guide, type Snap } from './guides';
 import { rdpSimplify } from './freehand';
+import { applyTaper, BRUSH_PRESETS, interpolateStamps, PRESET_ORDER, StrokeCapture, type BrushParams, type BrushPreset, type WPt } from './brush-engine';
 import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { DEFAULT_FONT, measureText } from './text';
@@ -38,13 +39,37 @@ let draft: Draft | null = null;
 // vértices de la pluma en coords de mundo; c = vértice curvo (Shift o modo curvo)
 let penPts: { x: number; y: number; c: boolean }[] = [];
 
-// Lápiz: modo continuo (MS Paint) o suavizado; grosor propio. Persistido.
-type PencilSettings = { mode: 'continuous' | 'smooth'; size: number };
-const pencil: PencilSettings = { mode: 'continuous', size: 3, ...JSON.parse(localStorage.getItem('pyra:pencil') || '{}') };
+// Lápiz vectorial: motor de pinceles con presets estilo Sketchbook. Persistido.
+type PencilSettings = {
+  mode: 'continuous' | 'smooth';
+  preset: BrushPreset;
+  size: number;
+  opacity: number;
+  stabilize: number;
+  taper: number;
+};
+const PENCIL_DEFAULTS: PencilSettings = {
+  mode: 'continuous',
+  preset: 'pencil',
+  size: BRUSH_PRESETS.pencil.size,
+  opacity: BRUSH_PRESETS.pencil.opacity,
+  stabilize: BRUSH_PRESETS.pencil.stabilize,
+  taper: BRUSH_PRESETS.pencil.taper,
+};
+const pencil: PencilSettings = { ...PENCIL_DEFAULTS, ...JSON.parse(localStorage.getItem('pyra:pencil') || '{}') };
 function setPencil(patch: Partial<PencilSettings>): void {
   Object.assign(pencil, patch);
   localStorage.setItem('pyra:pencil', JSON.stringify(pencil));
   invalidate();
+}
+/** Cambiar de preset: carga sus valores base (el usuario los ajusta después). */
+function applyPreset(pr: BrushPreset): void {
+  const d = BRUSH_PRESETS[pr];
+  setPencil({ preset: pr, size: d.size, opacity: d.opacity, stabilize: d.stabilize, taper: d.taper });
+}
+/** Parámetros efectivos del motor: la base del preset + los ajustes del usuario. */
+function pencilParams(): BrushParams {
+  return { ...BRUSH_PRESETS[pencil.preset], size: pencil.size, opacity: pencil.opacity, stabilize: pencil.stabilize, taper: pencil.taper };
 }
 
 // Lápiz de polígonos: modo líneas rectas (RDP) o estilizado; borde y relleno propios. Persistido.
@@ -56,6 +81,13 @@ function setPoly(patch: Partial<PolySettings>): void {
   invalidate();
 }
 
+// Goma: diámetro en px de pantalla; los stamps se interpolan entre frames (sin huecos). Persistido.
+const eraser: { size: number } = { size: 12, ...JSON.parse(localStorage.getItem('pyra:eraser') || '{}') };
+function setEraser(patch: Partial<{ size: number }>): void {
+  Object.assign(eraser, patch);
+  localStorage.setItem('pyra:eraser', JSON.stringify(eraser));
+  invalidate();
+}
 // Pluma: vértices curvos por defecto (Shift los invierte). Persistido.
 const penOpt: { curved: boolean } = { curved: false, ...JSON.parse(localStorage.getItem('pyra:pen') || '{}') };
 function setPenOpt(patch: Partial<{ curved: boolean }>): void {
@@ -63,7 +95,10 @@ function setPenOpt(patch: Partial<{ curved: boolean }>): void {
   localStorage.setItem('pyra:pen', JSON.stringify(penOpt));
   invalidate();
 }
-let eraserDrag: { obj: BitmapObj; start: NonNullable<BitmapObj['erase']>; moved: boolean } | null = null;
+let eraserDrag: { obj: BitmapObj; start: NonNullable<BitmapObj['erase']>; moved: boolean; last: { x: number; y: number } } | null = null;
+// Capturas del motor de pinceles durante un arrastre (lápiz N y polilápiz G).
+let pencilCap: StrokeCapture | null = null;
+let polyCap: StrokeCapture | null = null;
 let marquee: { x: number; y: number; w: number; h: number } | null = null;
 let clipboard: Obj[] = [];
 let guides: Guide[] = [];
@@ -131,14 +166,12 @@ function selectedObjs(): Obj[] {
   return selectedIds.map((id) => findObj(page, id)).filter((o): o is Obj => o !== null);
 }
 
-type Pt = { x: number; y: number };
-
 type Drag =
   | { mode: 'pan'; sx: number; sy: number; panX: number; panY: number }
   | { mode: 'create'; ox: number; oy: number }
   | { mode: 'paint'; pts: { x: number; y: number; p: number }[] }
-  | { mode: 'pencil'; pts: Pt[] }
-  | { mode: 'polypen'; pts: Pt[] }
+  | { mode: 'pencil' }
+  | { mode: 'polypen' }
   | { mode: 'marquee'; ox: number; oy: number; additive: boolean }
   | { mode: 'move'; items: { obj: Obj; start: { x: number; y: number } }[]; grab: { x: number; y: number }; moved: boolean; axis?: 'x' | 'y'; toggle?: Obj | null }
   | { mode: 'resize'; obj: Obj; role: HandleRole; start: { x: number; y: number; w: number; h: number; size?: number }; grab: { x: number; y: number } }
@@ -173,7 +206,23 @@ function pushCreateCmd(obj: Obj): void {
 
 /** Goma: añade un círculo borrado (normalizado al bbox) a un objeto bitmap. */
 function eraseAt(obj: BitmapObj, wx: number, wy: number): void {
-  (obj.erase ??= []).push({ x: (wx - obj.x) / obj.w, y: (wy - obj.y) / obj.h, r: 8 / view.zoom / obj.w });
+  (obj.erase ??= []).push({ x: (wx - obj.x) / obj.w, y: (wy - obj.y) / obj.h, r: eraser.size / 2 / view.zoom / obj.w });
+}
+
+/** Vista previa en vivo del trazo del lápiz desde la captura actual. */
+function pencilDraft(): void {
+  if (!pencilCap) return;
+  draft = {
+    x: 0, y: 0, w: 0, h: 0, shape: 'stroke',
+    pts: pencilCap.pts.map((q) => ({ x: q.x, y: q.y, p: q.w / Math.max(0.5, pencil.size) })),
+    stroke: brushColor(), strokeWidth: pencil.size, smooth: pencil.mode === 'smooth',
+  };
+}
+
+/** Vista previa en vivo del polilápiz desde la captura actual. */
+function polyDraft(): void {
+  if (!polyCap) return;
+  draft = { x: 0, y: 0, w: 0, h: 0, shape: 'polygon', poly: polyCap.pts, smooth: poly.mode === 'stylized' };
 }
 
 /** Cerrar la pluma: los vértices de mundo pasan a `poly` normalizada (curvos = Catmull-Rom). */
@@ -216,9 +265,37 @@ function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' |
   });
   canvas.style.cursor = t === 'select' ? 'default' : 'crosshair';
   brushPanel = t === 'brush' ? { s: brush, set: setBrush, pressure: true }
-    : t === 'pencil' ? { s: { size: pencil.size, pressure: 1, opacity: 1, shape: 'round', tip: null }, set: (p) => setPencil({ size: p.size ?? pencil.size, mode: p.shape === 'square' ? 'continuous' : 'smooth' }), mode: pencil.mode, modes: ['pencil_continuous', 'pencil_smooth'] }
-    : t === 'polypen' ? { s: { size: poly.width, pressure: 1, opacity: 1, shape: 'round', tip: null }, set: (p) => setPoly({ width: p.size ?? poly.width, dash: p.shape === 'square' }), mode: poly.mode, modes: ['poly_freehand', 'poly_straight'], colors: [{ labelKey: 'stroke_color', value: poly.stroke, set: (v) => setPoly({ stroke: v }) }, { labelKey: 'fill', value: poly.noFill ? '' : poly.fill, set: (v) => setPoly({ fill: v || '#4f8cff', noFill: !v }) }] }
-    : t === 'pen' ? { s: undefined, mode: penOpt.curved ? 'pen_curved' : 'pen_straight', modes: ['pen_curved', 'pen_straight'], setMode: (m) => setPenOpt({ curved: m === 'pen_curved' }) }
+    : t === 'pencil' ? {
+        presets: PRESET_ORDER.map((v) => ({ value: v, labelKey: `preset_${v}` })),
+        preset: pencil.preset,
+        setPreset: (p) => applyPreset(p as BrushPreset),
+        preview: { params: pencilParams(), color: brushColor() },
+        modes: [{ value: 'continuous', labelKey: 'pencil_continuous' }, { value: 'smooth', labelKey: 'pencil_smooth' }],
+        mode: pencil.mode,
+        setMode: (m) => setPencil({ mode: m as 'continuous' | 'smooth' }),
+        sliders: [
+          { labelKey: 'brush_size', value: pencil.size, min: 1, max: 200, step: 1, set: (v) => setPencil({ size: Math.max(1, Math.round(v)) }) },
+          { labelKey: 'brush_opacity', value: pencil.opacity, min: 0.05, max: 1, step: 0.05, set: (v) => setPencil({ opacity: v }) },
+          { labelKey: 'brush_stabilizer', value: pencil.stabilize, min: 0, max: 0.9, step: 0.05, set: (v) => setPencil({ stabilize: v }) },
+          { labelKey: 'brush_taper', value: pencil.taper, min: 0, max: 1, step: 0.05, set: (v) => setPencil({ taper: v }) },
+        ],
+      }
+    : t === 'polypen' ? {
+        modes: [{ value: 'straight', labelKey: 'poly_straight' }, { value: 'stylized', labelKey: 'poly_stylized' }],
+        mode: poly.mode,
+        setMode: (m) => setPoly({ mode: m as 'straight' | 'stylized' }),
+        sliders: [{ labelKey: 'stroke_width', value: poly.width, min: 1, max: 60, step: 1, set: (v) => setPoly({ width: Math.max(1, Math.round(v)) }) }],
+        toggles: [{ labelKey: 'stroke_dashed', value: poly.dash, set: (v) => setPoly({ dash: v }) }],
+        colors: [{ labelKey: 'stroke_color', value: poly.stroke, set: (v) => setPoly({ stroke: v }) }, { labelKey: 'fill', value: poly.noFill ? '' : poly.fill, set: (v) => setPoly({ fill: v || '#4f8cff', noFill: !v }) }],
+      }
+    : t === 'pen' ? {
+        modes: [{ value: 'curved', labelKey: 'pen_curved' }, { value: 'straight', labelKey: 'pen_straight' }],
+        mode: penOpt.curved ? 'curved' : 'straight',
+        setMode: (m) => setPenOpt({ curved: m === 'curved' }),
+      }
+    : t === 'eraser' ? {
+        sliders: [{ labelKey: 'eraser_size', value: eraser.size, min: 2, max: 200, step: 1, set: (v) => setEraser({ size: Math.max(2, Math.round(v)) }) }],
+      }
     : undefined;
   invalidate();
 }
@@ -626,13 +703,21 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 
   if (tool === 'pencil') {
-    drag = { mode: 'pencil', pts: [{ x: wx, y: wy }] };
+    pencilCap = new StrokeCapture(pencilParams(), 2 / view.zoom);
+    pencilCap.feed(wx, wy, e.pressure, e.pointerType, e.timeStamp);
+    drag = { mode: 'pencil' };
+    pencilDraft();
     invalidate();
     return;
   }
 
   if (tool === 'polypen') {
-    drag = { mode: 'polypen', pts: [{ x: wx, y: wy }] };
+    // El polilápiz usa el estabilizador del motor para un trazo limpio; el ancho
+    // lo define el borde del polígono, no el relleno de la cinta.
+    polyCap = new StrokeCapture({ size: poly.width, minFactor: 1, pressureExp: 1, opacity: 1, stabilize: 0.3, taper: 0, velocityDynamics: false }, 2 / view.zoom);
+    polyCap.feed(wx, wy, 1, e.pointerType, e.timeStamp);
+    drag = { mode: 'polypen' };
+    polyDraft();
     invalidate();
     return;
   }
@@ -653,7 +738,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const hit = hitTest(page, wx, wy, 4 / view.zoom);
     const obj = hit ? findObj(page, hit.id) : null;
     if (obj && obj.shape === 'bitmap') {
-      eraserDrag = { obj, start: [...(obj.erase ?? [])], moved: false };
+      eraserDrag = { obj, start: [...(obj.erase ?? [])], moved: false, last: { x: wx, y: wy } };
       drag = { mode: 'erase' };
       eraseAt(obj, wx, wy);
       invalidate();
@@ -776,22 +861,27 @@ canvas.addEventListener('pointermove', (e) => {
     return;
   }
 
-  if (drag.mode === 'pencil' || drag.mode === 'polypen') {
-    const last = drag.pts[drag.pts.length - 1];
-    if (Math.hypot(wx - last.x, wy - last.y) > 2 / view.zoom) {
-      drag.pts.push({ x: wx, y: wy });
-      draft = drag.mode === 'pencil'
-        ? { x: 0, y: 0, w: 0, h: 0, shape: 'stroke', pts: drag.pts.map((p) => ({ x: p.x, y: p.y, p: 1 })), stroke: brushColor(), strokeWidth: pencil.size, brush: pencil.mode === 'smooth' ? 'round' : 'square', smooth: pencil.mode === 'smooth' }
-        : { x: 0, y: 0, w: 0, h: 0, shape: 'polygon', poly: drag.pts, smooth: poly.mode === 'stylized' };
-    }
+  if (drag.mode === 'pencil' && pencilCap) {
+    pencilCap.feed(wx, wy, e.pressure, e.pointerType, e.timeStamp);
+    pencilDraft();
+    invalidate();
+    return;
+  }
+
+  if (drag.mode === 'polypen' && polyCap) {
+    polyCap.feed(wx, wy, 1, e.pointerType, e.timeStamp);
+    polyDraft();
     invalidate();
     return;
   }
 
   if (drag.mode === 'erase' && eraserDrag) {
-    const last = eraserDrag.obj.erase?.[eraserDrag.obj.erase.length - 1];
-    if (!last || Math.hypot(wx - (eraserDrag.obj.x + last.x * eraserDrag.obj.w), wy - (eraserDrag.obj.y + last.y * eraserDrag.obj.h)) > 4 / view.zoom) {
-      eraseAt(eraserDrag.obj, wx, wy);
+    // Surco continuo: intercalamos stamps a paso fijo entre frames del puntero,
+    // así no quedan huecos aunque el ratón salte (problema del borrado por frames).
+    const step = Math.max(0.5, (eraser.size / 2 / view.zoom) * 0.6);
+    if (Math.hypot(wx - eraserDrag.last.x, wy - eraserDrag.last.y) >= step) {
+      for (const s of interpolateStamps(eraserDrag.last, { x: wx, y: wy }, step)) eraseAt(eraserDrag.obj, s.x, s.y);
+      eraserDrag.last = { x: wx, y: wy };
       eraserDrag.moved = true;
     }
     invalidate();
@@ -988,33 +1078,54 @@ canvas.addEventListener('pointerup', (e) => {
   } else if (drag.mode === 'pencil') {
     guides = [];
     draft = null;
-    const pts = drag.pts;
-    if (pts.length > 1) {
-      const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
-      const x0 = Math.min(...xs), y0 = Math.min(...ys);
-      const w = Math.max(1, Math.max(...xs) - x0), h = Math.max(1, Math.max(...ys) - y0);
-      const obj: ShapeObj = {
-        id: uid(),
-        shape: 'stroke',
-        name: NAMES.stroke,
-        x: Math.round(x0), y: Math.round(y0), w: Math.round(w), h: Math.round(h),
-        fill: '',
-        stroke: brushColor(),
-        strokeWidth: pencil.size,
-        points: pts.map((p) => ({ x: (p.x - x0) / w, y: (p.y - y0) / h, p: 1 })),
-        smooth: pencil.mode === 'smooth',
-      };
+    const cap = pencilCap;
+    pencilCap = null;
+    if (cap && cap.pts.length) {
+      let pts = cap.pts;
+      // Suavizado = simplificar (RDP) y luego curvar en el render; continuo = tal cual.
+      if (pencil.mode === 'smooth') pts = rdpSimplify(pts, Math.max(2, 3 / view.zoom)) as WPt[];
+      pts = applyTaper(pts, pencil.taper);
+      let obj: ShapeObj;
+      if (pts.length === 1) {
+        obj = {
+          id: uid(), shape: 'stroke', name: NAMES.stroke,
+          x: Math.round(pts[0].x), y: Math.round(pts[0].y), w: 1, h: 1,
+          fill: '', stroke: brushColor(), strokeWidth: pencil.size, strokeOpacity: pencil.opacity,
+          points: [{ x: 0.5, y: 0.5, p: Math.max(0.05, pts[0].w / pencil.size) }],
+          smooth: false,
+        };
+      } else {
+        const half = Math.max(...pts.map((p) => p.w)) / 2;
+        const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+        const x0 = Math.min(...xs) - half, y0 = Math.min(...ys) - half;
+        const w = Math.max(1, Math.max(...xs) + half - x0), h = Math.max(1, Math.max(...ys) + half - y0);
+        obj = {
+          id: uid(),
+          shape: 'stroke',
+          name: NAMES.stroke,
+          x: Math.round(x0), y: Math.round(y0), w: Math.round(w), h: Math.round(h),
+          fill: '',
+          stroke: brushColor(),
+          strokeWidth: pencil.size,
+          strokeOpacity: pencil.opacity,
+          points: pts.map((p) => ({ x: (p.x - x0) / w, y: (p.y - y0) / h, p: Math.max(0.05, p.w / pencil.size) })),
+          smooth: pencil.mode === 'smooth',
+        };
+      }
       pushCreateCmd(obj);
     }
   } else if (drag.mode === 'polypen') {
     guides = [];
     draft = null;
-    let pts = drag.pts;
+    let pts: { x: number; y: number }[] = polyCap?.pts ?? [];
+    polyCap = null;
     if (pts.length > 2) {
+      // RDP antes de curvar: menos vértices = curvas más limpias y editables.
+      const eps = poly.mode === 'straight' ? Math.max(4, poly.width * 2) : Math.max(2, 3 / view.zoom);
+      pts = rdpSimplify(pts, eps);
       const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
       const x0 = Math.min(...xs), y0 = Math.min(...ys);
       const w = Math.max(1, Math.max(...xs) - x0), h = Math.max(1, Math.max(...ys) - y0);
-      if (poly.mode === 'straight') pts = rdpSimplify(pts, Math.max(4, poly.width * 2));
       if (pts.length > 2) {
         const obj: ShapeObj = {
           id: uid(),
@@ -1535,6 +1646,17 @@ window.addEventListener('keydown', (e) => {
     setTool('line');
   } else if (e.key === 't' || e.key === 'T') {
     setTool('text');
+  } else if (!mod && (e.key === '[' || e.key === ']')) {
+    // Ajuste rápido del grosor de la herramienta activa (Sketchbook: [ y ]).
+    const cur = tool === 'pencil' ? pencil.size : tool === 'polypen' ? poly.width : tool === 'eraser' ? eraser.size : tool === 'brush' ? brush.size : 0;
+    if (!cur) return;
+    const step = cur <= 8 ? 1 : cur <= 32 ? 2 : cur <= 96 ? 4 : 8;
+    const next = Math.max(1, Math.min(200, cur + (e.key === ']' ? step : -step)));
+    if (tool === 'pencil') setPencil({ size: next });
+    else if (tool === 'polypen') setPoly({ width: next });
+    else if (tool === 'eraser') setEraser({ size: next });
+    else setBrush({ size: next });
+    e.preventDefault();
   } else if (e.key === 'b' || e.key === 'B') {
     setTool('brush');
   } else if (e.key === 'p' || e.key === 'P') {

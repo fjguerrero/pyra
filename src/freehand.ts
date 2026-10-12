@@ -3,17 +3,19 @@
 
 type Pt = { x: number; y: number };
 
+/** Punto de la curva Catmull-Rom del segmento p1→p2 (vecinos p0,p3) en t∈[0,1]. */
+export function catmullAt(p0: Pt, p1: Pt, p2: Pt, p3: Pt, t: number): Pt {
+  const t2 = t * t, t3 = t2 * t;
+  return {
+    x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+    y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
+  };
+}
+
 /** Muestreo cúbico de un segmento Catmull-Rom entre p1→p2 con vecinos p0,p3. */
 function catmullSegment(p0: Pt, p1: Pt, p2: Pt, p3: Pt, samples: number): Pt[] {
   const out: Pt[] = [];
-  for (let k = 1; k <= samples; k++) {
-    const t = k / samples;
-    const t2 = t * t, t3 = t2 * t;
-    out.push({
-      x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
-      y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
-    });
-  }
+  for (let k = 1; k <= samples; k++) out.push(catmullAt(p0, p1, p2, p3, k / samples));
   return out;
 }
 

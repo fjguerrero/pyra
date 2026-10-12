@@ -7,20 +7,31 @@ import { flattenLayers } from './layers';
 import type { AlignKind } from './align';
 import { icon, hasIcon } from './icons';
 import { addCustom, addRecent, loadSwatches, moveSwatch, removeSwatch, type SwatchStore } from './swatches';
+import { demoStroke, strokeOutline, type BrushParams } from './brush-engine';
 
-/** Ajustes del pincel cuando la herramienta activa es el pincel. */
+/** Ajustes de la herramienta activa en el inspector (pincel, lápiz, polilápiz, goma, pluma). */
 export type BrushPanelArg = {
   s?: BrushSettings;
   set?: (patch: Partial<BrushSettings>) => void;
   /** Modo actual de la herramienta (lápiz continuo/suavizado, polígono recto/estilizado, pluma curva/recta). */
   mode?: string;
-  /** Claves i18n de los dos modos a ofrecer como botones. */
-  modes?: [string, string];
+  /** Modos a ofrecer como botones (valor interno + clave i18n). */
+  modes?: { value: string; labelKey: string }[];
   setMode?: (mode: string) => void;
   /** Mostrar el slider de presión (solo el pincel). */
   pressure?: boolean;
   /** Campos de color para la herramienta activa (polilápiz: borde y relleno). */
   colors?: { labelKey: string; value: string; set: (v: string) => void }[];
+  /** Presets del motor de pinceles (herramienta lápiz). */
+  presets?: { value: string; labelKey: string }[];
+  preset?: string;
+  setPreset?: (p: string) => void;
+  /** Vista previa en vivo del pincel activo. */
+  preview?: { params: BrushParams; color: string };
+  /** Sliders genéricos (tamaño, opacidad, estabilizador, afinado, goma…). */
+  sliders?: { labelKey: string; value: number; min: number; max: number; step: number; set: (v: number) => void }[];
+  /** Conmutadores booleanos (guion del polilápiz). */
+  toggles?: { labelKey: string; value: boolean; set: (v: boolean) => void }[];
 };
 
 export interface PanelApi {
@@ -202,24 +213,66 @@ function brushFields(s: BrushSettings, set: (patch: Partial<BrushSettings>) => v
 }
 
 function renderBrushPanel(bp: BrushPanelArg): void {
+  const insp = $('inspector-body');
+  if (bp.presets && bp.setPreset) {
+    const row = document.createElement('div');
+    row.className = 'field';
+    for (const p of bp.presets) {
+      row.append(btn('', t(p.labelKey as never), t(p.labelKey as never), bp.preset === p.value, () => bp.setPreset!(p.value)));
+    }
+    insp.appendChild(row);
+  }
+  if (bp.preview) brushPreview(bp.preview.params, bp.preview.color);
   if (bp.modes && bp.setMode) {
     const row = document.createElement('div');
     row.className = 'field';
     for (const m of bp.modes) {
-      row.append(btn('', t(m as never), t(m as never), bp.mode === m, () => bp.setMode!(m), m === 'pencil_continuous' || m === 'poly_straight' || m === 'pen_straight' ? 'line' : 'pen'));
+      row.append(btn('', t(m.labelKey as never), t(m.labelKey as never), bp.mode === m.value, () => bp.setMode!(m.value), m.value === 'curved' || m.value === 'smooth' || m.value === 'stylized' ? 'pen' : 'line'));
     }
-    $('inspector-body').appendChild(row);
+    insp.appendChild(row);
+  }
+  if (bp.sliders) {
+    for (const s of bp.sliders) sliderField(t(s.labelKey as never), s.value, s.min, s.max, s.step, s.set);
+  }
+  if (bp.toggles) {
+    const row = document.createElement('div');
+    row.className = 'field';
+    for (const tg of bp.toggles) row.append(btn('', t(tg.labelKey as never), t(tg.labelKey as never), tg.value, () => tg.set(!tg.value)));
+    insp.appendChild(row);
   }
   if (bp.s && bp.set) brushFields(bp.s, bp.set, Boolean(bp.pressure));
   if (bp.colors) {
     for (const c of bp.colors) colorField(t(c.labelKey as never), c.value, c.set);
     const noFill = bp.colors.find((c) => c.labelKey === 'fill');
     if (noFill) {
-      $('inspector-body').appendChild(
+      insp.appendChild(
         btn('', t('no_fill'), t('no_fill'), !noFill.value, () => noFill.set(noFill.value ? '' : noFill.value || '#4f8cff')),
       );
     }
   }
+}
+
+/** Muestra el trazo de un preset dibujado de verdad (mismo contorno que el
+ * render): el usuario ve lo que pinta antes de trazar nada. */
+function brushPreview(params: BrushParams, color: string): void {
+  const c = document.createElement('canvas');
+  c.width = 240;
+  c.height = 64;
+  c.className = 'brush-preview';
+  const ctx = c.getContext('2d');
+  if (!ctx) return;
+  ctx.fillStyle = color;
+  ctx.globalAlpha = Math.max(0.05, params.opacity);
+  ctx.beginPath();
+  for (const op of strokeOutline(demoStroke(240, 64, params))) {
+    if (op.op === 'arc') {
+      ctx.moveTo(op.x + op.r, op.y);
+      ctx.arc(op.x, op.y, op.r, 0, Math.PI * 2);
+    } else if (op.op === 'move') ctx.moveTo(op.x, op.y);
+    else ctx.lineTo(op.x, op.y);
+  }
+  ctx.fill();
+  $('inspector-body').appendChild(c);
 }
 
 let renderNow: () => void = () => {};
