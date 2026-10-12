@@ -47,6 +47,10 @@ resolver los problemas por uno mismo y continuar.
 - [x] F8a Anillo de cursor estilo Sketchbook (tamaño real en pantalla de
   lápiz/pincel/goma, crece con ], oculto para herramientas sin tamaño).
   → commit aae653e (222 unit + 43 e2e verdes).
+- [x] F9 Exportar SVG: `src/svg-export.ts` (formas vectoriales, trazos como
+  path nonzero con alfa uniforme, polígonos suaves como cúbicas, bitmaps con
+  crop/goma/ajustes vía clip/mask/filters, efectos con feDropShadow). Menú
+  Exportar → SVG en 15 idiomas. → commit d89a02c (236 unit + 44 e2e verdes).
 - [ ] F8 UI/UX pase Jobs: abrir la app en el navegador (dev :5199 o build),
   frotar cada flujo (crear forma → editar → exportar), corregir fricción real
   que se observe; panel ALINEAR con ventana baja (pendiente de docs).
