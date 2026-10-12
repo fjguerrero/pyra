@@ -1,3 +1,5 @@
 node_modules/
 dist/
 .agent-lock
+test-results/
+playwright-report/
