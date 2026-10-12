@@ -327,6 +327,21 @@ test('exportar JPEG y WebP descarga los formatos del navegador', async ({ page }
   expect(webp.suggestedFilename()).toMatch(/\.webp$/);
 });
 
+test('exportar SVG: vector real (formas y trazos como paths)', async ({ page }) => {
+  const fs = await import('node:fs/promises');
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  await page.keyboard.press('n'); // lápiz: trazo vectorial
+  await drag(page, [300, 120], [420, 200]);
+  await page.locator('#toolbar .tool[data-export-menu]').click();
+  const [svg] = await Promise.all([page.waitForEvent('download'), page.click('#export-menu [data-export-svg]')]);
+  expect(svg.suggestedFilename()).toMatch(/\.svg$/);
+  const body = await fs.readFile((await svg.path())!, 'utf8');
+  expect(body).toContain('<svg xmlns="http://www.w3.org/2000/svg"');
+  expect(body).toContain('<rect'); // la forma vectorial, no un bitmap pegado
+  expect(body).toContain('fill-rule="nonzero"'); // la cinta del pincel, alfa uniforme
+});
+
 test('color con alfa: el inspector emite #rrggbbaa y aparece en recientes', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);

@@ -7,6 +7,7 @@ import { addLayer, moveLayer, reorderLayer } from './layers';
 import { snapBox, type Guide, type Snap } from './guides';
 import { rdpSimplify } from './freehand';
 import { applyTaper, BRUSH_PRESETS, interpolateStamps, PRESET_ORDER, StrokeCapture, type BrushParams, type BrushPreset, type WPt } from './brush-engine';
+import { exportSvg } from './svg-export';
 import { computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { DEFAULT_FONT, measureText } from './text';
@@ -523,6 +524,21 @@ const exportRaster = (mime: string, ext: string): void => {
 document.querySelector<HTMLElement>('#export-menu [data-export-png]')?.addEventListener('click', () => { exportRaster('image/png', 'png'); exportMenu.hidden = true; });
 document.querySelector<HTMLElement>('#export-menu [data-export-jpeg]')?.addEventListener('click', () => { exportRaster('image/jpeg', 'jpg'); exportMenu.hidden = true; });
 document.querySelector<HTMLElement>('#export-menu [data-export-webp]')?.addEventListener('click', () => { exportRaster('image/webp', 'webp'); exportMenu.hidden = true; });
+document.querySelector<HTMLElement>('#export-menu [data-export-svg]')?.addEventListener('click', async () => {
+  const page = activePage(doc);
+  // dimensiones naturales de los bitmaps: necesarias para recortar (crop) en SVG
+  const dims = new Map<string, { w: number; h: number }>();
+  for (const l of page.layers)
+    for (const o of l.objects)
+      if (o.shape === 'bitmap' && o.src && !dims.has(o.src)) {
+        const img = new Image();
+        await new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); img.src = o.src; });
+        dims.set(o.src, { w: img.naturalWidth, h: img.naturalHeight });
+      }
+  const svg = exportSvg(page, { bg: bg.color, bitmapDims: (src) => dims.get(src) ?? null });
+  downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), `${baseName()}.svg`);
+  exportMenu.hidden = true;
+});
 // assets individuales: un PNG por objeto seleccionado (export de assets)
 document.querySelector<HTMLElement>('#export-menu [data-export-asset]')?.addEventListener('click', async () => {
   const objs = selectedObjs();
