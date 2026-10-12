@@ -357,7 +357,8 @@ test('exportar SVG: vector real (formas y trazos como paths)', async ({ page }) 
 test('color con alfa: el inspector emite #rrggbbaa y aparece en recientes', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);
-  const alpha = page.locator('#inspector-body .color-field input[type=number]');
+  // el campo de alfa del RELLENO (el borde añade su propio campo: hay que concretar)
+  const alpha = page.locator('label').filter({ hasText: 'Fill' }).getByRole('spinbutton');
   await alpha.fill('0.5');
   await alpha.dispatchEvent('change');
   await expect(page.locator('#inspector-body .swatch').first()).toHaveAttribute('title', /80$/);
