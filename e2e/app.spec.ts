@@ -339,6 +339,31 @@ test('rect/óvalo con borde: el inspector ofrece color de trazo, grosor y sin re
   await expect(page.locator('#inspector-body button', { hasText: 'No fill' })).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('cuentagotas: coge un color de la pantalla y lo usa la siguiente forma', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  const fillInput = page.locator('label').filter({ hasText: 'Fill' }).locator('input[type=color]').first();
+  await fillInput.evaluate((el: HTMLInputElement) => {
+    el.value = '#ff0000';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.keyboard.press('Escape');
+  // el cuentagotas lee píxeles: hay que esperar al repintado rojo
+  await expect.poll(async () => page.evaluate(() => {
+    const c = document.getElementById('canvas') as HTMLCanvasElement;
+    const d = c.getContext('2d')!.getImageData(160, 140, 1, 1).data;
+    return `#${[d[0], d[1], d[2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+  })).toBe('#ff0000');
+  await page.keyboard.press('i'); // cuentagotas
+  const box = await canvas(page).boundingBox();
+  await page.mouse.click(box!.x + 160, box!.y + 140); // dentro del rect rojo
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('r');
+  await drag(page, [300, 100], [400, 160]);
+  await expect(page.locator('label').filter({ hasText: 'Fill' }).locator('input[type=color]').first()).toHaveValue('#ff0000');
+});
+
 test('exportar SVG: vector real (formas y trazos como paths)', async ({ page }) => {
   const fs = await import('node:fs/promises');
   await page.keyboard.press('r');

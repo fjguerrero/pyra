@@ -15,12 +15,14 @@ import { duplicateCmd, groupCmd, pasteCmd, unionCmd, zOrderCmd } from './command
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
 import { renderPanels, type BrushPanelArg } from './panels';
+import { addRecent, loadSwatches } from './swatches';
 import { icon } from './icons';
 import { LANGS, currentLang, setLang, t } from './i18n';
 
 const doc: Doc = (await loadDoc()) ?? newDoc();
 // Color de trazo: el último color usado (lo que pinta el inspector).
 let lastStroke = '#4f8cff';
+let lastFill = '#4f8cff'; // el cuentagotas y el inspector alimentan el relleno por defecto
 const brushColor = (): string => lastStroke;
 
 // Pincel: tamaño, presión y opacidad (como las Options de los Paint Tools de Fireworks).
@@ -34,7 +36,7 @@ const view: View = { zoom: 1, panX: 0, panY: 0 };
 let selectedId: string | null = null;
 let selectedIds: string[] = [];
 let selectedLayerId: string | null = null;
-let tool: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' | 'polypen' | 'eraser' = 'select';
+let tool: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' | 'polypen' | 'eraser' | 'eyedropper' = 'select';
 let draft: Draft | null = null;
 // vértices de la pluma en coords de mundo; c = vértice curvo (Shift o modo curvo)
 let penPts: { x: number; y: number; c: boolean }[] = [];
@@ -242,7 +244,7 @@ function finishPen(): void {
     shape: 'polygon',
     name: NAMES.polygon,
     x: Math.round(x0), y: Math.round(y0), w: Math.round(w), h: Math.round(h),
-    fill: '#4f8cff',
+    fill: lastFill,
     stroke: null,
     strokeWidth: 0,
     poly: pts.map((p) => ({ x: (p.x - x0) / w, y: (p.y - y0) / h })),
@@ -255,7 +257,7 @@ function finishPen(): void {
 let drag: Drag | null = null;
 
 // Modelo de herramientas de Fireworks: la herramienta define qué hace el arrastre.
-function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' | 'polypen' | 'eraser'): void {
+function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' | 'polypen' | 'eraser' | 'eyedropper'): void {
   tool = t;
   penPts = [];
   document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) => {
@@ -702,6 +704,19 @@ function hoverCursor(px: number, py: number, wx: number, wy: number): string {
   return 'default';
 }
 
+/** Muestrea el color real de un píxel del lienzo (para el cuentagotas). */
+function sampleColorAt(px: number, py: number): string | null {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const dpr = window.devicePixelRatio || 1;
+  const x = Math.round(px * dpr);
+  const y = Math.round(py * dpr);
+  if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null;
+  const d = ctx.getImageData(x, y, 1, 1).data;
+  if (!d[3]) return null;
+  return '#' + [d[0], d[1], d[2]].map((v) => v.toString(16).padStart(2, '0')).join('');
+}
+
 canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
   const page = activePage(doc);
@@ -713,6 +728,21 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 
   const { px, py, wx, wy } = localXY(e);
+
+  if (tool === 'eyedropper') {
+    const c = sampleColorAt(px, py);
+    if (c) {
+      lastStroke = c;
+      lastFill = c;
+      addRecent(loadSwatches(), c); // visible al instante en la paleta de muestras
+      for (const o of selectedObjs())
+        if (o.shape !== 'bitmap' && o.shape !== 'text')
+          panelApi.editObj(o, (isLineLike(o) ? { stroke: c } : { fill: c }) as Partial<ShapeObj>);
+      persist();
+      invalidate();
+    }
+    return;
+  }
 
   if (tool === 'text') {
     createTextObj(wx, wy); // como Fireworks: clic y a editar
@@ -1201,7 +1231,7 @@ canvas.addEventListener('pointerup', (e) => {
           y: Math.round(d.y),
           w: Math.round(d.w),
           h: Math.round(d.h),
-          fill: isLineLike(d) ? '' : '#4f8cff',
+          fill: isLineLike(d) ? '' : lastFill,
           stroke: isLineLike(d) ? brushColor() : null,
           strokeWidth: d.shape === 'line' ? 2 : 0,
           lineFrom: d.lineFrom,
@@ -1282,6 +1312,8 @@ const panelApi = {
     // recordar el último color usado: es el que pintan el pincel y las líneas
     const c = (patch as { stroke?: string | null }).stroke ?? (patch as { fill?: string }).fill;
     if (typeof c === 'string' && /^#[0-9a-f]{6,8}$/i.test(c)) lastStroke = c;
+    const f = (patch as { fill?: string | null }).fill;
+    if (typeof f === 'string' && /^#[0-9a-f]{6,8}$/i.test(f)) lastFill = f;
     history.run({
       label: 'editar',
       do: () => {
@@ -1716,6 +1748,8 @@ window.addEventListener('keydown', (e) => {
     setTool('polypen');
   } else if (e.key === 'x' || e.key === 'X') {
     setTool('eraser');
+  } else if (e.key === 'i' || e.key === 'I') {
+    setTool('eyedropper');
   } else if (mod && (e.key === 'u' || e.key === 'U')) {
     e.preventDefault();
     const u = unionCmd(activePage(doc), selectedObjs());

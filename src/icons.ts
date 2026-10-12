@@ -13,6 +13,7 @@ const P: Record<string, string> = {
   pencil: 'M4 20l1-4L16 5l3 3L8 19zM14 7l3 3',
   polypen: 'M12 4l7 4v8l-7 4-7-4V8zM12 4v16',
   eraser: 'M8 18h9M10 21h7M5 13l7-7 6 6-7 7H6z',
+  eyedropper: 'M11 7l2 2-8.5 8.5-3 .5.5-3zM12 6l2-2 4 4-2 2z',
   text: 'M5 6h14M12 6v13',
   hand: 'M8 13V6a1.5 1.5 0 0 1 3 0v6M11 12V5a1.5 1.5 0 0 1 3 0v7M14 12V7a1.5 1.5 0 0 1 3 0v7a6 6 0 0 1-6 6h-1a5 5 0 0 1-4-2l-2.5-3.5a1.6 1.6 0 0 1 2.6-1.8L8 15',
   import: 'M12 4v10m-4-4 4 4 4-4M5 19h14',
