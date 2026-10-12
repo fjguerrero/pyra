@@ -938,3 +938,22 @@ test('estilos: guardar y eliminar con undo', async ({ page }) => {
   await page.keyboard.press('Control+z'); // undo del borrado
   await expect(page.locator('#inspector-body')).toContainText('Estilo 1');
 });
+
+test.describe('ventana baja', () => {
+  test.use({ viewport: { width: 1280, height: 470 } });
+  test('Alinear sigue visible sin hacer scroll (sticky al fondo del panel lateral)', async ({ page }) => {
+    await page.keyboard.press('r');
+    await drag(page, [100, 100], [200, 160]);
+    await drag(page, [300, 100], [400, 160]);
+    await page.keyboard.press('Escape');
+    // seleccionar los dos con marco de selección: el inspector de formas crece
+    // y empuja Alinear fuera de una ventana de 470px de alto
+    await drag(page, [60, 60], [450, 220]);
+    await expect(page.locator('#inspector-body')).toContainText('Rotation'); // inspector de selección cargado
+    const align = page.locator('#align-body [data-align="left"]');
+    await expect(align).toBeVisible();
+    const box = await align.boundingBox();
+    expect(box && box.y).toBeLessThan(470); // dentro del viewport sin scrollear
+    await align.dispatchEvent('click');
+  });
+});

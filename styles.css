@@ -41,6 +41,13 @@ body {
 #side { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); }
 .panel { flex: none; padding: 8px 10px; }
 .panel + .panel { border-top: 1px solid var(--line); }
+/* Alinear siempre accesible: se queda pegado al fondo del panel lateral
+   aunque la ventana sea baja y el inspector crezca (p. ej. pinceles). */
+#side > .panel[data-panel="align"] {
+  position: sticky; bottom: 0; z-index: 3;
+  background: var(--panel);
+  box-shadow: 0 -6px 10px -8px rgb(0 0 0 / 0.35);
+}
 #side > .panel.collapsed { overflow: hidden; }
 #side > .panel.collapsed > div:not(.panel-title) { display: none; }
 .panel-title { cursor: pointer; user-select: none; }
