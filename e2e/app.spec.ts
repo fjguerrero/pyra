@@ -327,6 +327,18 @@ test('exportar JPEG y WebP descarga los formatos del navegador', async ({ page }
   expect(webp.suggestedFilename()).toMatch(/\.webp$/);
 });
 
+test('rect/óvalo con borde: el inspector ofrece color de trazo, grosor y sin relleno', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  await expect(page.locator('#inspector-body', { hasText: 'Stroke color' })).toBeVisible();
+  await expect(page.locator('#inspector-body', { hasText: 'Stroke width' })).toBeVisible();
+  // poner un borde: el rect se queda sin relleno y solo con contorno
+  await page.locator('#inspector-body button', { hasText: 'No fill' }).click();
+  const strokeInput = page.locator('#inspector-body input[type=color]').last();
+  await strokeInput.evaluate((el: HTMLElement) => el.click());
+  await expect(page.locator('#inspector-body button', { hasText: 'No fill' })).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('exportar SVG: vector real (formas y trazos como paths)', async ({ page }) => {
   const fs = await import('node:fs/promises');
   await page.keyboard.press('r');

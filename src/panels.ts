@@ -462,8 +462,8 @@ export function renderPanels(
       // una línea no se rellena: su color es el trazo
       const colorKey = isLineLike(obj) ? 'stroke' : 'fill';
       colorField(isLineLike(obj) ? t('stroke_color') : t('fill'), (obj[colorKey] as string) || '#000000', (v) => api.editObj(obj, { [colorKey]: v } as Partial<ShapeObj>));
-      if (obj.shape === 'polygon') {
-        // borde y relleno son independientes en un polígono
+      if (obj.shape === 'polygon' || obj.shape === 'rect' || obj.shape === 'ellipse') {
+        // borde y relleno son independientes (como en Fireworks): también en rect/óvalo
         insp.appendChild(btn('', t('no_fill'), t('no_fill'), !obj.fill, () => api.editObj(obj, { fill: obj.fill ? '' : (obj.stroke ?? '#4f8cff') } as Partial<ShapeObj>)));
         colorField(t('stroke_color'), obj.stroke ?? '#000000', (v) => api.editObj(obj, { stroke: v, strokeWidth: Math.max(1, obj.strokeWidth) } as Partial<ShapeObj>));
         const swWrap = document.createElement('label');
@@ -477,7 +477,8 @@ export function renderPanels(
         swWrap.appendChild(sw);
         insp.appendChild(swWrap);
         insp.appendChild(btn('', obj.dash ? t('stroke_dashed') : t('stroke_solid'), t('stroke_style'), Boolean(obj.dash), () => api.editObj(obj, { dash: obj.dash ? null : [6, 4] } as Partial<ShapeObj>)));
-        insp.appendChild(btn('', obj.smooth ? t('pencil_smooth') : t('poly_straight'), t('stroke_style'), Boolean(obj.smooth), () => api.editObj(obj, { smooth: !obj.smooth } as Partial<ShapeObj>)));
+        if (obj.shape === 'polygon')
+          insp.appendChild(btn('', obj.smooth ? t('pencil_smooth') : t('poly_straight'), t('stroke_style'), Boolean(obj.smooth), () => api.editObj(obj, { smooth: !obj.smooth } as Partial<ShapeObj>)));
       }
       if (isLineLike(obj)) {
         // el pincel del objeto: tamaño = grosor del trazo
