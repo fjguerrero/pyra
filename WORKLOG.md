@@ -51,13 +51,23 @@ resolver los problemas por uno mismo y continuar.
   path nonzero con alfa uniforme, polígonos suaves como cúbicas, bitmaps con
   crop/goma/ajustes vía clip/mask/filters, efectos con feDropShadow). Menú
   Exportar → SVG en 15 idiomas. → commit d89a02c (236 unit + 44 e2e verdes).
-- [ ] F8 UI/UX pase Jobs: abrir la app en el navegador (dev :5199 o build),
-  frotar cada flujo (crear forma → editar → exportar), corregir fricción real
-  que se observe; panel ALINEAR con ventana baja (pendiente de docs).
-- [ ] F9 Exportar SVG: serializador vectorial de la página (rect/ellipse/
-  line/stroke→path con la cinta, polygon, text, bitmap→embebido). Tests.
-- [ ] F10 Fase final: docs/02 al día, CHANGELOG, gh-pages, resumen.
+- [x] F8 UI/UX pase Jobs: auditoría real en el navegador (dev :5199, flujos
+  rect/lápiz/exportar/ayuda/tema/idioma). Fricciones reales corregidas: borde
+  en rect/óvalo desde el inspector (ac9eb31), e2e de alfa concreto (1ed933d),
+  artefactos de Playwright fuera del repo (5c9deb9), panel ALINEAR sticky en
+  ventanas bajas con e2e a 470px probado por stash (ef0bd34).
+- [x] F10 Cuentagotas (I): muestrea píxel real, aplica a la selección, fija el
+  color por defecto de formas/trazos y lo mete en muestras recientes; icono,
+  atajo, ayuda en/es, i18n 15 idiomas, e2e con espera de repintado.
+  → commit 4b22fef.
+- [x] F11 Degradado radial elíptico (canvas: transform unitario; SVG:
+  radialGradient objectBoundingBox) + toggle Lineal/Radial en inspector.
+  → commit 33a31da (239 unit + 48 e2e verdes).
+- [ ] F12 Fase final: docs/02 al día, CHANGELOG, gh-pages, resumen.
 
 ## Registro de progreso
 - 00:32 F1–F6 completadas y commiteadas (797bf59). Gate completo verde.
 - 01:10 F7, F7b y F8a commiteadas (1f3b7d0, 7f746e1, aae653e). 222 unit + 43 e2e verdes.
+- 01:35 F8 completada: auditoría de navegador + borde en rect/óvalo + ALINEAR
+  sticky (ac9eb31, 1ed933d, 5c9deb9, ef0bd34). Suite 45 e2e.
+- 01:58 F10 y F11 commiteadas (4b22fef, 33a31da). 239 unit + 48 e2e verdes.
