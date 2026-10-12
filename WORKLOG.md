@@ -38,8 +38,15 @@ resolver los problemas por uno mismo y continuar.
 - [x] F6 Panel de opciones por herramienta: modos reales (antes los botones de
   modo no llamaban a setMode), sliders, toggles, colores.
   → commit 797bf59 (222 unit + 39 e2e verdes).
-- [ ] F7 Ayuda y textos: actualizar `help_html` (en/es) con presets, [ ],
-  goma con tamaño; coherencia de textos del panel.
+- [x] F7 Ayuda y textos: `help_html` (en/es) con presets, [ ], goma con tamaño;
+  además se encontró y arregló un bug real: el panel del inspector era una foto
+  fija de setTool (los presets/sliders/modos no se refrescaban) → ahora se
+  calcula en cada render. → commit 1f3b7d0.
+- [x] F7b e2e de calidad de trazo: polilápiz estilizado (RDP+smooth, pocos
+  vértices) y goma continua sin huecos en saltos rápidos. → commit 7f746e1.
+- [x] F8a Anillo de cursor estilo Sketchbook (tamaño real en pantalla de
+  lápiz/pincel/goma, crece con ], oculto para herramientas sin tamaño).
+  → commit aae653e (222 unit + 43 e2e verdes).
 - [ ] F8 UI/UX pase Jobs: abrir la app en el navegador (dev :5199 o build),
   frotar cada flujo (crear forma → editar → exportar), corregir fricción real
   que se observe; panel ALINEAR con ventana baja (pendiente de docs).
@@ -49,3 +56,4 @@ resolver los problemas por uno mismo y continuar.
 
 ## Registro de progreso
 - 00:32 F1–F6 completadas y commiteadas (797bf59). Gate completo verde.
+- 01:10 F7, F7b y F8a commiteadas (1f3b7d0, 7f746e1, aae653e). 222 unit + 43 e2e verdes.
