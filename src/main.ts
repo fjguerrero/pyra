@@ -24,7 +24,6 @@ const brushColor = (): string => lastStroke;
 
 // Pincel: tamaño, presión y opacidad (como las Options de los Paint Tools de Fireworks).
 const brush: BrushSettings = { size: 8, pressure: 1, opacity: 1, shape: 'round', tip: null };
-let brushPanel: BrushPanelArg | undefined;
 function setBrush(patch: Partial<BrushSettings>): void {
   Object.assign(brush, patch);
   invalidate();
@@ -122,7 +121,7 @@ function invalidate(): void {
   requestAnimationFrame(() => {
     dirty = false;
     renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, groupHandles: selectedIds.length > 1, draft, marquee, guides, workspace: bg });
-    if (!pointerDownInInspector) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi, brushPanel);
+    if (!pointerDownInInspector) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi, currentBrushPanel());
   });
 }
 
@@ -264,7 +263,14 @@ function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' |
     el.setAttribute('aria-pressed', String(on));
   });
   canvas.style.cursor = t === 'select' ? 'default' : 'crosshair';
-  brushPanel = t === 'brush' ? { s: brush, set: setBrush, pressure: true }
+  invalidate();
+}
+/** Panel de la herramienta activa, CALCULADO EN CADA RENDER: los valores del
+ *  inspector (preset, tamaño, modo) deben reflejar el estado vivo tras cada
+ *  cambio (preset, atajo [ ], slider). */
+function currentBrushPanel(): BrushPanelArg | undefined {
+  const t = tool;
+  return t === 'brush' ? { s: brush, set: setBrush, pressure: true }
     : t === 'pencil' ? {
         presets: PRESET_ORDER.map((v) => ({ value: v, labelKey: `preset_${v}` })),
         preset: pencil.preset,
@@ -297,7 +303,6 @@ function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' |
         sliders: [{ labelKey: 'eraser_size', value: eraser.size, min: 2, max: 200, step: 1, set: (v) => setEraser({ size: Math.max(2, Math.round(v)) }) }],
       }
     : undefined;
-  invalidate();
 }
 // ---- i18n: textos estáticos del HTML + selector de idioma ----
 function applyStaticI18n(): void {
@@ -1647,16 +1652,24 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === 't' || e.key === 'T') {
     setTool('text');
   } else if (!mod && (e.key === '[' || e.key === ']')) {
-    // Ajuste rápido del grosor de la herramienta activa (Sketchbook: [ y ]).
+    // [ y ]: grosor de la herramienta activa si la tiene (Sketchbook); si no, z-order.
     const cur = tool === 'pencil' ? pencil.size : tool === 'polypen' ? poly.width : tool === 'eraser' ? eraser.size : tool === 'brush' ? brush.size : 0;
-    if (!cur) return;
-    const step = cur <= 8 ? 1 : cur <= 32 ? 2 : cur <= 96 ? 4 : 8;
-    const next = Math.max(1, Math.min(200, cur + (e.key === ']' ? step : -step)));
-    if (tool === 'pencil') setPencil({ size: next });
-    else if (tool === 'polypen') setPoly({ width: next });
-    else if (tool === 'eraser') setEraser({ size: next });
-    else setBrush({ size: next });
-    e.preventDefault();
+    if (cur) {
+      const step = cur <= 8 ? 1 : cur <= 32 ? 2 : cur <= 96 ? 4 : 8;
+      const next = Math.max(1, Math.min(200, cur + (e.key === ']' ? step : -step)));
+      if (tool === 'pencil') setPencil({ size: next });
+      else if (tool === 'polypen') setPoly({ width: next });
+      else if (tool === 'eraser') setEraser({ size: next });
+      else setBrush({ size: next });
+      e.preventDefault();
+    } else {
+      const cmd = zOrderCmd(activePage(doc), selectedObjs(), e.key === ']' ? 1 : -1);
+      if (cmd) {
+        history.run(cmd);
+        persist();
+        invalidate();
+      }
+    }
   } else if (e.key === 'b' || e.key === 'B') {
     setTool('brush');
   } else if (e.key === 'p' || e.key === 'P') {

@@ -545,6 +545,22 @@ test('lápiz: arrastre continuo crea un trazo real (stroke) y undo lo deshace', 
   await expect(layerCount(page)).toContainText('· 0');
 });
 
+test('lápiz: presets Sketchbook y atajo [ ] de grosor', async ({ page }) => {
+  await page.keyboard.press('n');
+  const size = page.locator('#inspector-body .field:has(span:text-is("Size")) input[type=number]');
+  await expect(size).toHaveValue('3'); // preset lápiz por defecto
+  await expect(page.locator('#inspector-body button:text-is("Ink pen")')).toBeVisible();
+  await page.locator('#inspector-body button:text-is("Ink pen")').click();
+  await expect(size).toHaveValue('4'); // cambiar de preset cambia el grosor base
+  await page.keyboard.press(']');
+  await page.keyboard.press(']');
+  await expect(size).toHaveValue('6'); // [ y ] ajustan el grosor de la herramienta activa
+  await page.keyboard.press('[');
+  await expect(size).toHaveValue('5');
+  // la vista previa del pincel se pinta en un canvas del inspector
+  await expect(page.locator('#inspector-body canvas.brush-preview')).toBeVisible();
+});
+
 test('polilápiz: un trazo libre se convierte en polígono vectorial con borde y relleno', async ({ page }) => {
   await page.keyboard.press('g');
   const box = (await canvas(page).boundingBox())!;
