@@ -6,7 +6,7 @@ import { findObj, handles } from './hit';
 import { smoothClosedPolygon } from './freehand';
 import { resampleSmooth, strokeOutline, type WPt } from './brush-engine';
 import { drawTextObj } from './text';
-import { gradientFill } from './gradient';
+import { fillGradient } from './gradient';
 export interface Draft {
   x: number;
   y: number;
@@ -462,8 +462,8 @@ export class Renderer {
     }
     this.path(o, v);
     if (o.fill) {
-      ctx.fillStyle = o.gradient ? gradientFill(ctx, o, o.gradient, v.zoom, v.panX, v.panY) : o.fill;
-      ctx.fill();
+      if (o.gradient) fillGradient(ctx, o, o.gradient, v.zoom, v.panX, v.panY);
+      else { ctx.fillStyle = o.fill; ctx.fill(); }
       if (o.fx?.bevel) this.drawBevel(o, v, o.fx.bevel);
     }
     if (o.stroke && o.strokeWidth > 0) {

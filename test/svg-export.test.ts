@@ -78,6 +78,13 @@ describe('exportSvg: formas', () => {
     expect(svg).toContain('<stop offset="0" stop-color="#f00"/><stop offset="1" stop-color="#00f"/>');
     expect(svg).toContain('fill="url(#grad0)"');
   });
+
+  it('degradado radial: defs con radialGradient en coordenadas de bbox', () => {
+    const svg = svgOf([shape({ shape: 'rect', gradient: { from: '#f00', to: '#00f', angle: 0, radial: true } })]);
+    expect(svg).toContain('<radialGradient id="grad0" cx="0.5" cy="0.5" r="0.5">');
+    expect(svg).toContain('fill="url(#grad0)"');
+    expect(svg).not.toContain('<linearGradient');
+  });
 });
 
 describe('exportSvg: trazos del motor de pinceles', () => {

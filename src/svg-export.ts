@@ -33,6 +33,14 @@ const nextId = (c: Ctx, p: string): string => `${p}${c.seq++}`;
 /** Gradiente lineal (ángulo CSS-like: 0° izq→der, 90° arriba→abajo). */
 function gradientDef(c: Ctx, g: Gradient): string {
   const id = nextId(c, 'grad');
+  if (g.radial) {
+    // objectBoundingBox: el círculo se deforma a la elipse del bbox (igual que el canvas)
+    c.defs.push(
+      `<radialGradient id="${id}" cx="0.5" cy="0.5" r="0.5">` +
+      `<stop offset="0" stop-color="${esc(g.from)}"/><stop offset="1" stop-color="${esc(g.to)}"/></radialGradient>`,
+    );
+    return `url(#${id})`;
+  }
   const rad = (g.angle * Math.PI) / 180;
   const dx = Math.cos(rad) / 2;
   const dy = Math.sin(rad) / 2;

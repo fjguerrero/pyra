@@ -38,6 +38,7 @@ export interface Gradient {
   from: string;
   to: string;
   angle: number;
+  radial?: boolean; // true = radial elíptico ajustado al bbox (Fireworks: Fill → Radial)
 }
 
 export interface ShapeObj {

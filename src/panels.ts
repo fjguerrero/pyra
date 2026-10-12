@@ -510,6 +510,8 @@ export function renderPanels(
         insp.appendChild(btn('', g ? t('remove_gradient') : t('add_gradient'), t('gradient_hint'), false, () =>
           api.editObj(obj, { gradient: g ? null : { from: obj.fill, to: '#ffffff', angle: 0 } })));
         if (g) {
+          insp.appendChild(btn('', g.radial ? t('gradient_linear') : t('gradient_radial'), t('gradient_hint'), Boolean(g.radial), () =>
+            api.editObj(obj, { gradient: { ...g, radial: !g.radial } })));
           colorField(t('gradient_from'), g.from, (v) => api.editObj(obj, { gradient: { ...g, from: v } }));
           colorField(t('gradient_to'), g.to, (v) => api.editObj(obj, { gradient: { ...g, to: v } }));
           const angleWrap = document.createElement('label');

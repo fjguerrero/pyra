@@ -339,6 +339,16 @@ test('rect/óvalo con borde: el inspector ofrece color de trazo, grosor y sin re
   await expect(page.locator('#inspector-body button', { hasText: 'No fill' })).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('degradado radial: el inspector ofrece alternar lineal/radial', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  await page.locator('#inspector-body button', { hasText: 'Add gradient' }).click();
+  const radial = page.locator('#inspector-body button', { hasText: 'Radial' });
+  await expect(radial).toBeVisible();
+  await radial.click();
+  await expect(page.locator('#inspector-body button', { hasText: 'Linear' })).toBeVisible();
+});
+
 test('cuentagotas: coge un color de la pantalla y lo usa la siguiente forma', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);
