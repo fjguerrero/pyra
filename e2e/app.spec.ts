@@ -720,6 +720,23 @@ test('goma continua: un salto rápido entre frames borra todo el surco, sin huec
   await expect.poll(coversCenter, { timeout: 5000 }).toBe(true); // stamps interpolados: el punto medio del salto queda borrado
 });
 
+test('anillo de cursor: previsualiza el tamaño de la goma, crece con ] y se oculta con V', async ({ page }) => {
+  const box = (await canvas(page).boundingBox())!;
+  await page.keyboard.press('x');
+  await page.mouse.move(box.x + 300, box.y + 300);
+  const ring = page.locator('#cursor-ring');
+  await expect(ring).toBeVisible();
+  const w1 = await ring.evaluate((el) => el.getBoundingClientRect().width);
+  expect(w1).toBeGreaterThanOrEqual(3);
+  await page.keyboard.press(']');
+  await page.mouse.move(box.x + 301, box.y + 300);
+  const w2 = await ring.evaluate((el) => el.getBoundingClientRect().width);
+  expect(w2).toBeGreaterThan(w1); // el anillo refleja el nuevo tamaño al instante
+  await page.keyboard.press('v');
+  await page.mouse.move(box.x + 302, box.y + 300);
+  await expect(ring).toBeHidden();
+});
+
 test('negrita/cursiva: el inspector de texto tiene los botones y persisten', async ({ page }) => {
   await page.keyboard.press('t');
   const box = (await canvas(page).boundingBox())!;

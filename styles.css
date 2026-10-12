@@ -172,3 +172,12 @@ input[type="range"] { accent-color: var(--accent); }
   background: color-mix(in srgb, currentColor 6%, transparent);
   opacity: 0.9;
 }
+
+/* Anillo de cursor: previsualización del tamaño real de pinceles y goma */
+#cursor-ring {
+  position: absolute; pointer-events: none; z-index: 5;
+  border: 1px solid #000; border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.7), inset 0 0 0 1px rgb(255 255 255 / 0.35);
+  transform: translate(-50%, -50%);
+}
+#cursor-ring[hidden] { display: none; }

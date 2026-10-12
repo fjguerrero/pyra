@@ -263,6 +263,8 @@ function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' |
     el.setAttribute('aria-pressed', String(on));
   });
   canvas.style.cursor = t === 'select' ? 'default' : 'crosshair';
+  const ring = ringEl();
+  if (ring && !toolRingSize()) ring.hidden = true; // el anillo solo para herramientas de tamaño
   invalidate();
 }
 /** Panel de la herramienta activa, CALCULADO EN CADA RENDER: los valores del
@@ -830,6 +832,24 @@ canvas.addEventListener('pointerdown', (e) => {
   drag = { mode: 'marquee', ox: wx, oy: wy, additive: e.shiftKey };
   invalidate();
 });
+
+// ---- Anillo de cursor: previsualización del tamaño real de pinceles y goma ----
+function ringEl(): HTMLElement | null { return document.getElementById('cursor-ring'); }
+function toolRingSize(): number {
+  return tool === 'pencil' ? pencil.size : tool === 'polypen' ? poly.width
+    : tool === 'eraser' ? eraser.size : tool === 'brush' ? brush.size : 0;
+}
+canvas.addEventListener('pointermove', (e) => {
+  const cursorRing = ringEl();
+  if (!cursorRing) return;
+  const d = e.pointerType === 'touch' ? 0 : toolRingSize() * view.zoom;
+  if (!d) { cursorRing.hidden = true; return; }
+  cursorRing.style.width = cursorRing.style.height = `${Math.max(3, d)}px`;
+  cursorRing.style.left = `${e.offsetX}px`;
+  cursorRing.style.top = `${e.offsetY}px`;
+  cursorRing.hidden = false;
+});
+canvas.addEventListener('pointerleave', () => { const r = ringEl(); if (r) r.hidden = true; });
 
 canvas.addEventListener('pointermove', (e) => {
   if (!drag) {
