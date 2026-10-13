@@ -63,7 +63,11 @@ resolver los problemas por uno mismo y continuar.
 - [x] F11 Degradado radial elíptico (canvas: transform unitario; SVG:
   radialGradient objectBoundingBox) + toggle Lineal/Radial en inspector.
   → commit 33a31da (239 unit + 48 e2e verdes).
-- [ ] F12 Fase final: docs/02 al día, CHANGELOG, gh-pages, resumen.
+- [ ] F12 Fase final: docs/02 al día, CHANGELOG, gh-pages, resumen. → pospuesta (hay features nuevas); se ejecuta cuando `date +%H` >= 8.
+- [x] F13 mano con Space+arrastrar. → commit dec8e68.
+- [x] F14 Shift+0 zoom a la selección. → commit 31c2d0b.
+- [x] F15 Imán al dibujar formas nuevas (esquina arrastrada encaja en bordes/centros, página, guías). → commit 4556596.
+- [x] F16 Degradado multi-parada: `Gradient.stops` + editor de paradas en el inspector (posición %, color, borrar; nunca <2), canvas y SVG con las paradas, i18n 15 idiomas, ayuda es/en. Rescatado de un trabajador cortado; corregido su e2e (esperaba volver a from/to al borrar) y rama muerta en panels.ts.
 
 ## Registro de progreso
 - 00:32 F1–F6 completadas y commiteadas (797bf59). Gate completo verde.
@@ -73,3 +77,5 @@ resolver los problemas por uno mismo y continuar.
 - 01:58 F10 y F11 commiteadas (4b22fef, 33a31da). 239 unit + 48 e2e verdes.
 - 02:12 F13 mano con Space+arrastrar (dec8e68). 239 unit + 49 e2e.
 - 02:32 F14 Shift+0 zoom a la selección (31c2d0b). 239 unit + 49 e2e.
+- 02:49 F15 imán al dibujar (4556596). Trabajador cortado a mitad de F16.
+- 03:55 F16 rescatada y completada: multi-parada en canvas+SVG+inspector, e2e corregido, docs/02 v1.3 al día. 251 unit + 52 e2e verdes.

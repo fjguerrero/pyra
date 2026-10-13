@@ -87,11 +87,24 @@ Verificación: `tsc --noEmit` limpio, 172 tests unitarios, 17 e2e Playwright (×
 
 Verificación: `tsc --noEmit` limpio, 185 tests unitarios, 25 e2e Playwright, `vite build` correcto (34 kB gzip JS).
 
+## Estado v1.3 (noche 2026-10-13)
+
+- Motor de pinceles vectoriales (`src/brush-engine.ts`): estabilizador doble EMA, ancho por presión real (lápiz) o velocidad, afinado de extremos (taper), contorno quads+círculos con alfa uniforme.
+- Lápiz (N) con presets Lápiz/Pluma tinta/Marcador/Pincel suave + sliders (tamaño, opacidad, estabilizador, afinado) + vista previa real del trazo. Panel de opciones por herramienta con modos reales, refrescado en cada render.
+- Goma (X): surco continuo con stamps interpolados (sin huecos), tamaño ajustable con `[`/`]` (también grosor de la herramienta activa).
+- Polilápiz (G): RDP antes de curvar, curvas Catmull-Rom reales en modo Estilizado, estabilizador en la captura.
+- Anillo de cursor estilo Sketchbook (tamaño real en pantalla; oculto sin herramienta de tamaño).
+- Exportar SVG (`src/svg-export.ts`): formas vectoriales, trazos como path, bitmaps con clip/mask/filters, efectos con feDropShadow.
+- Cuentagotas (I): muestrea píxel real, lo aplica a la selección y al color por defecto, lo guarda en muestras recientes.
+- Degradado radial elíptico ajustado al bbox + degradado multi-parada (`Gradient.stops`, editor de paradas en el inspector: posición %, color, borrar; canvas y SVG usan las paradas).
+- Mano con Space+arrastrar; Shift+0 zoom a la selección; imán al dibujar formas nuevas (la esquina arrastrada encaja en bordes/centros, página y guías).
+- Panel ALINEAR sticky al fondo (siempre accesible en ventanas bajas); auditoría de fricciones UI en navegador real.
+
+Verificación: `tsc --noEmit` limpio, 251 tests unitarios, 52 e2e Playwright.
+
 ## Pendientes
 
 - Deuda técnica:
-  - Export SVG (requiere serializador vectorial propio).
-  - Panel ALINEAR bajo scroll en ventanas de poca altura.
   - Dirty-rects/offscreen para miles de objetos (redraw completo con rAF, `ponytail:` en `render.ts`).
   - Fuentes web descargables (solo fuentes del sistema por ahora).
   - Unión booleana por convex hull (suficiente para formas convexas; unión exacta con huecos requiere clipping de paths).
