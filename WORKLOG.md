@@ -71,3 +71,5 @@ resolver los problemas por uno mismo y continuar.
 - 01:35 F8 completada: auditoría de navegador + borde en rect/óvalo + ALINEAR
   sticky (ac9eb31, 1ed933d, 5c9deb9, ef0bd34). Suite 45 e2e.
 - 01:58 F10 y F11 commiteadas (4b22fef, 33a31da). 239 unit + 48 e2e verdes.
+- 02:12 F13 mano con Space+arrastrar (dec8e68). 239 unit + 49 e2e.
+- 02:32 F14 Shift+0 zoom a la selección (31c2d0b). 239 unit + 49 e2e.
