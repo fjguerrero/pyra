@@ -1,5 +1,36 @@
 # Pyra — registro de versiones
 
+## v1.3 — 2026-10-13
+
+### Herramientas y objetos
+- Motor de pinceles vectoriales (`brush-engine.ts`): estabilizador de doble EMA, ancho por presión real o velocidad, afinado de extremos (taper) y contorno con relleno de alfa uniforme.
+- Lápiz (`N`) con presets Lápiz/Pluma/Marcador/Pincel suave, sliders (tamaño, opacidad, estabilizador, afinado) y vista previa real del trazo.
+- Polilápiz (`G`): simplificación RDP antes de curvar, curvas Catmull-Rom reales en modo Estilizado, estabilizador en la captura y alternancia guion↔curva sobre el mismo objeto.
+- Goma (`X`): surco continuo con stamps interpolados sin huecos en saltos rápidos; tamaño ajustable.
+- Cuentagotas (`I`): muestrea el píxel real, lo aplica a la selección, fija el color por defecto de formas/trazos y lo añade a muestras recientes.
+
+### Rellenos, estilos y efectos
+- Degradado radial elíptico ajustado al bbox y toggle Lineal/Radial en el inspector.
+- Degradados multi-parada: editor de paradas (posición %, color, borrar; mínimo 2) en canvas y SVG.
+- Radio de esquina en rectángulos (`rx`) editable en vivo; `roundRect` nativo en canvas, `rx` en SVG.
+- Voltear espejo H/V de la selección (`Ctrl+Shift+H/V`), undoable, botones en ALINEAR.
+- 16 modos de mezcla (`fx.blend`, los 15 CSS + Normal): canvas con `globalCompositeOperation` dentro del clip y reset por objeto; SVG con `mix-blend-mode` en envoltorio; viajan con los Styles.
+- Opacidad por objeto (`fx.opacity`): se multiplica con la alfa de capa y se restaura tras el objeto; SVG con `opacity` en el envoltorio.
+
+### Edición y vista
+- Panel de opciones por herramienta real (modos que sí llaman a `setMode`, sliders, toggles, colores); el inspector se recalcula en cada render (corregido el bug de la foto fija de `setTool`).
+- Anillo de cursor con el tamaño real en pantalla (lápiz/pincel/goma), estilo Sketchbook.
+- Atajos `[` / `]` para el grosor de la herramienta de dibujo activa.
+- Mano con Space+arrastrar; `Shift+0` zoom a la selección; imán al dibujar formas nuevas (encaja en bordes/centros, página y guías).
+- Panel ALINEAR sticky al fondo, siempre accesible en ventanas bajas.
+
+### Archivo
+- Exportar SVG: formas vectoriales, trazos como path nonzero con alfa uniforme, polígonos suaves como cúbicas, bitmaps con crop/goma vía clip/mask/filters y efectos con feDropShadow.
+
+### Calidad
+- TypeScript estricto sin errores; 269 tests unitarios (Vitest); 56 tests e2e (Playwright).
+- Fix de raíz: las teclas sueltas de herramienta ignoran modificadores (`Ctrl+V` pegar ya no se lo comía la herramienta de selección).
+
 ## v1.2 — 2026-10-07
 
 ### Herramientas y objetos
