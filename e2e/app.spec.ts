@@ -339,6 +339,26 @@ test('rect/óvalo con borde: el inspector ofrece color de trazo, grosor y sin re
   await expect(page.locator('#inspector-body button', { hasText: 'No fill' })).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('Space+arrastrar desplaza el lienzo (mano temporal)', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  const isRectBlue = (x: number, y: number) => page.evaluate(([x, y]: number[]) => {
+    const c = document.getElementById('canvas') as HTMLCanvasElement;
+    const d = c.getContext('2d')!.getImageData(x, y, 1, 1).data;
+    return `#${[d[0], d[1], d[2]].map((v) => v.toString(16).padStart(2, '0')).join('')}` === '#4f8cff';
+  }, [x, y]);
+  await expect.poll(() => isRectBlue(160, 140)).toBe(true); // el rect azul está en su sitio
+  const box = await canvas(page).boundingBox();
+  await page.keyboard.down('Space');
+  await page.mouse.move(box!.x + 160, box!.y + 140);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + 260, box!.y + 140, { steps: 6 });
+  await page.mouse.up();
+  await page.keyboard.up('Space');
+  await expect.poll(() => isRectBlue(260, 140)).toBe(true); // se movió con el lienzo
+  await expect.poll(() => isRectBlue(160, 140)).toBe(false);
+});
+
 test('degradado radial: el inspector ofrece alternar lineal/radial', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);

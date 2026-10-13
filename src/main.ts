@@ -23,6 +23,7 @@ const doc: Doc = (await loadDoc()) ?? newDoc();
 // Color de trazo: el último color usado (lo que pinta el inspector).
 let lastStroke = '#4f8cff';
 let lastFill = '#4f8cff'; // el cuentagotas y el inspector alimentan el relleno por defecto
+let spaceDown = false; // barra espaciadora = mano temporal para desplazar (estándar de diseño)
 const brushColor = (): string => lastStroke;
 
 // Pincel: tamaño, presión y opacidad (como las Options de los Paint Tools de Fireworks).
@@ -694,6 +695,7 @@ const RESIZE_CURSORS: Record<HandleRole, string> = {
 
 // ponytail: hit-test por pointermove, O(objetos) por movimiento; vale para documentos de tamaño normal
 function hoverCursor(px: number, py: number, wx: number, wy: number): string {
+  if (spaceDown) return 'grab';
   if (tool !== 'select') return 'crosshair';
   const page = activePage(doc);
   if ((page.guides ?? []).some((g) => Math.abs((g.axis === 'v' ? wx : wy) - g.pos) <= 5 / view.zoom)) return 'grab';
@@ -721,7 +723,7 @@ canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
   const page = activePage(doc);
 
-  if (e.button === 1 || e.altKey) {
+  if (e.button === 1 || e.altKey || spaceDown) {
     drag = { mode: 'pan', sx: e.clientX, sy: e.clientY, panX: view.panX, panY: view.panY };
     canvas.style.cursor = 'grabbing';
     return;
@@ -1653,9 +1655,22 @@ canvas.addEventListener('wheel', (e) => {
   invalidate();
 });
 
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') spaceDown = false;
+});
+window.addEventListener('blur', () => { spaceDown = false; }); // Alt+Tab con Space pulsado: no dejar la mano pegada
+
 window.addEventListener('keydown', (e) => {
   if ((e.target as HTMLElement).tagName === 'INPUT') return;
   const mod = e.ctrlKey || e.metaKey;
+  if (e.code === 'Space' && !mod) {
+    const ae = document.activeElement;
+    if (!ae || ae === document.body || ae === canvas) {
+      spaceDown = true;
+      e.preventDefault(); // ni scroll de página ni activar el botón enfocado
+    }
+    return;
+  }
   if (mod && e.key === 'z' && !e.shiftKey) {
     e.preventDefault();
     if (history.undo()) {
