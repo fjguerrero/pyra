@@ -1276,4 +1276,6 @@ test('nodo Bézier (A): Alt+clic vuelve curva un vértice, arrastrar su asa lo r
   await expect.poll(() => polyH().then((h) => JSON.stringify(h) !== afterToggle), { timeout: 5000 }).toBe(true);
   await page.keyboard.press('Control+z'); // un solo undo devuelve el asa a su posición del toggle
   await expect.poll(() => polyH().then((h) => JSON.stringify(h) === afterToggle), { timeout: 5000 }).toBe(true);
+  { const [X, Y] = at(350, 150); await page.mouse.dblclick(X, Y); } // doble clic en el vértice = volver a esquina
+  await expect.poll(() => polyH().then((h) => !h?.some(Boolean)), { timeout: 5000 }).toBe(true);
 });

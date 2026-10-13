@@ -744,6 +744,19 @@ function toggleNodeCurve(o: ShapeObj, i: number): void {
   }
   o.polyH = H;
 }
+/** Toggle esquina↔Bézier con comando de historial (Alt+clic o doble clic en el vértice). */
+function toggleVertex(s: ShapeObj, vi: number): void {
+  const beforeH = s.polyH?.map((h) => (h ? { ...h } : null));
+  toggleNodeCurve(s, vi);
+  const afterH = s.polyH!.map((h) => (h ? { ...h } : null));
+  history.record({
+    label: 'nodo curva/esquina',
+    do: () => { s.polyH = afterH.map((h) => (h ? { ...h } : null)); },
+    undo: () => { if (beforeH) s.polyH = beforeH.map((h) => (h ? { ...h } : null)); else delete s.polyH; },
+  });
+  persist();
+  invalidate();
+}
 /** Lectura del asa arrastrada: ángulo y longitud desde su nodo (FreeHand). */
 function handleReadout(o: ShapeObj, i: number): { x: number; y: number; text: string } | null {
   const t = handleTips(o).find((h) => h.vi === i);
@@ -928,17 +941,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const sel = findObj(page, selectedId);
     const vi = sel ? nodeHit(px, py, nodePoints(sel)) : -1;
     if (sel && e.altKey && vi >= 0 && sel.shape === 'polygon') {
-      const s = sel as ShapeObj;
-      const beforeH = s.polyH?.map((h) => (h ? { ...h } : null));
-      toggleNodeCurve(s, vi);
-      const afterH = s.polyH!.map((h) => (h ? { ...h } : null));
-      history.record({
-        label: 'nodo curva/esquina',
-        do: () => { s.polyH = afterH.map((h) => (h ? { ...h } : null)); },
-        undo: () => { if (beforeH) s.polyH = beforeH.map((h) => (h ? { ...h } : null)); else delete s.polyH; },
-      });
-      persist();
-      invalidate();
+      toggleVertex(sel as ShapeObj, vi);
       return;
     }
     if (sel) {
@@ -1052,6 +1055,17 @@ canvas.addEventListener('pointerdown', (e) => {
   select(null);
   drag = { mode: 'marquee', ox: wx, oy: wy, additive: e.shiftKey };
   invalidate();
+});
+
+// Doble clic sobre un vértice en modo nodos = toggle esquina↔Bézier (gesto FreeHand;
+// Alt+clic también, pero fuera de un vértice Alt es pan)
+canvas.addEventListener('dblclick', (e) => {
+  if (tool !== 'subselect') return;
+  const sel = findObj(activePage(doc), selectedId);
+  if (!sel || sel.shape !== 'polygon') return;
+  const { px, py } = localXY(e);
+  const vi = nodeHit(px, py, nodePoints(sel));
+  if (vi >= 0) toggleVertex(sel as ShapeObj, vi);
 });
 
 // ---- Anillo de cursor: previsualización del tamaño real de pinceles y goma ----
