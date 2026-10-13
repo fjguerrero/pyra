@@ -99,10 +99,11 @@ Verificación: `tsc --noEmit` limpio, 185 tests unitarios, 25 e2e Playwright, `v
 - Degradado radial elíptico ajustado al bbox + degradado multi-parada (`Gradient.stops`, editor de paradas en el inspector: posición %, color, borrar; canvas y SVG usan las paradas).
 - Rectángulos con radio de esquina en vivo (`ShapeObj.rx`): `roundRect` nativo en canvas, `rx` en SVG, campo en el inspector; limitado a la mitad del lado corto.
 - Voltear espejo H/V de la selección (`flipH`/`flipV` en todos los objetos): canvas con `scale` sobre el centro, hit-test al espacio local, SVG con `transform`, unión con contorno volteado; botones en ALINEAR y `Ctrl+Shift+H/V`; comando undoable. Fix de raíz: las teclas sueltas de herramienta ahora ignoran modificadores (Ctrl+V pegar ya no se lo comía la herramienta de selección).
+- Modos de mezcla (`fx.blend` en todos los objetos): los 15 modos de blending CSS + Normal; canvas aplica `globalCompositeOperation` dentro del clip de la página y lo resetea tras cada objeto; SVG exporta `mix-blend-mode` en un envoltorio; selector «Modo de mezcla» en Efectos en vivo del inspector (viaja con los Styles por vivir en `Fx`); nombres clásicos en es/en (Multiplicar, Trama, Superponer…) con fallback en los demás idiomas.
 - Mano con Space+arrastrar; Shift+0 zoom a la selección; imán al dibujar formas nuevas (la esquina arrastrada encaja en bordes/centros, página y guías).
 - Panel ALINEAR sticky al fondo (siempre accesible en ventanas bajas); auditoría de fricciones UI en navegador real.
 
-Verificación: `tsc --noEmit` limpio, 263 tests unitarios, 54 e2e Playwright.
+Verificación: `tsc --noEmit` limpio, 266 tests unitarios, 55 e2e Playwright.
 
 ## Pendientes
 
