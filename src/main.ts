@@ -2156,6 +2156,22 @@ window.addEventListener('keydown', (e) => {
     const step = e.shiftKey ? 10 : 1;
     const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
     const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+    // Con la herramienta de nodos y un nodo activo (clic/alternado/arrastrado), las flechas
+    // mueven SOLO ese nodo; sin nodo activo siguen moviendo el objeto entero.
+    if (tool === 'subselect' && activeNode && activeNode.id === selectedId) {
+      const o = findObj(activePage(doc), activeNode.id);
+      const i = activeNode.i;
+      const p0 = o ? nodePoints(o)[i] : undefined;
+      if (!p0 || !o) return;
+      history.run({
+        label: 'mover nodo',
+        do: () => setNode(o, i, { x: p0.x + dx, y: p0.y + dy }),
+        undo: () => setNode(o, i, p0),
+      });
+      persist();
+      invalidate();
+      return;
+    }
     const objs = selectedObjs();
     if (!objs.length) return;
     history.run({

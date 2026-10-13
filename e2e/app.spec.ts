@@ -1335,3 +1335,31 @@ test('nodo Bézier (A): Alt+clic vuelve curva un vértice, arrastrar su asa lo r
   await expect.poll(() => polyH().then((h) => !h?.some(Boolean)), { timeout: 5000 }).toBe(true);
   await expect.poll(() => polyH2().then((h) => !h?.some(Boolean)), { timeout: 5000 }).toBe(true);
 });
+
+test('herramienta de nodos (A): las flechas mueven solo el nodo activo, no el objeto entero', async ({ page }) => {
+  const field = (f: 'y' | 'h') => () =>
+    page.evaluate((k) =>
+      new Promise<number>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve((req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.[k] as number) ?? -1);
+          req.onerror = () => resolve(-1);
+        };
+        open.onerror = () => resolve(-1);
+      }), f);
+  await page.keyboard.press('l');
+  await drag(page, [100, 100], [300, 100]); // línea horizontal, queda seleccionada
+  await expect.poll(field('y'), { timeout: 5000 }).toBeGreaterThanOrEqual(0); // esperar al persistido
+  const y0 = await field('y')();
+  await page.keyboard.press('a');
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + 300, box.y + 100); // clic en el nodo final = nodo activo
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Shift+ArrowDown'); // nudges de 1 y 10 px
+  await expect.poll(field('h'), { timeout: 5000 }).toBeGreaterThanOrEqual(11); // el bbox crece: se movió el nodo
+  expect(await field('y')()).toBe(y0); // el objeto no se movió
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z'); // un undo por nudge
+  await expect.poll(field('h'), { timeout: 5000 }).toBeLessThanOrEqual(2);
+});
