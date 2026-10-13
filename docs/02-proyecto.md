@@ -111,8 +111,9 @@ Verification: clean `tsc --noEmit`, 269 unit tests, 57 Playwright e2e.
 
 - White dots in strokes fixed (root cause): in `fillRibbon` the cap arcs were drawn clockwise while `strokeOutline` quads run the other way; with opposite winding, the nonzero fill left a hole (white dot) at every capture point. Arcs now drawn anticlockwise. Confirmed with a headless canvas probe and an e2e pixel check along the capture line.
 - Node tool (A, `subselect`): FreeHand-style vector reshaping. With a vector selected (stroke/poly-line/line) it shows its vertices as black squares instead of bbox handles; dragging a vertex reshapes the vector (bbox recomputed and points re-normalized, same format as at creation) and shows a floating FreeHand-like readout with the segment's angle (0–360°, CCW from east) and length. Body drag = select/move; empty canvas = marquee. One history command per drag (single Ctrl+Z). Toolbar button, icon, es/en i18n and help updated.
+- Bézier nodes (FreeHand corner/point model): polygon vertices can be corner nodes (no handles, straight segments) or Bézier nodes with a draggable handle mirrored to both sides (smooth node). `polyH` stores per-vertex normalized handle offsets; `polySegs` builds cubic/straight segments for render, hit-testing, outline commands and SVG export (`C`/`L`). Alt+click a vertex toggles corner ↔ Bézier (handle auto-generated along the average tangent); the handle tip is drawn as FreeHand did (thin line + small white circle) and drags with the same magnet snapping to page/objects/guides (Ctrl = free) as node dragging. Alt+click still pans everywhere except over a vertex in node mode. One Ctrl+Z per edit.
 
-Verification: clean `tsc --noEmit`, 271 unit tests, 59 Playwright e2e.
+Verification: clean `tsc --noEmit`, 275 unit tests, 60 Playwright e2e.
 
 ## Pending
 

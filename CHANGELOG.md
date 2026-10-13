@@ -7,8 +7,9 @@
 
 ### Herramientas
 - Herramienta de nodos (`A`, subselect): remodela vectores como el puntero de FreeHand. Con un vector seleccionado (trazo/polilínea/línea) muestra sus vértices como cuadrados negros en vez de asas de marco; arrastrar un vértice remodela el objeto (recalcula bbox y re-normaliza puntos) y muestra lectura flotante con ángulo (0–360°) y longitud del segmento, como hacía FreeHand. Un solo Ctrl+Z por arrastre. Botón en barra, icono, i18n es/en y ayuda.
+- Nodos Bézier estilo FreeHand (nodo esquina vs nodo con punto): en polígonos, Alt+clic en un vértice alterna esquina ↔ nodo Bézier con asa arrastrable (se genera sobre la tangente media); el asa se espeja al lado opuesto (nodo suave) y se dibuja como FreeHand (línea fina + punto blanco). Arrastrar el asa deforma la curva. Nodos y asas encajan con página, objetos y guías (magnet); Ctrl = libre. Hit-test, contorno y export SVG siguen la curva (`C`/`L` por segmento). Alt+clic sigue haciendo pan salvo sobre vértices en modo nodos. Un Ctrl+Z por edición.
 
-Verificación: `tsc --noEmit` limpio, 271 tests unitarios, 59 e2e Playwright.
+Verificación: `tsc --noEmit` limpio, 275 tests unitarios, 60 e2e Playwright.
 
 ## v1.3 — 2026-10-13
 
