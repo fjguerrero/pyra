@@ -10,7 +10,11 @@
 - Nodos Bézier estilo FreeHand (nodo esquina vs nodo con punto): en polígonos, Alt+clic o doble clic en un vértice alterna esquina ↔ nodo Bézier con asa arrastrable (se genera sobre la tangente media); el asa se espeja al lado opuesto (nodo suave) y se dibuja como FreeHand (línea fina + punto blanco). Arrastrar el asa deforma la curva. Nodos y asas encajan con página, objetos y guías (magnet); Ctrl = libre. Hit-test, contorno y export SVG siguen la curva (`C`/`L` por segmento). Alt+clic sigue haciendo pan salvo sobre vértices en modo nodos. Un Ctrl+Z por edición.
 - Nodos cúspide (picos angulosos de FreeHand): Alt+arrastrar un asa rompe el espejo — se crea la segunda asa (`polyH2`, lado entrante) y desde ahí cada lado se arrastra independiente; se dibujan ambas puntas con lectura de ángulo/longitud por lado y snap. Sin `polyH2` el nodo sigue siendo suave. Undo restaura el espejo; el toggle a esquina limpia la cúspide. La curva asimétrica llega sola a render, hit-test, contorno y SVG vía `polySegs`.
 
-Verificación: `tsc --noEmit` limpio, 276 tests unitarios, 60 e2e Playwright.
+### Inspector
+- Selección de color (causa raíz): al soltar el click dentro del inspector, `renderPanels` reconstruía el panel y destruía el `<input type=color>` antes de que abriera su diálogo nativo (y a mitad de selección). Ahora soltar sobre un campo del panel (input/select/textarea, salvo sliders y checkboxes) no lo reconstruye, y mientras un selector de color tiene el foco se pospone el re-render: el diálogo abre, permanece abierto durante la selección y el color se aplica en vivo.
+- Estilos de trazo cambiables: el selector sustituye al antiguo botón único de discontinuo — sólido, discontinuo, punteado y raya-punto sobre el mismo `dash` del objeto, aplicable en cualquier momento desde el inspector. El punteado usa puntas redondas (ya por defecto) para puntos reales en canvas y SVG export. i18n en 15 idiomas.
+
+Verificación: `tsc --noEmit` limpio, 276 tests unitarios, 61 e2e Playwright.
 
 ## v1.3 — 2026-10-13
 

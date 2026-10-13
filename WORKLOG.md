@@ -76,6 +76,7 @@ resolver los problemas por uno mismo y continuar.
 - [x] F22 Fix puntos blancos en trazos (winding opuesto arcos/quads en `fillRibbon`; arcos antihorarios, sonda headless + e2e de píxeles) y herramienta de nodos (`A`, subselect): vértices como cuadrados negros, arrastre remodela el vector con lectura FreeHand de ángulo+longitud, un undo por arrastre; botón+icono, i18n es/en, ayuda. 2 unit + 2 e2e nuevos. → commit 524b314.
 - [x] F23 Nodos Bézier estilo FreeHand (c3939dc): `polyH` por vértice (esquina vs nodo suave con asa espejada), Alt+clic alterna esquina↔Bézier, asa arrastrable dibujada como FreeHand, snap de nodos y asas (página/objetos/guías, Ctrl libre), hit-test/contorno/SVG siguen la curva (C/L). Alt+clic sigue siendo pan salvo sobre vértices. 4 unit + 1 e2e nuevos.
 - [x] F24 Nodos cúspide estilo FreeHand (55b40e0): `polyH2` = asa del lado entrante; Alt+arrastrar un asa rompe el espejo → pico anguloso con asas independientes (ambas puntas dibujadas, lectura por lado, snap). Undo restaura el espejo; toggle a esquina limpia la cúspide. Doble clic como gesto de toggle. 1 unit SVG + e2e ampliado.
+- [x] F25 Fix selección de color en el inspector (causa raíz: el pointerup sobre controles del panel lo reconstruía y destruía el `<input type=color>` antes/de mitad del diálogo nativo; ahora soltar sobre un campo no reconstruye y con un selector de color enfocado el re-render se pospone) + estilos de trazo cambiables (sólido/discontinuo/punteado/raya-punto sobre `dash` existente, i18n 15 idiomas). 1 e2e nuevo.
 
 ## Registro de progreso
 - 00:32 F1–F6 completadas y commiteadas (797bf59). Gate completo verde.
@@ -95,3 +96,4 @@ resolver los problemas por uno mismo y continuar.
 - 11:05 F22 fix puntos blancos en trazos + herramienta de nodos estilo FreeHand (524b314). 271 unit + 59 e2e verdes. Docs de proyecto (docs/01–04) pasados a inglés in situ; docs/02, CHANGELOG y WORKLOG al día con v1.4.
 - 12:13 F23 nodos Bézier estilo FreeHand en la herramienta de nodos (c3939dc): esquina↔curva con Alt+clic, asas arrastrables espejadas, snap de nodos/asas, SVG C/L. 275 unit + 60 e2e verdes.
 - 13:48 F24 nodos cúspide (picos angulosos): Alt+arrastrar rompe el espejo con `polyH2`, asas independientes por lado con lectura y snap; doble clic como toggle. 276 unit + 60 e2e verdes.
+- 14:34 F25 fix selección de color (re-render del inspector destruía el input de color) + selector de estilos de trazo (sólido/discontinuo/punteado/raya-punto). 276 unit + 61 e2e verdes.

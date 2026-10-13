@@ -114,7 +114,10 @@ Verification: clean `tsc --noEmit`, 269 unit tests, 57 Playwright e2e.
 - Bézier nodes (FreeHand corner/point model): polygon vertices can be corner nodes (no handles, straight segments) or Bézier nodes with a draggable handle mirrored to both sides (smooth node). `polyH` stores per-vertex normalized handle offsets; `polySegs` builds cubic/straight segments for render, hit-testing, outline commands and SVG export (`C`/`L`). Alt+click or double-click a vertex toggles corner ↔ Bézier (handle auto-generated along the average tangent); the handle tip is drawn as FreeHand did (thin line + small white circle) and drags with the same magnet snapping to page/objects/guides (Ctrl = free) as node dragging. Alt+click still pans everywhere except over a vertex in node mode. One Ctrl+Z per edit.
 - Cusp nodes (FreeHand angular peaks): `polyH2` stores the incoming-side handle per vertex; Alt+drag a handle breaks the mirror (second handle created mirrored, then each side drags independently, both tips drawn, per-side angle/length readout). Without `polyH2` the node stays smooth. Undo restores the mirror; corner toggle clears the cusp. Asymmetric curves flow through render, hit-test, outline and SVG export automatically via `polySegs`.
 
-Verification: clean `tsc --noEmit`, 276 unit tests, 60 Playwright e2e.
+- Color picking fixed (root cause): releasing a click inside the inspector used to rebuild the panel, destroying the `<input type=color>` before its native dialog could open (or mid-selection). Releasing over a panel field (input/select/textarea, except sliders and checkboxes) no longer rebuilds it, and while a color input has focus the re-render is deferred: the dialog opens, stays open during selection and the color applies live.
+- Changeable stroke styles: a selector replaces the old single dashed toggle — solid, dashed, dotted and dash-dot over the object's existing `dash`, changeable at any time from the inspector. Dotted relies on the default round caps for real dots in canvas and SVG export. i18n in 15 languages.
+
+Verification: clean `tsc --noEmit`, 276 unit tests, 61 Playwright e2e.
 
 ## Pending
 
