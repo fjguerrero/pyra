@@ -23,12 +23,13 @@
 - Atajos `[` / `]` para el grosor de la herramienta de dibujo activa.
 - Mano con Space+arrastrar; `Shift+0` zoom a la selección; imán al dibujar formas nuevas (encaja en bordes/centros, página y guías).
 - Panel ALINEAR sticky al fondo, siempre accesible en ventanas bajas.
+- Edición multi-objeto: con varios seleccionados, el inspector cambia a la vez todos los objetos del mismo tipo (relleno, borde, efectos, tipografía) en un solo paso de deshacer; posición y tamaño solo en el de referencia.
 
 ### Archivo
 - Exportar SVG: formas vectoriales, trazos como path nonzero con alfa uniforme, polígonos suaves como cúbicas, bitmaps con crop/goma vía clip/mask/filters y efectos con feDropShadow.
 
 ### Calidad
-- TypeScript estricto sin errores; 269 tests unitarios (Vitest); 56 tests e2e (Playwright).
+- TypeScript estricto sin errores; 269 tests unitarios (Vitest); 57 tests e2e (Playwright).
 - Fix de raíz: las teclas sueltas de herramienta ignoran modificadores (`Ctrl+V` pegar ya no se lo comía la herramienta de selección).
 
 ## v1.2 — 2026-10-07
