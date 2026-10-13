@@ -4,7 +4,7 @@ import type { Draft } from './render';
 import { fitAll, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
 import { addLayer, moveLayer, reorderLayer } from './layers';
-import { snapBox, type Guide, type Snap } from './guides';
+import { snapBox, snapPoint, type Guide, type Snap } from './guides';
 import { rdpSimplify } from './freehand';
 import { applyTaper, BRUSH_PRESETS, interpolateStamps, PRESET_ORDER, StrokeCapture, type BrushParams, type BrushPreset, type WPt } from './brush-engine';
 import { exportSvg } from './svg-export';
@@ -962,11 +962,22 @@ canvas.addEventListener('pointermove', (e) => {
   }
 
   if (drag.mode === 'create' && draft) {
+    // al dibujar también hay imán: la esquina arrastrada encaja con bordes/centros (Ctrl = libre)
+    let sx = wx;
+    let sy = wy;
+    if (!e.ctrlKey) {
+      const pg = activePage(doc);
+      const others = pg.layers.filter((l) => l.visible).flatMap((l) => l.objects).map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h }));
+      const sp = snapPoint(wx, wy, others, { width: pg.width, height: pg.height, guides: pg.guides }, 6 / view.zoom);
+      guides = sp.guides;
+      sx = sp.x;
+      sy = sp.y;
+    } else guides = [];
     draft = {
-      x: Math.min(drag.ox, wx),
-      y: Math.min(drag.oy, wy),
-      w: Math.abs(wx - drag.ox),
-      h: Math.abs(wy - drag.oy),
+      x: Math.min(drag.ox, sx),
+      y: Math.min(drag.oy, sy),
+      w: Math.abs(sx - drag.ox),
+      h: Math.abs(sy - drag.oy),
       shape: draft.shape,
       // desde qué esquina se arrastra: ↘='nw' ↖='se' ↗='sw' ↙='ne'
       lineFrom: (`${wy < drag.oy ? 'n' : 's'}${wx < drag.ox ? 'w' : 'e'}`) as LineFrom,

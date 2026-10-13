@@ -359,6 +359,26 @@ test('Space+arrastrar desplaza el lienzo (mano temporal)', async ({ page }) => {
   await expect.poll(() => isRectBlue(160, 140)).toBe(false);
 });
 
+test('imán al dibujar: la esquina encaja exacta en el borde de otro objeto', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [200, 150], [300, 230]); // rect A: mundo 96,102 → 196,182 (zoom 100%)
+  await page.keyboard.press('r');
+  await drag(page, [400, 300], [305, 400]); // esquina B suelta a 5px de pantalla del borde derecho de A
+  // el imán debe dejar B.x exactamente en el borde de A (no en la suelta de 5px)
+  const pair = () => page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase | null>((res) => { const r = indexedDB.open('pyra'); r.onsuccess = () => res(r.result); r.onerror = () => res(null); });
+    if (!db) return null;
+    const st = db.objectStoreNames[0];
+    if (!st) return null;
+    const all: unknown[] = await new Promise((res) => { const q = db.transaction(st, 'readonly').objectStore(st).getAll(); q.onsuccess = () => res(q.result); });
+    const objs = (all[0] as { pages: { layers: { objects: { x: number; y: number; w: number }[] }[] }[] })?.pages?.[0]?.layers?.flatMap((l) => l.objects) ?? [];
+    return objs.length >= 2 ? { ax: objs[0].x, aw: objs[0].w, bx: objs[1].x } : null;
+  });
+  await expect.poll(pair, { timeout: 5000 }).not.toBeNull();
+  const v = (await pair())!;
+  expect(v.bx).toBe(v.ax + v.aw);
+});
+
 test('Shift+0 acerca la vista a la selección', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [140, 130]); // rect pequeño, queda seleccionado

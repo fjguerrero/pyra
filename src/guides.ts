@@ -82,3 +82,32 @@ export function snapBox(
   }
   return out;
 }
+
+/** Imán para un punto que se arrastra (esquina al dibujar): bordes/centros de objetos, página y guías. */
+export function snapPoint(
+  px: number,
+  py: number,
+  others: Box[],
+  page: { width: number; height: number; guides?: { axis: 'v' | 'h'; pos: number }[] },
+  tol: number,
+): { x: number; y: number; guides: Guide[] } {
+  const xs: Target[] = [target(0), target(page.width / 2), target(page.width)];
+  const ys: Target[] = [target(0), target(page.height / 2), target(page.height)];
+  for (const g of page.guides ?? []) (g.axis === 'v' ? xs : ys).push(target(g.pos));
+  for (const o of others) {
+    xs.push(...anchors(o.x, o.x + o.w).map((v) => target(v, 'obj')));
+    ys.push(...anchors(o.y, o.y + o.h).map((v) => target(v, 'obj')));
+  }
+  const out = { x: px, y: py, guides: [] as Guide[] };
+  const near = (v: number, ts: Target[], axis: 'v' | 'h'): void => {
+    let best: Target | null = null;
+    for (const t of ts) if (Math.abs(t.v - v) <= tol && (!best || Math.abs(t.v - t.v) < Math.abs(t.v - best.v))) best = t;
+    if (best) {
+      if (axis === 'v') out.x = best.v; else out.y = best.v;
+      if (best.kind === 'obj') out.guides.push({ axis, pos: best.v, kind: 'obj' });
+    }
+  };
+  near(px, xs, 'v');
+  near(py, ys, 'h');
+  return out;
+}
