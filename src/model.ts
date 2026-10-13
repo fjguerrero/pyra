@@ -89,6 +89,9 @@ export interface ShapeObj {
   tip?: string | null;
   /** Polígono (pen tool): vértices normalizados 0..1 dentro del bbox; se escala con el bbox. */
   poly?: { x: number; y: number }[];
+  /** Asas Bézier por vértice, estilo FreeHand: offset relativo al vértice, normalizado como poly
+   * (el mismo asa se usa espejada a ambos lados = nodo suave). null/ausente = nodo esquina (sin curva). */
+  polyH?: ({ x: number; y: number } | null)[];
   /** Trazo/lápiz suavizado o polígono con vértices curvos: se dibuja con Catmull-Rom. */
   smooth?: boolean;
   /** Guión del borde de un polígono (px de mundo); undefined = línea continua. */
@@ -151,6 +154,45 @@ export const isLineLike = (o: { shape: string }): boolean => o.shape === 'line' 
 /** Vértices de mundo de un polígono (pen tool). */
 export const polyPoints = (o: { x: number; y: number; w: number; h: number; poly?: { x: number; y: number }[] }): { x: number; y: number }[] =>
   (o.poly ?? []).map((p) => ({ x: o.x + p.x * o.w, y: o.y + p.y * o.h }));
+
+/** ¿El polígono tiene nodos Bézier (asas polyH)? Entonces manda la curva cúbica sobre `smooth`. */
+export const polyHasCurves = (o: { polyH?: ({ x: number; y: number } | null)[] }): boolean => !!o.polyH?.some(Boolean);
+
+type WPt = { x: number; y: number };
+
+/** Segmentos de mundo de un polígono cerrado (FreeHand): cúbicos si el nodo tiene asa, rectos si es esquina.
+ * El asa de un nodo se usa espejada para ambos tramos (nodo suave); sin asa = esquina. */
+export function polySegs(o: { x: number; y: number; w: number; h: number; poly?: WPt[]; polyH?: ({ x: number; y: number } | null)[] }): { a: WPt; b: WPt; c1?: WPt; c2?: WPt }[] {
+  const v = polyPoints(o);
+  const H = (o.polyH ?? []).map((h) => (h ? { x: h.x * o.w, y: h.y * o.h } : null));
+  const segs: { a: WPt; b: WPt; c1?: WPt; c2?: WPt }[] = [];
+  for (let i = 0; i < v.length; i++) {
+    const a = v[i], b = v[(i + 1) % v.length], ha = H[i], hb = H[(i + 1) % v.length];
+    if (!ha && !hb) segs.push({ a, b });
+    else segs.push({ a, b, c1: { x: a.x + (ha?.x ?? 0), y: a.y + (ha?.y ?? 0) }, c2: { x: b.x - (hb?.x ?? 0), y: b.y - (hb?.y ?? 0) } });
+  }
+  return segs;
+}
+
+/** Contorno de mundo de un polígono: aplanado si tiene curvas (para hit-test y unión). */
+export function polyOutline(o: { x: number; y: number; w: number; h: number; poly?: WPt[]; polyH?: ({ x: number; y: number } | null)[] }, samples = 12): WPt[] {
+  if (!polyHasCurves(o)) return polyPoints(o);
+  const out: WPt[] = [];
+  for (const s of polySegs(o)) {
+    out.push(s.a);
+    if (s.c1 && s.c2)
+      for (let k = 1; k <= samples; k++) {
+        const t = k / samples, u = 1 - t;
+        out.push({
+          x: u ** 3 * s.a.x + 3 * u * u * t * s.c1.x + 3 * u * t * t * s.c2.x + t ** 3 * s.b.x,
+          y: u ** 3 * s.a.y + 3 * u * u * t * s.c1.y + 3 * u * t * t * s.c2.y + t ** 3 * s.b.y,
+        });
+      }
+    else out.push(s.b);
+  }
+  out.pop(); // cerrado: el último punto coincide con el primero
+  return out;
+}
 
 /** Hull convexo (Andrew's monotone chain): la unión aproximada de varias formas. */
 export function convexHull(pts: { x: number; y: number }[]): { x: number; y: number }[] {

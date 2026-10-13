@@ -15,7 +15,7 @@ function fakeCtx(): { ctx: CanvasRenderingContext2D; ops: Op[] } {
     return undefined as never;
   };
   const ctx = {} as Record<string, unknown>;
-  for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'rect', 'roundRect', 'ellipse', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath', 'arc', 'translate', 'rotate', 'scale']) {
+  for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'bezierCurveTo', 'stroke', 'fill', 'rect', 'roundRect', 'ellipse', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath', 'arc', 'translate', 'rotate', 'scale']) {
     ctx[m] = call(m);
   }
   ctx.measureText = () => ({ width: 0 });
@@ -390,5 +390,36 @@ describe('Renderer.draw: cinta de trazo sin puntos blancos', () => {
     const ops = draw(s);
     expect(ops.some((o) => o.op === 'fillRect' && o.args[2] === 5 && o.args[3] === 5)).toBe(true);
     expect(ops.some((o) => o.op === 'fillText' && String(o.args[0]).includes('45.0'))).toBe(true);
+  });
+
+  it('con scene.nodes.handles se pintan las asas Bézier (línea al nodo + punto redondo)', () => {
+    const s = scene({ selectedId: 'x', nodes: { pts: [{ x: 10, y: 10 }], handles: [{ x: 30, y: 10, vx: 10, vy: 10 }] } });
+    const ops = draw(s);
+    // línea del vértice a la punta
+    expect(ops.some((o) => o.op === 'moveTo' && o.args[0] === 10 && o.args[1] === 10)).toBe(true);
+    expect(ops.some((o) => o.op === 'lineTo' && o.args[0] === 30 && o.args[1] === 10)).toBe(true);
+    // punta como círculo pequeño
+    expect(ops.some((o) => o.op === 'arc' && o.args[0] === 30 && o.args[1] === 10 && o.args[2] === 3)).toBe(true);
+  });
+});
+
+describe('polígono con nodos Bézier (polyH)', () => {
+  const polyObj = (polyH: ({ x: number; y: number } | null)[]): ShapeObj => ({
+    id: uid(), shape: 'polygon', name: 'p', x: 0, y: 0, w: 100, h: 100, fill: '#000000', stroke: null, strokeWidth: 0,
+    poly: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }], polyH,
+  });
+  it('los tramos adyacentes a un nodo con asa se dibujan con bezierCurveTo; los demás, rectos', () => {
+    const s = scene();
+    s.page.layers[0].objects.push(polyObj([null, { x: -0.3, y: 0 }, null, null]));
+    const bez = shapePaths(draw(s), 'bezierCurveTo');
+    expect(bez.length).toBe(2); // segmentos 0→1 y 1→2 usan el asa espejada del nodo 1
+    const line = shapePaths(draw(s), 'lineTo');
+    expect(line.length).toBe(2); // 2→3 y 3→0 siguen rectos (nodo esquina)
+  });
+  it('sin polyH el polígono se dibuja igual que antes (sin curvas)', () => {
+    const s = scene();
+    s.page.layers[0].objects.push(polyObj(undefined as never));
+    const ops = draw(s);
+    expect(ops.filter((o) => o.op === 'bezierCurveTo').length).toBe(0);
   });
 });

@@ -1,5 +1,5 @@
 import { flattenLayers } from './layers';
-import { flipPt, lineEnds, polyPoints, type Layer, type Obj, type Page } from './model';
+import { flipPt, lineEnds, polyOutline, type Layer, type Obj, type Page } from './model';
 import type { View } from './view';
 
 /**
@@ -51,8 +51,8 @@ export function hitObj(o: Obj, wx: number, wy: number, tol = 0): boolean {
   if (o.shape === 'ellipse') return ((wx - cx) / rx) ** 2 + ((wy - cy) / ry) ** 2 <= 1;
 
   if (o.shape === 'polygon') {
-    // inside por ray casting
-    const pts = polyPoints(o);
+    // inside por ray casting (con curvas: sobre el contorno aplanado)
+    const pts = polyOutline(o);
     let inside = false;
     for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
       if (pts[i].y > wy !== pts[j].y > wy && wx < ((pts[j].x - pts[i].x) * (wy - pts[i].y)) / (pts[j].y - pts[i].y) + pts[i].x)

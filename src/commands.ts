@@ -1,6 +1,6 @@
 // Comandos de edición sobre la selección: duplicar, pegar, orden de apilado.
 // Cada uno devuelve un Command undoable listo para history.run().
-import { convexHull, flipPt, lineEnds, polyPoints, uid, type Obj, type Page, type ShapeObj } from './model';
+import { convexHull, flipPt, lineEnds, polyOutline, uid, type Obj, type Page, type ShapeObj } from './model';
 import type { Command } from './history';
 
 function cloneInto(page: Page, o: Obj, dx: number, dy: number): { clone: Obj; layerIndex: number } | null {
@@ -96,7 +96,7 @@ function outlineRaw(o: Obj): { x: number; y: number }[] {
       y: cy + (o.h / 2) * Math.sin((i * Math.PI) / 8),
     }));
   }
-  if (o.shape === 'polygon') return polyPoints(o);
+  if (o.shape === 'polygon') return polyOutline(o);
   if (o.shape === 'line') { const e = lineEnds(o); return [{ x: e.x1, y: e.y1 }, { x: e.x2, y: e.y2 }]; }
   if (o.shape === 'stroke') return (o.points ?? []).map((p) => ({ x: o.x + p.x * o.w, y: o.y + p.y * o.h }));
   return [{ x: o.x, y: o.y }, { x: o.x + o.w, y: o.y }, { x: o.x + o.w, y: o.y + o.h }, { x: o.x, y: o.y + o.h }];

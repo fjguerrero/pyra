@@ -124,11 +124,18 @@ function invalidate(): void {
   dirty = true;
   requestAnimationFrame(() => {
     dirty = false;
-    let nodes: { pts: { x: number; y: number }[]; readout?: { x: number; y: number; text: string } | null } | undefined;
+    let nodes: { pts: { x: number; y: number }[]; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] } | undefined;
     if (tool === 'subselect') {
       const o = drag?.mode === 'node' ? drag.obj : findObj(activePage(doc), selectedId);
       const pts = o ? nodePoints(o) : [];
-      if (pts.length) nodes = { pts, readout: drag?.mode === 'node' ? nodeReadout(drag.obj, drag.index) : null };
+      if (o && pts.length) {
+        const tips = o.shape === 'polygon' ? handleTips(o) : [];
+        nodes = {
+          pts,
+          handles: tips.map((t) => ({ x: t.x, y: t.y, vx: polyPoints(o)[t.vi].x, vy: polyPoints(o)[t.vi].y })),
+          readout: drag?.mode === 'node' ? nodeReadout(drag.obj, drag.index) : drag?.mode === 'handle' ? handleReadout(drag.obj, drag.index) : null,
+        };
+      }
     }
     renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, groupHandles: selectedIds.length > 1, draft, marquee, guides, workspace: bg, nodes });
     if (!pointerDownInInspector) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi, currentBrushPanel());
@@ -187,7 +194,8 @@ type Drag =
   | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number }
   | { mode: 'guide'; index: number; startPos: number }
   | { mode: 'erase' }
-  | { mode: 'node'; obj: Obj; index: number; moved: boolean; before: { x: number; y: number; w: number; h: number; points?: { x: number; y: number; p: number }[]; poly?: { x: number; y: number }[]; lineFrom?: LineFrom } }
+  | { mode: 'node'; obj: Obj; index: number; moved: boolean; before: { x: number; y: number; w: number; h: number; points?: { x: number; y: number; p: number }[]; poly?: { x: number; y: number }[]; polyH?: ({ x: number; y: number } | null)[]; lineFrom?: LineFrom } }
+  | { mode: 'handle'; obj: ShapeObj; index: number; moved: boolean; before: { polyH?: ({ x: number; y: number } | null)[] } }
   | { mode: 'groupresize'; objs: { obj: Obj; start: { x: number; y: number; w: number; h: number } }[]; start: { x: number; y: number; w: number; h: number }; role: HandleRole; grab: { x: number; y: number } };
 
 const NAMES: Record<ShapeKind, string> = { rect: t('obj_rect'), ellipse: t('obj_ellipse'), line: t('obj_line'), stroke: t('obj_stroke'), polygon: t('obj_polygon') };
@@ -714,6 +722,42 @@ function nodePoints(o: Obj): { x: number; y: number }[] {
 }
 const nodeHit = (px: number, py: number, pts: { x: number; y: number }[]): number =>
   pts.findIndex((p) => Math.abs(px - (p.x * view.zoom + view.panX)) <= 6 && Math.abs(py - (p.y * view.zoom + view.panY)) <= 6);
+/** Puntas de las asas Bézier (mundo) de un polígono, con el índice de su nodo. */
+function handleTips(o: Obj): { x: number; y: number; vi: number }[] {
+  if (o.shape !== 'polygon' || !o.poly) return [];
+  return (o.polyH ?? []).flatMap((h, i) => (h ? [{ x: o.x + (o.poly![i].x + h.x) * o.w, y: o.y + (o.poly![i].y + h.y) * o.h, vi: i }] : []));
+}
+const tipHit = (px: number, py: number, o: Obj): number =>
+  handleTips(o).findIndex((t) => Math.abs(px - (t.x * view.zoom + view.panX)) <= 6 && Math.abs(py - (t.y * view.zoom + view.panY)) <= 6);
+/** Alt+clic en un vértice de polígono: esquina → nodo Bézier con asa sobre la tangente media (~1/3 del tramo,
+ * como FreeHand) o de vuelta a esquina. El asa se espeja a ambos lados = nodo suave. */
+function toggleNodeCurve(o: ShapeObj, i: number): void {
+  const v = polyPoints(o);
+  const H = (o.polyH ? [...o.polyH] : v.map(() => null)) as ({ x: number; y: number } | null)[];
+  if (H[i]) H[i] = null;
+  else {
+    const p = v[i], a = v[(i + v.length - 1) % v.length], b = v[(i + 1) % v.length];
+    const d1 = Math.hypot(p.x - a.x, p.y - a.y) || 1, d2 = Math.hypot(b.x - p.x, b.y - p.y) || 1;
+    const ux = (p.x - a.x) / d1 + (b.x - p.x) / d2, uy = (p.y - a.y) / d1 + (b.y - p.y) / d2;
+    const m = Math.hypot(ux, uy) || 1, len = 0.36 * Math.min(d1, d2);
+    H[i] = { x: ((ux / m) * len) / o.w, y: ((uy / m) * len) / o.h };
+  }
+  o.polyH = H;
+}
+/** Lectura del asa arrastrada: ángulo y longitud desde su nodo (FreeHand). */
+function handleReadout(o: ShapeObj, i: number): { x: number; y: number; text: string } | null {
+  const t = handleTips(o).find((h) => h.vi === i);
+  if (!t) return null;
+  const v = polyPoints(o)[i];
+  const dx = t.x - v.x, dy = t.y - v.y;
+  const ang = (Math.atan2(-dy, dx) * 180 / Math.PI + 360) % 360;
+  return { x: t.x, y: t.y, text: `${ang.toFixed(1)}° ${Math.hypot(dx, dy).toFixed(1)}` };
+}
+/** Cajas de los demás objetos visibles + página, para el imán de nodos/asas. */
+function magnetCtx(excludeId?: string): { pg: ReturnType<typeof activePage>; boxes: { x: number; y: number; w: number; h: number }[] } {
+  const pg = activePage(doc);
+  return { pg, boxes: pg.layers.filter((l) => l.visible).flatMap((l) => l.objects).filter((o) => o.id !== excludeId).map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h })) };
+}
 /** Mover el nodo i: recalcula el bbox y re-normaliza (mismo formato que al crear). */
 function setNode(o: Obj, i: number, p: { x: number; y: number }): void {
   if (o.shape === 'stroke' && o.points) {
@@ -727,12 +771,14 @@ function setNode(o: Obj, i: number, p: { x: number; y: number }): void {
     o.points = pts.map((q) => ({ x: (q.x - x0) / w, y: (q.y - y0) / h, p: q.pr }));
   } else if (o.shape === 'polygon' && o.poly) {
     const pts = o.poly.map((q) => ({ x: o.x + q.x * o.w, y: o.y + q.y * o.h }));
+    const Hw = o.polyH?.map((hh) => (hh ? { x: hh.x * o.w, y: hh.y * o.h } : null)); // asas en mundo, se re-normalizan con el nuevo bbox
     pts[i] = { x: p.x, y: p.y };
     const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
     const x0 = Math.round(Math.min(...xs)), y0 = Math.round(Math.min(...ys));
     const w = Math.max(1, Math.round(Math.max(...xs) - x0)), h = Math.max(1, Math.round(Math.max(...ys) - y0));
     Object.assign(o, { x: x0, y: y0, w, h });
     o.poly = pts.map((q) => ({ x: (q.x - x0) / w, y: (q.y - y0) / h }));
+    if (Hw) o.polyH = Hw.map((hh) => (hh ? { x: hh.x / w, y: hh.y / h } : null));
   } else if (o.shape === 'line') {
     const e = lineEnds(o);
     let a = { x: e.x1, y: e.y1 }, b = { x: e.x2, y: e.y2 };
@@ -762,7 +808,7 @@ function hoverCursor(px: number, py: number, wx: number, wy: number): string {
   if (tool === 'subselect') {
     const page = activePage(doc);
     const sel = findObj(page, selectedId);
-    if (sel && nodeHit(px, py, nodePoints(sel)) >= 0) return 'move';
+    if (sel && (nodeHit(px, py, nodePoints(sel)) >= 0 || tipHit(px, py, sel) >= 0)) return 'move';
     if (hitTest(page, wx, wy, 4 / view.zoom, selectedIds)) return 'move';
     return 'default';
   }
@@ -792,14 +838,18 @@ function sampleColorAt(px: number, py: number): string | null {
 canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
   const page = activePage(doc);
+  const { px, py, wx, wy } = localXY(e);
 
-  if (e.button === 1 || e.altKey || spaceDown) {
+  // Alt+clic = pan, EXCEPTO sobre un vértice con la herramienta de nodos: ahí es
+  // el toggle esquina↔Bézier (estilo FreeHand)
+  const selNode = tool === 'subselect' && e.altKey ? findObj(page, selectedId) : null;
+  const nodeToggle = !!(selNode && selNode.shape === 'polygon' && nodeHit(px, py, nodePoints(selNode)) >= 0);
+
+  if (e.button === 1 || (e.altKey && !nodeToggle) || spaceDown) {
     drag = { mode: 'pan', sx: e.clientX, sy: e.clientY, panX: view.panX, panY: view.panY };
     canvas.style.cursor = 'grabbing';
     return;
   }
-
-  const { px, py, wx, wy } = localXY(e);
 
   if (tool === 'eyedropper') {
     const c = sampleColorAt(px, py);
@@ -873,14 +923,39 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 
   if (tool === 'subselect') {
-    // FreeHand: nodo = remodelar el vector; cuerpo = seleccionar/mover; vacío = marquee
+    // FreeHand: nodo = remodelar el vector; Alt+clic = esquina↔Bézier; asa = dar forma a la curva;
+    // cuerpo = seleccionar/mover; vacío = marquee
     const sel = findObj(page, selectedId);
     const vi = sel ? nodeHit(px, py, nodePoints(sel)) : -1;
+    if (sel && e.altKey && vi >= 0 && sel.shape === 'polygon') {
+      const s = sel as ShapeObj;
+      const beforeH = s.polyH?.map((h) => (h ? { ...h } : null));
+      toggleNodeCurve(s, vi);
+      const afterH = s.polyH!.map((h) => (h ? { ...h } : null));
+      history.record({
+        label: 'nodo curva/esquina',
+        do: () => { s.polyH = afterH.map((h) => (h ? { ...h } : null)); },
+        undo: () => { if (beforeH) s.polyH = beforeH.map((h) => (h ? { ...h } : null)); else delete s.polyH; },
+      });
+      persist();
+      invalidate();
+      return;
+    }
+    if (sel) {
+      const hi = tipHit(px, py, sel);
+      if (hi >= 0) {
+        const t = handleTips(sel)[hi];
+        drag = { mode: 'handle', obj: sel as ShapeObj, index: t.vi, moved: false, before: { polyH: (sel as ShapeObj).polyH?.map((h) => (h ? { ...h } : null)) } };
+        canvas.style.cursor = 'move';
+        invalidate();
+        return;
+      }
+    }
     if (sel && vi >= 0) {
       const s = sel as ShapeObj; // con nodo al hit solo llegan objetos con puntos/poly/extremos
       drag = {
         mode: 'node', obj: sel, index: vi, moved: false,
-        before: { x: s.x, y: s.y, w: s.w, h: s.h, points: s.points?.map((q) => ({ ...q })), poly: s.poly?.map((q) => ({ ...q })), lineFrom: s.lineFrom },
+        before: { x: s.x, y: s.y, w: s.w, h: s.h, points: s.points?.map((q) => ({ ...q })), poly: s.poly?.map((q) => ({ ...q })), polyH: s.polyH?.map((h) => (h ? { ...h } : null)), lineFrom: s.lineFrom },
       };
       canvas.style.cursor = 'move';
       invalidate();
@@ -1153,7 +1228,31 @@ canvas.addEventListener('pointermove', (e) => {
   }
 
   if (drag.mode === 'node') {
-    setNode(drag.obj, drag.index, { x: wx, y: wy });
+    // FreeHand: el nodo arrastra con imán a bordos de página, objetos y guías (Ctrl = libre)
+    let nx = wx, ny = wy;
+    if (!e.ctrlKey) {
+      const { pg, boxes } = magnetCtx(drag.obj.id);
+      const sp = snapPoint(wx, wy, boxes, { width: pg.width, height: pg.height, guides: pg.guides }, 6 / view.zoom);
+      guides = sp.guides; nx = sp.x; ny = sp.y;
+    } else guides = [];
+    setNode(drag.obj, drag.index, { x: nx, y: ny });
+    drag.moved = true;
+    invalidate();
+    return;
+  }
+
+  if (drag.mode === 'handle') {
+    // asa Bézier: la punta sigue al cursor con el mismo imán; el asa se espeja al lado
+    // opuesto del nodo (nodo suave, como FreeHand)
+    const o = drag.obj;
+    let hx = wx, hy = wy;
+    if (!e.ctrlKey) {
+      const { pg, boxes } = magnetCtx(o.id);
+      const sp = snapPoint(hx, hy, boxes, { width: pg.width, height: pg.height, guides: pg.guides }, 6 / view.zoom);
+      guides = sp.guides; hx = sp.x; hy = sp.y;
+    } else guides = [];
+    const p = o.poly![drag.index];
+    o.polyH![drag.index] = { x: (hx - (o.x + p.x * o.w)) / o.w, y: (hy - (o.y + p.y * o.h)) / o.h };
     drag.moved = true;
     invalidate();
     return;
@@ -1422,11 +1521,22 @@ canvas.addEventListener('pointerup', (e) => {
     if (drag.moved) {
       const { obj, before } = drag;
       const s = obj as ShapeObj;
-      const end = { x: s.x, y: s.y, w: s.w, h: s.h, points: s.points?.map((q) => ({ ...q })), poly: s.poly?.map((q) => ({ ...q })), lineFrom: s.lineFrom };
+      const end = { x: s.x, y: s.y, w: s.w, h: s.h, points: s.points?.map((q) => ({ ...q })), poly: s.poly?.map((q) => ({ ...q })), polyH: s.polyH?.map((h) => (h ? { ...h } : null)), lineFrom: s.lineFrom };
       history.record({
         label: 'editar nodo',
         do: () => Object.assign(obj, end),
         undo: () => Object.assign(obj, before),
+      });
+      persist();
+    }
+  } else if (drag.mode === 'handle') {
+    if (drag.moved) {
+      const { obj, before } = drag;
+      const end = obj.polyH?.map((h) => (h ? { ...h } : null));
+      history.record({
+        label: 'editar asa',
+        do: () => { obj.polyH = end?.map((h) => (h ? { ...h } : null)); },
+        undo: () => { if (before.polyH) obj.polyH = before.polyH.map((h) => (h ? { ...h } : null)); else delete obj.polyH; },
       });
       persist();
     }

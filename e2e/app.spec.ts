@@ -1239,3 +1239,41 @@ test('herramienta de nodos (A): arrastrar un vértice remodela el vector', async
   await page.keyboard.press('Control+z'); // un undo devuelve la línea a horizontal
   await expect.poll(docH(page), { timeout: 5000 }).toBeLessThanOrEqual(2);
 });
+
+/** polyH (asas Bézier) persistido del primer objeto del documento. */
+function docPolyH(page: Page): () => Promise<unknown[] | null> {
+  return () =>
+    page.evaluate(() =>
+      new Promise<unknown[] | null>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve((req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.polyH as unknown[]) ?? null);
+          req.onerror = () => resolve(null);
+        };
+        open.onerror = () => resolve(null);
+      }),
+    );
+}
+
+test('nodo Bézier (A): Alt+clic vuelve curva un vértice, arrastrar su asa lo remodela y un Ctrl+Z lo revierte', async ({ page }) => {
+  const box = (await canvas(page).boundingBox())!;
+  const at = (x: number, y: number): [number, number] => [box.x + x, box.y + y];
+  await page.keyboard.press('p');
+  await page.keyboard.down('Shift'); // vértices rectos (sin suavizado Catmull-Rom)
+  for (const [x, y] of [[150, 150], [350, 150], [350, 350], [150, 350]]) { const [X, Y] = at(x, y); await page.mouse.click(X, Y); }
+  await page.keyboard.up('Shift');
+  { const [X, Y] = at(150, 150); await page.mouse.click(X, Y); } // clic en el primer vértice = cerrar
+  await page.keyboard.press('a');
+  await page.keyboard.down('Alt');
+  { const [X, Y] = at(350, 150); await page.mouse.click(X, Y); } // vértice esquina → nodo Bézier con asa
+  await page.keyboard.up('Alt');
+  const polyH = docPolyH(page);
+  await expect.poll(() => polyH().then((h) => !!h?.some(Boolean)), { timeout: 5000 }).toBe(true);
+  const afterToggle = JSON.stringify(await polyH());
+  // punta del asa por defecto: nodo (350,150) + tangente (1,1)/√2·72 ≈ (401,201)
+  await drag(page, [401, 201], [500, 250]); // arrastrar el asa deforma la curva
+  await expect.poll(() => polyH().then((h) => JSON.stringify(h) !== afterToggle), { timeout: 5000 }).toBe(true);
+  await page.keyboard.press('Control+z'); // un solo undo devuelve el asa a su posición del toggle
+  await expect.poll(() => polyH().then((h) => JSON.stringify(h) === afterToggle), { timeout: 5000 }).toBe(true);
+});

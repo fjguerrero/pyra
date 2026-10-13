@@ -79,6 +79,19 @@ describe('exportSvg: formas', () => {
     expect(soft).toContain(' Z"');
   });
 
+  it('polígono con nodos Bézier (polyH): C en los tramos con asa, L en las esquinas', () => {
+    const s = svgOf([shape({
+      shape: 'polygon',
+      poly: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }],
+      polyH: [null, { x: -0.3, y: 0 }, null, null],
+    })]);
+    // nodo 1 con asa → tramos 0→1 y 1→2 con C (asa espejada); el resto, L
+    expect(s).toContain('C 10 20 140 20 110 20'); // 0→1: c2 = b - asa(−30) = 140
+    expect(s).toContain('C 80 20 110 70 110 70'); // 1→2: c1 = a + asa = 80
+    expect(s).toContain('L 10 70'); // 2→3 recta
+    expect(s).toContain(' Z"');
+  });
+
   it('degradado: defs con linearGradient y stops', () => {
     const svg = svgOf([shape({ shape: 'rect', gradient: { from: '#f00', to: '#00f', angle: 90 } })]);
     expect(svg).toContain('<linearGradient id="grad0"');

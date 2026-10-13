@@ -5,7 +5,7 @@
 // (clip), goma (mask) y ajustes (filters). Módulo puro: testeable en node.
 
 import {
-  lineEnds, polyPoints,
+  lineEnds, polyHasCurves, polyPoints, polySegs,
   type BitmapObj, type Fx, type Gradient, type Obj, type Page, type ShapeObj, type TextObj,
 } from './model';
 import { flattenLayers } from './layers';
@@ -139,7 +139,12 @@ function shapeSvg(c: Ctx, o: ShapeObj): string {
     case 'polygon': {
       const P = polyPoints(o);
       if (P.length < 2) return '';
-      const d = o.smooth && P.length >= 3 ? smoothClosedPath(P) : `M ${P.map((p) => `${n2(p.x)} ${n2(p.y)}`).join(' L ')} Z`;
+      let d: string;
+      if (polyHasCurves(o)) {
+        // nodos Bézier: C para tramos con asa, L para esquinas (FreeHand)
+        const S = polySegs(o);
+        d = `M ${n2(S[0].a.x)} ${n2(S[0].a.y)} ` + S.map((s) => (s.c1 && s.c2 ? `C ${n2(s.c1.x)} ${n2(s.c1.y)} ${n2(s.c2.x)} ${n2(s.c2.y)} ${n2(s.b.x)} ${n2(s.b.y)}` : `L ${n2(s.b.x)} ${n2(s.b.y)}`)).join(' ') + ' Z';
+      } else d = o.smooth && P.length >= 3 ? smoothClosedPath(P) : `M ${P.map((p) => `${n2(p.x)} ${n2(p.y)}`).join(' L ')} Z`;
       return `<path d="${d}"${o.fill ? fillAttr(c, o) : ' fill="none"'}${common}/>`;
     }
     case 'stroke': {

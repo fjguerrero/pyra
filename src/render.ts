@@ -1,5 +1,5 @@
 import { flattenLayers } from './layers';
-import { lineEnds, polyPoints, type BrushShape, type Fx, type LineFrom, type Obj, type Page, type ShapeKind, type ShapeObj } from './model';
+import { lineEnds, polyHasCurves, polyPoints, polySegs, type BrushShape, type Fx, type LineFrom, type Obj, type Page, type ShapeKind, type ShapeObj } from './model';
 import type { View } from './view';
 import type { Guide } from './guides';
 import { findObj, handles } from './hit';
@@ -40,7 +40,7 @@ export interface Scene {
   /** Fondo del área de trabajo: color sólido y/o rejilla de cuadrados. */
   workspace?: { color?: string; grid?: number };
   /** Herramienta de nodos (estilo FreeHand): vértices del vector seleccionado en coords de mundo. */
-  nodes?: { pts: { x: number; y: number }[]; readout?: { x: number; y: number; text: string } | null };
+  nodes?: { pts: { x: number; y: number }[]; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] };
 }
 
 const WORKSPACE = '#0e1013';
@@ -274,6 +274,22 @@ export class Renderer {
     }
 
     if (scene.nodes) {
+      // FreeHand: asas Bézier (línea fina + punto redondo) antes que los vértices
+      if (scene.nodes.handles?.length) {
+        ctx.strokeStyle = '#555555';
+        ctx.lineWidth = 1;
+        for (const h of scene.nodes.handles) {
+          ctx.beginPath();
+          ctx.moveTo(h.vx * v.zoom + v.panX, h.vy * v.zoom + v.panY);
+          ctx.lineTo(h.x * v.zoom + v.panX, h.y * v.zoom + v.panY);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(h.x * v.zoom + v.panX, h.y * v.zoom + v.panY, 3, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
       // FreeHand: los vértices del camino seleccionado como cuadritos negros rellenos
       ctx.fillStyle = '#111111';
       for (const p of scene.nodes.pts) {
@@ -364,7 +380,7 @@ export class Renderer {
     return off;
   }
 
-  private path(o: { x: number; y: number; w: number; h: number; shape: ShapeKind; smooth?: boolean; rx?: number }, v: View): void {
+  private path(o: { x: number; y: number; w: number; h: number; shape: ShapeKind; smooth?: boolean; rx?: number; poly?: { x: number; y: number }[]; polyH?: ({ x: number; y: number } | null)[] }, v: View): void {
     const ctx = this.ctx;
     const x = o.x * v.zoom + v.panX;
     const y = o.y * v.zoom + v.panY;
@@ -378,9 +394,20 @@ export class Renderer {
       ctx.moveTo(e.x1 * v.zoom + v.panX, e.y1 * v.zoom + v.panY);
       ctx.lineTo(e.x2 * v.zoom + v.panX, e.y2 * v.zoom + v.panY);
     } else if (o.shape === 'polygon') {
+      if (polyHasCurves(o)) {
+        // nodos Bézier estilo FreeHand: tramo cúbico si el nodo tiene asa, recto si es esquina
+        const segs = polySegs(o);
+        ctx.moveTo(segs[0].a.x * v.zoom + v.panX, segs[0].a.y * v.zoom + v.panY);
+        for (const s of segs) {
+          if (s.c1 && s.c2) ctx.bezierCurveTo(s.c1.x * v.zoom + v.panX, s.c1.y * v.zoom + v.panY, s.c2.x * v.zoom + v.panX, s.c2.y * v.zoom + v.panY, s.b.x * v.zoom + v.panX, s.b.y * v.zoom + v.panY);
+          else ctx.lineTo(s.b.x * v.zoom + v.panX, s.b.y * v.zoom + v.panY);
+        }
+        ctx.closePath();
+      } else {
       const pts = o.smooth ? smoothClosedPolygon(polyPoints(o), 12) : polyPoints(o);
       pts.forEach((p, i) => (i ? ctx.lineTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY) : ctx.moveTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY)));
       ctx.closePath();
+      }
     } else if (o.shape === 'rect' && o.rx) {
       ctx.roundRect(x, y, w, h, Math.min(o.rx * v.zoom, w / 2, h / 2));
     } else {
