@@ -407,6 +407,29 @@ test('degradado multi-parada: añadir parada abre el editor con 3 filas y se pue
   await expect(page.locator('button[data-stop-del]')).toHaveCount(0);
 });
 
+test('radio de esquina: el inspector aplica rx al rect y queda en el documento', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  const rx = page.locator('label').filter({ hasText: 'Corner radius' }).locator('input');
+  await rx.evaluate((el: HTMLInputElement) => {
+    el.value = '12';
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect.poll(async () =>
+    page.evaluate(() =>
+      new Promise<number>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.rx ?? 0);
+          req.onerror = () => resolve(0);
+        };
+        open.onerror = () => resolve(0);
+      }),
+    ),
+  ).toBe(12);
+});
+
 test('degradado radial: el inspector ofrece alternar lineal/radial', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);

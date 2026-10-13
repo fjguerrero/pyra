@@ -91,6 +91,12 @@ describe('exportSvg: formas', () => {
     expect(svg).toContain('<stop offset="0.5" stop-color="#ff0000"/>');
     expect(svg).toContain('<stop offset="1" stop-color="#ffffff"/>');
   });
+  it('rect con esquinas redondeadas: atributo rx limitado a la mitad del lado corto', () => {
+    const svg = svgOf([shape({ shape: 'rect', rx: 8 })]);
+    expect(svg).toContain('<rect x="10" y="20" width="100" height="50" rx="8"');
+    const big = svgOf([shape({ shape: 'rect', rx: 999 })]);
+    expect(big).toContain('rx="25"');
+  });
 });
 
 describe('exportSvg: trazos del motor de pinceles', () => {

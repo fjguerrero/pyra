@@ -337,7 +337,7 @@ export class Renderer {
     return off;
   }
 
-  private path(o: { x: number; y: number; w: number; h: number; shape: ShapeKind; smooth?: boolean }, v: View): void {
+  private path(o: { x: number; y: number; w: number; h: number; shape: ShapeKind; smooth?: boolean; rx?: number }, v: View): void {
     const ctx = this.ctx;
     const x = o.x * v.zoom + v.panX;
     const y = o.y * v.zoom + v.panY;
@@ -354,6 +354,8 @@ export class Renderer {
       const pts = o.smooth ? smoothClosedPolygon(polyPoints(o), 12) : polyPoints(o);
       pts.forEach((p, i) => (i ? ctx.lineTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY) : ctx.moveTo(p.x * v.zoom + v.panX, p.y * v.zoom + v.panY)));
       ctx.closePath();
+    } else if (o.shape === 'rect' && o.rx) {
+      ctx.roundRect(x, y, w, h, Math.min(o.rx * v.zoom, w / 2, h / 2));
     } else {
       ctx.rect(x, y, w, h);
     }

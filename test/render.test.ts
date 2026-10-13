@@ -15,7 +15,7 @@ function fakeCtx(): { ctx: CanvasRenderingContext2D; ops: Op[] } {
     return undefined as never;
   };
   const ctx = {} as Record<string, unknown>;
-  for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'rect', 'ellipse', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath', 'arc']) {
+  for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'rect', 'roundRect', 'ellipse', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath', 'arc']) {
     ctx[m] = call(m);
   }
   // los estilos se asignan por propiedad, no por método: hay que interceptar el setter
@@ -97,6 +97,34 @@ describe('Renderer.draw: workspace y página', () => {
     const objIdx = ops.findIndex((o) => o.op === 'rect' && o.args[0] === 10);
     expect(clipIdx).toBeGreaterThan(-1);
     expect(objIdx).toBeGreaterThan(clipIdx);
+  });
+});
+
+describe('esquinas redondeadas (rx)', () => {
+  it('un rect sin rx usa rect normal (sin roundRect)', () => {
+    const s = scene();
+    s.page.layers[0].objects.push(rect(10, 10, 30, 30));
+    const ops = draw(s);
+    expect(shapePaths(ops, 'rect').length).toBe(1);
+    expect(ops.some((o) => o.op === 'roundRect')).toBe(false);
+  });
+
+  it('un rect con rx usa roundRect con el radio escalado por el zoom', () => {
+    const s = scene({ view: { zoom: 2, panX: 0, panY: 0 } });
+    const o = rect(10, 10, 30, 30);
+    o.rx = 5;
+    s.page.layers[0].objects.push(o);
+    const rr = shapePaths(draw(s), 'roundRect');
+    expect(rr).toEqual([[20, 20, 60, 60, 10]]);
+  });
+
+  it('el radio se limita a la mitad del lado corto', () => {
+    const s = scene();
+    const o = rect(0, 0, 40, 10);
+    o.rx = 100;
+    s.page.layers[0].objects.push(o);
+    const rr = shapePaths(draw(s), 'roundRect');
+    expect(rr[0][4]).toBe(5);
   });
 });
 

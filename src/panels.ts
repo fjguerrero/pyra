@@ -381,6 +381,23 @@ export function renderPanels(
     num('w', t('width'));
     num('h', t('height'));
 
+    if (obj.shape === 'rect') {
+      // radio de esquina en vivo (Fireworks); 0 = esquina viva
+      const wrap = document.createElement('label');
+      wrap.className = 'field';
+      wrap.innerHTML = `<span>${t('corner_radius')}</span>`;
+      const rx = document.createElement('input');
+      rx.type = 'number';
+      rx.min = '0';
+      rx.value = String(Math.round(obj.rx ?? 0));
+      rx.addEventListener('change', () => {
+        const v = Number(rx.value);
+        if (Number.isFinite(v) && v >= 0) api.editObj(obj, { rx: v > 0 ? v : undefined } as Partial<ShapeObj>);
+      });
+      wrap.appendChild(rx);
+      insp.appendChild(wrap);
+    }
+
     if (obj.shape === 'bitmap') {
       sliderField(t('saturation'), obj.sat, 0, 2, 0.05, (v) => api.editObj(obj, { sat: v } as Partial<BitmapObj>));
       sliderField(t('brightness'), obj.bri, 0, 2, 0.05, (v) => api.editObj(obj, { bri: v } as Partial<BitmapObj>));

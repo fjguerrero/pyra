@@ -58,6 +58,8 @@ export interface ShapeObj {
   fx?: Fx;
   /** Rotación en grados alrededor del centro del bbox. */
   rot?: number;
+  /** Radio de esquina en px solo para rect (Fireworks: live corner radius); 0/undefined = esquina viva. */
+  rx?: number;
   /** Id de grupo: los objetos con el mismo id se seleccionan y mueven juntos (Ctrl+G). */
   group?: string;
   /** Pincel del trazo; undefined = redondo. */

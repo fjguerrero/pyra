@@ -122,7 +122,7 @@ function shapeSvg(c: Ctx, o: ShapeObj): string {
   const common = `${rotAttr(o)}${strokeAttrs(o)}`;
   switch (o.shape) {
     case 'rect':
-      return `<rect x="${n2(o.x)}" y="${n2(o.y)}" width="${n2(o.w)}" height="${n2(o.h)}"${fillAttr(c, o)}${common}/>`;
+      return `<rect x="${n2(o.x)}" y="${n2(o.y)}" width="${n2(o.w)}" height="${n2(o.h)}"${o.rx ? ` rx="${n2(Math.min(o.rx, o.w / 2, o.h / 2))}"` : ''}${fillAttr(c, o)}${common}/>`;
     case 'ellipse':
       return `<ellipse cx="${n2(o.x + o.w / 2)}" cy="${n2(o.y + o.h / 2)}" rx="${n2(o.w / 2)}" ry="${n2(o.h / 2)}"${fillAttr(c, o)}${common}/>`;
     case 'line': {
