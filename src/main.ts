@@ -131,14 +131,16 @@ function invalidate(): void {
   dirty = true;
   requestAnimationFrame(() => {
     dirty = false;
-    let nodes: { pts: { x: number; y: number }[]; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] } | undefined;
+    let nodes: { pts: { x: number; y: number; kind?: 'corner' | 'smooth' | 'cusp' }[]; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] } | undefined;
     if (tool === 'subselect') {
       const o = drag?.mode === 'node' ? drag.obj : findObj(activePage(doc), selectedId);
       const pts = o ? nodePoints(o) : [];
       if (o && pts.length) {
         const tips = o.shape === 'polygon' ? handleTips(o) : [];
+        // tipo de nodo por índice: cúspide (polyH2) > suave (polyH) > esquina — para pintar su icono
+        const kind = (i: number): 'corner' | 'smooth' | 'cusp' => ((o as ShapeObj).polyH2?.[i] ? 'cusp' : (o as ShapeObj).polyH?.[i] ? 'smooth' : 'corner');
         nodes = {
-          pts,
+          pts: pts.map((p, i) => ({ ...p, kind: o.shape === 'polygon' ? kind(i) : 'corner' })),
           handles: tips.map((t) => ({ x: t.x, y: t.y, vx: polyPoints(o)[t.vi].x, vy: polyPoints(o)[t.vi].y })),
           readout: drag?.mode === 'node' ? nodeReadout(drag.obj, drag.index) : drag?.mode === 'handle' ? handleReadout(drag.obj, drag.index, drag.side) : null,
         };
@@ -748,21 +750,26 @@ function handleTips(o: Obj): { x: number; y: number; vi: number; side: 'out' | '
 }
 const tipHit = (px: number, py: number, o: Obj): number =>
   handleTips(o).findIndex((t) => Math.abs(px - (t.x * view.zoom + view.panX)) <= 6 && Math.abs(py - (t.y * view.zoom + view.panY)) <= 6);
-/** Alt+clic en un vértice de polígono: esquina → nodo Bézier con asa sobre la tangente media (~1/3 del tramo,
- * como FreeHand) o de vuelta a esquina. El asa se espeja a ambos lados = nodo suave. */
+/** Alt+clic o doble clic en un vértice de polígono: cicla el tipo de nodo (FreeHand):
+ * esquina → suave (asa espejada sobre la tangente media, ~1/3 del tramo) → cúspide (segunda asa
+ * naciendo espejada, luego cada lado se arrastra independiente = curva doble configurable) → esquina. */
 function toggleNodeCurve(o: ShapeObj, i: number): void {
   const v = polyPoints(o);
   const H = (o.polyH ? [...o.polyH] : v.map(() => null)) as ({ x: number; y: number } | null)[];
-  if (o.polyH2) o.polyH2[i] = null; // al cambiar de tipo de nodo, fuera la cúspide
-  if (H[i]) H[i] = null;
-  else {
+  const H2 = (o.polyH2 ? [...o.polyH2] : v.map(() => null)) as ({ x: number; y: number } | null)[];
+  if (H2[i]) {
+    H[i] = null; H2[i] = null; // cúspide → esquina
+  } else if (H[i]) {
+    H2[i] = { x: -H[i]!.x, y: -H[i]!.y }; // suave → cúspide: la forma no cambia, el lado entrante queda libre
+  } else {
     const p = v[i], a = v[(i + v.length - 1) % v.length], b = v[(i + 1) % v.length];
     const d1 = Math.hypot(p.x - a.x, p.y - a.y) || 1, d2 = Math.hypot(b.x - p.x, b.y - p.y) || 1;
     const ux = (p.x - a.x) / d1 + (b.x - p.x) / d2, uy = (p.y - a.y) / d1 + (b.y - p.y) / d2;
     const m = Math.hypot(ux, uy) || 1, len = 0.36 * Math.min(d1, d2);
-    H[i] = { x: ((ux / m) * len) / o.w, y: ((uy / m) * len) / o.h };
+    H[i] = { x: ((ux / m) * len) / o.w, y: ((uy / m) * len) / o.h }; // esquina → suave
   }
   o.polyH = H;
+  if (H2.some(Boolean)) o.polyH2 = H2; else delete o.polyH2;
 }
 /** Toggle esquina↔Bézier con comando de historial (Alt+clic o doble clic en el vértice). */
 function toggleVertex(s: ShapeObj, vi: number): void {

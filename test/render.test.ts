@@ -401,6 +401,14 @@ describe('Renderer.draw: cinta de trazo sin puntos blancos', () => {
     // punta como círculo pequeño
     expect(ops.some((o) => o.op === 'arc' && o.args[0] === 30 && o.args[1] === 10 && o.args[2] === 3)).toBe(true);
   });
+
+  it('icono de nodo por tipo: círculo si suave, triángulo si cúspide, cuadrado si esquina', () => {
+    const s = scene({ selectedId: 'x', nodes: { pts: [{ x: 10, y: 10, kind: 'smooth' }, { x: 50, y: 10, kind: 'cusp' }, { x: 90, y: 10, kind: 'corner' }] } });
+    const ops = draw(s);
+    expect(ops.some((o) => o.op === 'arc' && o.args[0] === 10 && o.args[1] === 10 && o.args[2] === 3)).toBe(true); // suave
+    expect(ops.some((o) => o.op === 'moveTo' && o.args[0] === 50 && Number(o.args[1]) < 10)).toBe(true); // cúspide: triángulo
+    expect(ops.some((o) => o.op === 'fillRect' && o.args[0] === 87.5)).toBe(true); // esquina: cuadrado
+  });
 });
 
 describe('polígono con nodos Bézier (polyH)', () => {

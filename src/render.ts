@@ -40,7 +40,7 @@ export interface Scene {
   /** Fondo del área de trabajo: color sólido y/o rejilla de cuadrados. */
   workspace?: { color?: string; grid?: number };
   /** Herramienta de nodos (estilo FreeHand): vértices del vector seleccionado en coords de mundo. */
-  nodes?: { pts: { x: number; y: number }[]; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] };
+  nodes?: { pts: { x: number; y: number; kind?: 'corner' | 'smooth' | 'cusp' }[]; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] };
 }
 
 const WORKSPACE = '#0e1013';
@@ -290,10 +290,25 @@ export class Renderer {
           ctx.stroke();
         }
       }
-      // FreeHand: los vértices del camino seleccionado como cuadritos negros rellenos
+      // FreeHand: los vértices del camino seleccionado con icono por tipo de nodo:
+      // cuadrado = esquina, círculo = suave (asa espejada), triángulo = cúspide (asas independientes)
       ctx.fillStyle = '#111111';
       for (const p of scene.nodes.pts) {
-        ctx.fillRect(p.x * v.zoom + v.panX - 2.5, p.y * v.zoom + v.panY - 2.5, 5, 5);
+        const sx = p.x * v.zoom + v.panX, sy = p.y * v.zoom + v.panY;
+        if (p.kind === 'smooth') {
+          ctx.beginPath();
+          ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (p.kind === 'cusp') {
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - 3.4);
+          ctx.lineTo(sx + 3, sy + 2.4);
+          ctx.lineTo(sx - 3, sy + 2.4);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.fillRect(sx - 2.5, sy - 2.5, 5, 5);
+        }
       }
       // lectura flotante ángulo/longitud durante el arrastre, como el puntero de FreeHand
       const r = scene.nodes.readout;
