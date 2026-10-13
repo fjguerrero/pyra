@@ -395,14 +395,17 @@ export class Renderer {
 
   private drawObj(o: Obj, v: View): void {
     const rot = o.rot ?? 0;
-    if (!rot) return this.drawObjRaw(o, v);
-    // rotación visual alrededor del centro del bbox
+    const sx = o.flipH ? -1 : 1;
+    const sy = o.flipV ? -1 : 1;
+    if (!rot && sx === 1 && sy === 1) return this.drawObjRaw(o, v);
+    // rotación/espejo visuales alrededor del centro del bbox
     const ctx = this.ctx;
     const cx = (o.x + o.w / 2) * v.zoom + v.panX;
     const cy = (o.y + o.h / 2) * v.zoom + v.panY;
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate((rot * Math.PI) / 180);
+    if (rot) ctx.rotate((rot * Math.PI) / 180);
+    if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
     ctx.translate(-cx, -cy);
     this.drawObjRaw(o, v);
     ctx.restore();

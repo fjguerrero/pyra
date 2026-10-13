@@ -30,6 +30,8 @@ const P: Record<string, string> = {
   plus: 'M12 5v14M5 12h14',
   up: 'M12 19V5m-6 6 6-6 6 6',
   down: 'M12 5v14m-6-6 6 6 6-6',
+  flipH: 'M12 4v16M9 8 5 12l4 4zM15 8l4 4-4 4z',
+  flipV: 'M4 12h16M8 9 12 5l4 4zM8 15l4 4 4-4z',
   layers: 'M12 3 3 8l9 5 9-5zM3 13l9 5 9-5',
   pages: 'M8 3h8l4 4v14H8zM16 3v4h4',
   sliders: 'M4 8h10M18 8h2M4 16h4M12 16h8M14 5v6M8 13v6',

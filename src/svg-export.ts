@@ -78,8 +78,15 @@ function fxFilter(c: Ctx, fx: Fx | undefined, sat?: number, bri?: number): strin
   return `url(#${id})`;
 }
 
-const rotAttr = (o: { x: number; y: number; w: number; h: number; rot?: number }): string =>
-  o.rot ? ` transform="rotate(${n2(o.rot)} ${n2(o.x + o.w / 2)} ${n2(o.y + o.h / 2)})"` : '';
+const rotAttr = (o: { x: number; y: number; w: number; h: number; rot?: number; flipH?: boolean; flipV?: boolean }): string => {
+  const parts: string[] = [];
+  if (o.rot) parts.push(`rotate(${n2(o.rot)} ${n2(o.x + o.w / 2)} ${n2(o.y + o.h / 2)})`);
+  if (o.flipH || o.flipV) {
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    parts.push(`translate(${n2(cx)} ${n2(cy)}) scale(${o.flipH ? -1 : 1} ${o.flipV ? -1 : 1}) translate(${n2(-cx)} ${n2(-cy)})`);
+  }
+  return parts.length ? ` transform="${parts.join(' ')}"` : '';
+};
 
 const dashAttr = (o: ShapeObj): string => (o.dash ? ` stroke-dasharray="${o.dash.map(n2).join(' ')}"` : '');
 

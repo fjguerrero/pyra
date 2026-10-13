@@ -1,6 +1,6 @@
 // Comandos de edición sobre la selección: duplicar, pegar, orden de apilado.
 // Cada uno devuelve un Command undoable listo para history.run().
-import { convexHull, lineEnds, polyPoints, uid, type Obj, type Page, type ShapeObj } from './model';
+import { convexHull, flipPt, lineEnds, polyPoints, uid, type Obj, type Page, type ShapeObj } from './model';
 import type { Command } from './history';
 
 function cloneInto(page: Page, o: Obj, dx: number, dy: number): { clone: Obj; layerIndex: number } | null {
@@ -84,6 +84,11 @@ export function groupCmd(objs: Obj[], group: string | undefined): Command {
 
 /** Puntos de contorno de una forma para la unión. */
 function outline(o: Obj): { x: number; y: number }[] {
+  const pts = outlineRaw(o);
+  return o.flipH || o.flipV ? pts.map((p) => flipPt(o, p)) : pts;
+}
+
+function outlineRaw(o: Obj): { x: number; y: number }[] {
   if (o.shape === 'ellipse') {
     const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
     return Array.from({ length: 16 }, (_, i) => ({
@@ -95,6 +100,17 @@ function outline(o: Obj): { x: number; y: number }[] {
   if (o.shape === 'line') { const e = lineEnds(o); return [{ x: e.x1, y: e.y1 }, { x: e.x2, y: e.y2 }]; }
   if (o.shape === 'stroke') return (o.points ?? []).map((p) => ({ x: o.x + p.x * o.w, y: o.y + p.y * o.h }));
   return [{ x: o.x, y: o.y }, { x: o.x + o.w, y: o.y }, { x: o.x + o.w, y: o.y + o.h }, { x: o.x, y: o.y + o.h }];
+}
+
+/** Espejo por el centro del bbox (Fireworks: Transform → Flip Horizontal/Vertical). */
+export function flipCmd(objs: Obj[], axis: 'h' | 'v'): Command {
+  const key = axis === 'h' ? 'flipH' : 'flipV';
+  const before = objs.map((o) => o[key]);
+  return {
+    label: axis === 'h' ? 'voltear horizontal' : 'voltear vertical',
+    do: () => objs.forEach((o) => { o[key] = !o[key]; }),
+    undo: () => objs.forEach((o, i) => { if (before[i]) o[key] = true; else delete o[key]; }),
+  };
 }
 
 /** Unión booleana aproximada (hull convexo) de las formas seleccionadas: una sola. */

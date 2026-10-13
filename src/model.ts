@@ -58,6 +58,9 @@ export interface ShapeObj {
   fx?: Fx;
   /** Rotación en grados alrededor del centro del bbox. */
   rot?: number;
+  /** Espejo alrededor del centro del bbox (Fireworks: Transform → Flip). */
+  flipH?: boolean;
+  flipV?: boolean;
   /** Radio de esquina en px solo para rect (Fireworks: live corner radius); 0/undefined = esquina viva. */
   rx?: number;
   /** Id de grupo: los objetos con el mismo id se seleccionan y mueven juntos (Ctrl+G). */
@@ -95,6 +98,8 @@ export interface BitmapObj {
   bri: number; // 1 = original
   fx?: Fx;
   rot?: number;
+  flipH?: boolean;
+  flipV?: boolean;
   /** Id de grupo: los objetos con el mismo id se seleccionan y mueven juntos (Ctrl+G). */
   group?: string;
   /** Goma de borrar: círculos borrados en coordenadas normalizadas 0..1 del bbox. */
@@ -117,6 +122,12 @@ export function lineEnds(o: { x: number; y: number; w: number; h: number; lineFr
     y2: north ? o.y + o.h : o.y,
   };
 }
+
+/** Espejo de un punto por el centro del bbox; autoinverso: sirve para ir y volver. */
+export const flipPt = (o: { x: number; y: number; w: number; h: number; flipH?: boolean; flipV?: boolean }, p: { x: number; y: number }): { x: number; y: number } => ({
+  x: o.flipH ? o.x + o.w - p.x : p.x,
+  y: o.flipV ? o.y + o.h - p.y : p.y,
+});
 
 /** Líneas y trazos de pincel: se pintan con trazo, no con relleno. */
 export const isLineLike = (o: { shape: string }): boolean => o.shape === 'line' || o.shape === 'stroke';
@@ -162,6 +173,8 @@ export interface TextObj {
   fill: string;
   fx?: Fx;
   rot?: number;
+  flipH?: boolean;
+  flipV?: boolean;
   /** Id de grupo: los objetos con el mismo id se seleccionan y mueven juntos (Ctrl+G). */
   group?: string;
 }

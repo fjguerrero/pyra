@@ -45,6 +45,7 @@ export interface PanelApi {
   reorderLayer(layerId: string, targetId: string, mode: 'before' | 'after' | 'child'): void;
   align(kind: AlignKind): void;
   order(kind: 'front' | 'up' | 'down' | 'back'): void;
+  flip(axis: 'h' | 'v'): void;
   union(): void;
   selectPage(pageId: string): void;
   editPage(patch: { width?: number; height?: number }): void;
@@ -668,6 +669,15 @@ export function renderPanels(
     og.appendChild(ob);
   }
   ab.appendChild(og);
+  // voltear espejo (Fireworks: Transform → Flip)
+  const fg = document.createElement('div');
+  fg.className = 'aligngrid';
+  for (const [axis, iconName, titleKey] of [['h', 'flipH', 'flip_h'], ['v', 'flipV', 'flip_v']] as const) {
+    const fb = btn('', '', t(titleKey), false, () => api.flip(axis), iconName);
+    fb.dataset.flip = axis;
+    fg.appendChild(fb);
+  }
+  ab.appendChild(fg);
   if (selectedIds.length >= 2) {
     const ub = btn('', t('union'), t('union_hint'), false, () => api.union());
     ub.dataset.act = 'union';

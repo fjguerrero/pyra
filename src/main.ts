@@ -11,7 +11,7 @@ import { exportSvg } from './svg-export';
 import { bbox, computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { DEFAULT_FONT, measureText } from './text';
-import { duplicateCmd, groupCmd, pasteCmd, unionCmd, zOrderCmd } from './commands';
+import { duplicateCmd, flipCmd, groupCmd, pasteCmd, unionCmd, zOrderCmd } from './commands';
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
 import { renderPanels, type BrushPanelArg } from './panels';
@@ -1485,6 +1485,13 @@ const panelApi = {
     }
     invalidate();
   },
+  flip(axis: 'h' | 'v'): void {
+    const objs = selectedObjs();
+    if (!objs.length) return;
+    history.run(flipCmd(objs, axis));
+    persist();
+    invalidate();
+  },
   editPage(patch: { width?: number; height?: number }): void {
     const page = activePage(doc);
     const before = { width: page.width, height: page.height };
@@ -1748,15 +1755,15 @@ window.addEventListener('keydown', (e) => {
     select(null);
     selectedLayerId = null;
     invalidate();
-  } else if (e.key === 'v' || e.key === 'V') {
+  } else if (!mod && (e.key === 'v' || e.key === 'V')) {
     setTool('select');
-  } else if (e.key === 'r' || e.key === 'R') {
+  } else if (!mod && (e.key === 'r' || e.key === 'R')) {
     setTool('rect');
-  } else if (e.key === 'e' || e.key === 'E') {
+  } else if (!mod && (e.key === 'e' || e.key === 'E')) {
     setTool('ellipse');
-  } else if (e.key === 'l' || e.key === 'L') {
+  } else if (!mod && (e.key === 'l' || e.key === 'L')) {
     setTool('line');
-  } else if (e.key === 't' || e.key === 'T') {
+  } else if (!mod && (e.key === 't' || e.key === 'T')) {
     setTool('text');
   } else if (!mod && (e.key === '[' || e.key === ']')) {
     // [ y ]: grosor de la herramienta activa si la tiene (Sketchbook); si no, z-order.
@@ -1777,17 +1784,17 @@ window.addEventListener('keydown', (e) => {
         invalidate();
       }
     }
-  } else if (e.key === 'b' || e.key === 'B') {
+  } else if (!mod && (e.key === 'b' || e.key === 'B')) {
     setTool('brush');
-  } else if (e.key === 'p' || e.key === 'P') {
+  } else if (!mod && (e.key === 'p' || e.key === 'P')) {
     setTool('pen');
-  } else if (e.key === 'n' || e.key === 'N') {
+  } else if (!mod && (e.key === 'n' || e.key === 'N')) {
     setTool('pencil');
   } else if (!mod && (e.key === 'g' || e.key === 'G')) {
     setTool('polypen');
-  } else if (e.key === 'x' || e.key === 'X') {
+  } else if (!mod && (e.key === 'x' || e.key === 'X')) {
     setTool('eraser');
-  } else if (e.key === 'i' || e.key === 'I') {
+  } else if (!mod && (e.key === 'i' || e.key === 'I')) {
     setTool('eyedropper');
   } else if (mod && (e.key === 'u' || e.key === 'U')) {
     e.preventDefault();
@@ -1814,6 +1821,13 @@ window.addEventListener('keydown', (e) => {
     const ungroup = e.shiftKey;
     history.run(groupCmd(objs, ungroup ? undefined : uid()));
     if (ungroup) selectedIds = [selectedId ?? ''].filter(Boolean);
+    persist();
+    invalidate();
+  } else if (mod && e.shiftKey && (e.key === 'h' || e.key === 'H' || e.key === 'v' || e.key === 'V')) {
+    e.preventDefault();
+    const objs = selectedObjs();
+    if (!objs.length) return;
+    history.run(flipCmd(objs, e.key === 'v' || e.key === 'V' ? 'v' : 'h'));
     persist();
     invalidate();
   } else if (mod && (e.key === 'c' || e.key === 'C')) {

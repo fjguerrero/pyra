@@ -2,7 +2,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { newDoc, activePage, type ShapeObj } from '../src/model';
-import { duplicateCmd, groupCmd, pasteCmd, zOrderCmd } from '../src/commands';
+import { duplicateCmd, flipCmd, groupCmd, pasteCmd, zOrderCmd } from '../src/commands';
 import { History } from '../src/history';
 
 function docWith(objs: ShapeObj[]) {
@@ -74,6 +74,32 @@ describe('rotación', () => {
     // girado 90°: ocupa verticalmente x∈[40,60], y∈[-40,60]
     expect(hitObj(o, 50, 50)).toBe(true);
     expect(hitObj(o, 90, 10)).toBe(false);
+  });
+});
+
+describe('flipCmd', () => {
+  it('conmuta flipH y el undo borra la propiedad', () => {
+    const a = rect(0, 0);
+    docWith([a]);
+    const h = new History();
+    h.run(flipCmd([a], 'h'));
+    expect(a.flipH).toBe(true);
+    h.undo();
+    expect('flipH' in a).toBe(false);
+  });
+
+  it('flipV dos veces = identidad; convive con flipH', () => {
+    const a = rect(0, 0);
+    docWith([a]);
+    const h = new History();
+    h.run(flipCmd([a], 'v'));
+    h.run(flipCmd([a], 'v'));
+    expect(a.flipV).toBeFalsy();
+    h.run(flipCmd([a], 'h'));
+    expect(a.flipH).toBe(true);
+    expect(a.flipV).toBeFalsy();
+    h.undo();
+    expect(a.flipH).toBeFalsy();
   });
 });
 

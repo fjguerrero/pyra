@@ -52,6 +52,13 @@ describe('exportSvg: formas', () => {
     expect(svg).toContain('transform="rotate(45 60 45)"');
   });
 
+  it('flipH/flipV producen un transform de espejo sobre el centro del bbox', () => {
+    const svg = svgOf([shape({ shape: 'rect', flipH: true })]);
+    expect(svg).toContain('transform="translate(60 45) scale(-1 1) translate(-60 -45)"');
+    const both = svgOf([shape({ shape: 'rect', flipV: true, rot: 90 })]);
+    expect(both).toContain('transform="rotate(90 60 45) translate(60 45) scale(1 -1) translate(-60 -45)"');
+  });
+
   it('ellipse usa cx/cy/rx/ry', () => {
     const svg = svgOf([shape({ shape: 'ellipse' })]);
     expect(svg).toContain('<ellipse cx="60" cy="45" rx="50" ry="25"');

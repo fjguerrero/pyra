@@ -166,6 +166,16 @@ describe('hitObj: la detección sigue la forma del objeto', () => {
     expect(hitObj(o, 105, 10.5, 12)).toBe(true); // junto al extremo sí
   });
 
+  it('una línea volteada en H capta su espejo, no el trazo original', () => {
+    // bbox 0,0 → 100,100: original va de (0,0) a (100,100) (recta y=x);
+    // con flipH va de (100,0) a (0,100) (recta x+y=100)
+    const o = shape('line', 0, 0, 100, 100);
+    o.flipH = true;
+    expect(hitObj(o, 50, 50)).toBe(true); // el centro coincide igual
+    expect(hitObj(o, 90, 10)).toBe(true); // sobre el trazo espejo
+    expect(hitObj(o, 90, 90)).toBe(false); // el trazo original ya no está ahí
+  });
+
   it('una línea arrastrada hacia arriba-derecha traza hacia arriba-derecha, no reflejada', () => {
     // bbox 0,0 → 100,100 pero el arrastre fue de (100,100) a (0,0): lineFrom 'se'
     const o = { ...shape('line', 0, 0, 100, 100), lineFrom: 'se' as const };

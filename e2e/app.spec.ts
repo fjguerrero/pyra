@@ -430,6 +430,28 @@ test('radio de esquina: el inspector aplica rx al rect y queda en el documento',
   ).toBe(12);
 });
 
+test('Ctrl+Shift+H voltea la selección (flipH en el documento) y Ctrl+Z lo deshace', async ({ page }) => {
+  await page.keyboard.press('l');
+  await drag(page, [100, 100], [240, 200]);
+  await expect.poll(docShape(page)).toBe('line');
+  const docFlipH = () =>
+    page.evaluate(() =>
+      new Promise<string>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve(String(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.flipH ?? ''));
+          req.onerror = () => resolve('');
+        };
+        open.onerror = () => resolve('');
+      }),
+    );
+  await page.keyboard.press('Control+Shift+h');
+  await expect.poll(docFlipH).toBe('true');
+  await page.keyboard.press('Control+z');
+  await expect.poll(docFlipH).toBe('');
+});
+
 test('degradado radial: el inspector ofrece alternar lineal/radial', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);

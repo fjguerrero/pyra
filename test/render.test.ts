@@ -15,7 +15,7 @@ function fakeCtx(): { ctx: CanvasRenderingContext2D; ops: Op[] } {
     return undefined as never;
   };
   const ctx = {} as Record<string, unknown>;
-  for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'rect', 'roundRect', 'ellipse', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath', 'arc']) {
+  for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'rect', 'roundRect', 'ellipse', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath', 'arc', 'translate', 'rotate', 'scale']) {
     ctx[m] = call(m);
   }
   // los estilos se asignan por propiedad, no por método: hay que interceptar el setter
@@ -125,6 +125,25 @@ describe('esquinas redondeadas (rx)', () => {
     s.page.layers[0].objects.push(o);
     const rr = shapePaths(draw(s), 'roundRect');
     expect(rr[0][4]).toBe(5);
+  });
+});
+
+describe('espejo (flipH/flipV)', () => {
+  it('un objeto con flipH se pinta con scale(-1, 1) anclado al centro del bbox', () => {
+    const s = scene();
+    const o = rect(10, 10, 30, 30);
+    o.flipH = true;
+    s.page.layers[0].objects.push(o);
+    const ops = draw(s);
+    expect(ops.filter((x) => x.op === 'scale')).toEqual([{ op: 'scale', args: [-1, 1] }]);
+    const tr = ops.filter((x) => x.op === 'translate').map((x) => x.args);
+    expect(tr).toEqual([[25, 25], [-25, -25]]); // anclado al centro del bbox
+  });
+
+  it('un objeto sin flip no toca scale ni rotate', () => {
+    const s = scene();
+    s.page.layers[0].objects.push(rect(10, 10, 30, 30));
+    expect(draw(s).some((x) => x.op === 'scale' || x.op === 'rotate')).toBe(false);
   });
 });
 

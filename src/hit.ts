@@ -1,5 +1,5 @@
 import { flattenLayers } from './layers';
-import { lineEnds, polyPoints, type Layer, type Obj, type Page } from './model';
+import { flipPt, lineEnds, polyPoints, type Layer, type Obj, type Page } from './model';
 import type { View } from './view';
 
 /**
@@ -32,6 +32,12 @@ export function hitObj(o: Obj, wx: number, wy: number, tol = 0): boolean {
     const dx = wx - cx, dy = wy - cy;
     wx = cx + dx * c - dy * sn;
     wy = cy + dx * sn + dy * c;
+  }
+  if (o.flipH || o.flipV) {
+    // llevar el punto al espacio local: el espejo es su propio inverso
+    const p = flipPt(o, { x: wx, y: wy });
+    wx = p.x;
+    wy = p.y;
   }
   if (wx < o.x - tol || wx > o.x + o.w + tol || wy < o.y - tol || wy > o.y + o.h + tol) return false;
   if (o.shape === 'rect' || o.shape === 'bitmap' || o.shape === 'text') return true;
