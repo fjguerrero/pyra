@@ -1,5 +1,15 @@
 # Pyra — registro de versiones
 
+## v1.4 — 2026-10-13
+
+### Correcciones
+- Puntos blancos en trazos (causa raíz): en `fillRibbon` los arcos de tope se dibujaban clockwise mientras los quads de `strokeOutline` van al contrario; con winding opuesto el fill nonzero dejaba un agujero en cada punto de captura. Arcos ahora antihorarios; confirmado con sonda de canvas headless y check e2e de píxeles sobre la línea de captura.
+
+### Herramientas
+- Herramienta de nodos (`A`, subselect): remodela vectores como el puntero de FreeHand. Con un vector seleccionado (trazo/polilínea/línea) muestra sus vértices como cuadrados negros en vez de asas de marco; arrastrar un vértice remodela el objeto (recalcula bbox y re-normaliza puntos) y muestra lectura flotante con ángulo (0–360°) y longitud del segmento, como hacía FreeHand. Un solo Ctrl+Z por arrastre. Botón en barra, icono, i18n es/en y ayuda.
+
+Verificación: `tsc --noEmit` limpio, 271 tests unitarios, 59 e2e Playwright.
+
 ## v1.3 — 2026-10-13
 
 ### Herramientas y objetos

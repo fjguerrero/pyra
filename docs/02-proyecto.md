@@ -1,115 +1,122 @@
-# Pyra — un clon de Fireworks para la web (2026)
+# Pyra — a Fireworks clone for the web (2026)
 
-## Tesis
+## Thesis
 
-Reconstruir lo que Fireworks hacía y nadie ha vuelto a hacer: **bitmap y vector en el
-mismo lienzo, capas simples, maquetación sin fricción, efectos vivos no destructivos**,
-como app web rápida de verdad. No un Figma-lite: un Fireworks con 25 años de mejoras.
+Rebuild what Fireworks did and nobody has done since: **bitmap and vector on the
+same canvas, simple layers, frictionless layout, live non-destructive effects**,
+as a genuinely fast web app. Not a Figma-lite: a Fireworks with 25 years of improvements.
 
-## Principios de diseño (heredados de Fireworks)
+## Design principles (inherited from Fireworks)
 
-1. **Un lienzo, dos naturalezas.** Objetos bitmap y objetos vector coexisten; la misma
-   selección, transformación y edición aplica a ambos.
-2. **Capas primero.** Panel de capas visible siempre: visibilidad, bloqueo, opacidad,
-   blending, reorden. La maquetación es el flujo principal, no un extra.
-3. **No destructivo siempre.** Efectos (sombra, glow, bevel, blur) como atributos del
-   objeto, editables en cualquier momento, sobre bitmap, vector y texto.
-4. **Property Inspector contextual.** Las propiedades del objeto seleccionado, a mano,
-   siempre. Sin cavar menús ni diálogos modales.
-5. **Páginas.** Un documento = varias pantallas navegables al instante.
-6. **Rápido.** "Súper optimizado" es un requisito, no un deseo (ver arquitectura).
+1. **One canvas, two natures.** Bitmap objects and vector objects coexist; the same
+   selection, transformation and editing applies to both.
+2. **Layers first.** Always-visible layers panel: visibility, lock, opacity,
+   blending, reorder. Layout is the main flow, not an extra.
+3. **Non-destructive always.** Effects (shadow, glow, bevel, blur) as attributes of
+   the object, editable at any time, on bitmap, vector and text.
+4. **Contextual Property Inspector.** The selected object's properties, at hand,
+   always. No digging through menus or modal dialogs.
+5. **Pages.** One document = several screens navigable instantly.
+6. **Fast.** "Super optimized" is a requirement, not a wish (see architecture).
 
-## Diferencias conscientes con la UI original
+## Deliberate differences from the original UI
 
-- No replicamos los paneles flotantes de 1998. Layout fijo moderno: toolbar izquierda,
-  inspector derecho (propiedades + capas + páginas en columnas), canvas central.
-- Look 2026: tema oscuro denso, iconografía lineal, tipografía limpia, HiDPI nativo,
-  atajos de teclado primero.
-- Nada de slices/HTML export (el usuario lo descarta): export de imágenes (PNG con
-  fuente editable embebida, como Fireworks) + export de assets por selección.
+- We do not replicate the 1998 floating panels. Modern fixed layout: left toolbar,
+  right inspector (properties + layers + pages in columns), central canvas.
+- 2026 look: dense dark theme, linear iconography, clean typography, native HiDPI,
+  keyboard shortcuts first.
+- No slices/HTML export (the user rules it out): image export (PNG with
+  embedded editable source, like Fireworks) + per-selection asset export.
 
-## Arquitectura (optimización como requisito)
+## Architecture (optimization as a requirement)
 
-- **TypeScript estricto, sin framework de UI.** DOM mínimo para paneles; canvas para todo
-  lo demás. Cero dependencias de render (no React). Vite como bundler.
-- **Scene graph propio**: documentos → páginas → capas → objetos. Modelo plano con
-  índices; sin clones por frame.
-- **Render Canvas2D con dirty-rects + cache por capa**: solo se repinta lo que cambia;
-  capas estáticas a offscreen canvas. Objetivo: 60fps con miles de objetos.
-- **Undo/redo por comandos** (no snapshots de documento).
-- **Persistencia**: IndexedDB para sesiones; archivo `.f.png` (PNG normal con la fuente
-  editable embebida en metadatos — el truco de Fireworks con `.fw.png`, igual que él)
-  para export/import.
-- **Sin servidor, sin cuenta, sin colaboración** (por ahora). Local-first.
+- **Strict TypeScript, no UI framework.** Minimal DOM for panels; canvas for
+  everything else. Zero render dependencies (no React). Vite as bundler.
+- **Own scene graph**: documents → pages → layers → objects. Flat model with
+  indices; no clones per frame.
+- **Canvas2D rendering with dirty-rects + per-layer cache**: only what changes is
+  repainted; static layers to offscreen canvas. Target: 60fps with thousands of objects.
+- **Undo/redo by commands** (not document snapshots).
+- **Persistence**: IndexedDB for sessions; `.f.png` file (a normal PNG with the
+  editable source embedded in metadata — Fireworks' `.fw.png` trick, same as his)
+  for export/import.
+- **No server, no account, no collaboration** (for now). Local-first.
 
-## Fases
+## Phases
 
-- **M0 — Núcleo**: scene graph, canvas con pan/zoom, selección, transformación,
-  undo/redo, persistencia IndexedDB.
-- **M1 — Capas y maquetación**: panel de capas completo, smart guides, snapping,
-  alineación/distribución, páginas.
-- **M2 — Vector**: formas (rect, elipse, polígono, línea), pen tool simplificado,
-  relleno/borde, unión booleana básica.
-- **M3 — Bitmap**: importar imágenes como objetos, recorte, filtros básicos
-  (blur, niveles, saturación) como efectos vivos.
-- **M4 — Texto**: text tool, tipografía en inspector, texto como objeto editable.
-- **M5 — Live effects**: sombra, glow, bevel, blur como atributos no destructivos
-  sobre cualquier objeto.
-- **M6 — Archivo**: `.f.png` (PNG + fuente embebida), export de assets, import de PNG
-  con fuente.
+- **M0 — Core**: scene graph, canvas with pan/zoom, selection, transformation,
+  undo/redo, IndexedDB persistence.
+- **M1 — Layers and layout**: full layers panel, smart guides, snapping,
+  alignment/distribution, pages.
+- **M2 — Vector**: shapes (rect, ellipse, polygon, line), simplified pen tool,
+  fill/stroke, basic boolean union.
+- **M3 — Bitmap**: import images as objects, cropping, basic filters
+  (blur, levels, saturation) as live effects.
+- **M4 — Text**: text tool, typography in inspector, text as an editable object.
+- **M5 — Live effects**: shadow, glow, bevel, blur as non-destructive attributes
+  on any object.
+- **M6 — File**: `.f.png` (PNG + embedded source), asset export, PNG import
+  with source.
 
-Cada fase: usable de verdad antes de pasar a la siguiente.
+Each phase: genuinely usable before moving on to the next.
 
-## Estado v1 (2026-10-06)
+## Status v1 (2026-10-06)
 
-M0–M6 completados, más lo que hace que se sienta como Fireworks:
+M0–M6 completed, plus what makes it feel like Fireworks:
 
-- Tools: V (selección + marquee), R, E, L, T. Tras dibujar vuelve a V (como FW).
-- Capas, páginas, smart guides (bordes/centros/página/guías manuales), align, undo/redo por comandos, IndexedDB.
-- Objetos: rect, elipse, línea, bitmap (import, recorte, saturación/brillo/blur), texto editable.
-- Rotación con manija (Shift=pasos 15°), grupos (Ctrl+G), duplicar/pegar, z-order, nudge.
-- Relleno con degradado lineal; Styles reutilizables (la idea clave de FW).
-- Live effects: sombra, glow, blur no destructivos.
-- Guías manuales de página (clic derecho crea, clic sobre ella borra, arrastrable; el snap las usa).
-- Tamaño de página desde el inspector. Paneles derechos colapsables/reordenables.
-- Archivo: `.f.png` (PNG con fuente embebida) + export PNG plano.
+- Tools: V (selection + marquee), R, E, L, T. Returns to V after drawing (like FW).
+- Layers, pages, smart guides (edges/centers/page/manual guides), align, undo/redo by commands, IndexedDB.
+- Objects: rect, ellipse, line, bitmap (import, crop, saturation/brightness/blur), editable text.
+- Rotation with handle (Shift=15° steps), groups (Ctrl+G), duplicate/paste, z-order, nudge.
+- Linear gradient fill; reusable Styles (FW's key idea).
+- Live effects: non-destructive shadow, glow, blur.
+- Manual page guides (right-click creates, click on it deletes, draggable; snapping uses them).
+- Page size from the inspector. Right panels collapsible/reorderable.
+- File: `.f.png` (PNG with embedded source) + flat PNG export.
 
-Verificación: `tsc --noEmit` limpio, 172 tests unitarios, 17 e2e Playwright (×2 pasadas sin flakies).
+Verification: clean `tsc --noEmit`, 172 unit tests, 17 Playwright e2e (×2 passes without flakies).
 
-## Estado v1.1 (2026-10-07)
+## Status v1.1 (2026-10-07)
 
-- Pincel (B): redondo/cuadrado, tamaño/presión/opacidad, presión real con lápiz, puntas personalizadas SVG/bitmap.
-- Lápiz (N): trazo continuo o suavizado (objeto `stroke` vectorial con grosor/color). Polilápiz (G): polígonos a mano alzada, rectos (RDP) o estilizados (Catmull-Rom), borde y relleno independientes. Helpers en `src/freehand.ts` (rdpSimplify, smoothPolyline, smoothClosedPolygon).
-- Líneas con sentido real del arrastre (`lineFrom`/`lineEnds`).
-- Texto con selector de 14 fuentes del sistema y re-medición del bbox.
-- Color con alfa; paletas recientes + personalizados (drag/eliminar); export JPEG/WebP.
-- Toolbar con iconos SVG, zoom editable, fondo con rejilla, i18n 15 idiomas, tema claro/oscuro.
+- Brush (B): round/square, size/pressure/opacity, real pressure with pen, custom SVG/bitmap tips.
+- Pencil (N): continuous or smoothed stroke (vector `stroke` object with thickness/color). Poly-pencil (G): freehand polygons, straight (RDP) or stylized (Catmull-Rom), independent stroke and fill. Helpers in `src/freehand.ts` (rdpSimplify, smoothPolyline, smoothClosedPolygon).
+- Lines with real drag direction (`lineFrom`/`lineEnds`).
+- Text with a selector of 14 system fonts and bbox re-measurement.
+- Color with alpha; recent palettes + custom ones (drag/delete); JPEG/WebP export.
+- Toolbar with SVG icons, editable zoom, background with grid, i18n 15 languages, light/dark theme.
 
-Verificación: `tsc --noEmit` limpio, 185 tests unitarios, 25 e2e Playwright, `vite build` correcto (34 kB gzip JS).
+Verification: clean `tsc --noEmit`, 185 unit tests, 25 Playwright e2e, successful `vite build` (34 kB gzip JS).
 
-## Estado v1.3 (noche 2026-10-13)
+## Status v1.3 (night of 2026-10-13)
 
-- Motor de pinceles vectoriales (`src/brush-engine.ts`): estabilizador doble EMA, ancho por presión real (lápiz) o velocidad, afinado de extremos (taper), contorno quads+círculos con alfa uniforme.
-- Lápiz (N) con presets Lápiz/Pluma tinta/Marcador/Pincel suave + sliders (tamaño, opacidad, estabilizador, afinado) + vista previa real del trazo. Panel de opciones por herramienta con modos reales, refrescado en cada render.
-- Goma (X): surco continuo con stamps interpolados (sin huecos), tamaño ajustable con `[`/`]` (también grosor de la herramienta activa).
-- Polilápiz (G): RDP antes de curvar, curvas Catmull-Rom reales en modo Estilizado, estabilizador en la captura.
-- Anillo de cursor estilo Sketchbook (tamaño real en pantalla; oculto sin herramienta de tamaño).
-- Exportar SVG (`src/svg-export.ts`): formas vectoriales, trazos como path, bitmaps con clip/mask/filters, efectos con feDropShadow.
-- Cuentagotas (I): muestrea píxel real, lo aplica a la selección y al color por defecto, lo guarda en muestras recientes.
-- Degradado radial elíptico ajustado al bbox + degradado multi-parada (`Gradient.stops`, editor de paradas en el inspector: posición %, color, borrar; canvas y SVG usan las paradas).
-- Rectángulos con radio de esquina en vivo (`ShapeObj.rx`): `roundRect` nativo en canvas, `rx` en SVG, campo en el inspector; limitado a la mitad del lado corto.
-- Voltear espejo H/V de la selección (`flipH`/`flipV` en todos los objetos): canvas con `scale` sobre el centro, hit-test al espacio local, SVG con `transform`, unión con contorno volteado; botones en ALINEAR y `Ctrl+Shift+H/V`; comando undoable. Fix de raíz: las teclas sueltas de herramienta ahora ignoran modificadores (Ctrl+V pegar ya no se lo comía la herramienta de selección).
-- Opacidad por objeto (`fx.opacity` en todos los objetos): slider «Opacidad del objeto» en Efectos en vivo; canvas multiplica la alfa de la capa y la restaura tras el objeto; SVG exporta `opacity` en el envoltorio junto a `mix-blend-mode`; viaja con los Styles por vivir en `Fx`.
-- Modos de mezcla (`fx.blend` en todos los objetos): los 15 modos de blending CSS + Normal; canvas aplica `globalCompositeOperation` dentro del clip de la página y lo resetea tras cada objeto; SVG exporta `mix-blend-mode` en un envoltorio; selector «Modo de mezcla» en Efectos en vivo del inspector (viaja con los Styles por vivir en `Fx`); nombres clásicos en es/en (Multiplicar, Trama, Superponer…) con fallback en los demás idiomas.
-- Edición multi-objeto en el inspector: con varios seleccionados, `editObj` aplica el parche de estilo (relleno, borde, efectos, tipografía…) a todos los objetos del mismo tipo en un solo comando de historial; la geometría absoluta x/y/w/h solo al objeto de referencia. Un único Ctrl+Z revierte el cambio en todos. El cuentagotas y cualquier llamador del panel heredan el comportamiento.
-- Mano con Space+arrastrar; Shift+0 zoom a la selección; imán al dibujar formas nuevas (la esquina arrastrada encaja en bordes/centros, página y guías).
-- Panel ALINEAR sticky al fondo (siempre accesible en ventanas bajas); auditoría de fricciones UI en navegador real.
+- Vector brush engine (`src/brush-engine.ts`): double-EMA stabilizer, width by real pressure (pen) or speed, end tuning (taper), quads+circles outline with uniform alpha.
+- Pencil (N) with Pencil/Ink pen/Marker/Soft brush presets + sliders (size, opacity, stabilizer, tuning) + real stroke preview. Per-tool options panel with real modes, refreshed on each render.
+- Eraser (X): continuous groove with interpolated stamps (no gaps), size adjustable with `[`/`]` (also the active tool's thickness).
+- Poly-pencil (G): RDP before curving, real Catmull-Rom curves in Stylized mode, stabilizer in the capture.
+- Sketchbook-style cursor ring (real on-screen size; hidden without a sized tool).
+- SVG export (`src/svg-export.ts`): vector shapes, strokes as path, bitmaps with clip/mask/filters, effects with feDropShadow.
+- Eyedropper (I): samples the real pixel, applies it to the selection and to the default color, saves it in recent swatches.
+- Radial gradient elliptical fitted to the bbox + multi-stop gradient (`Gradient.stops`, stop editor in the inspector: position %, color, delete; canvas and SVG use the stops).
+- Rectangles with live corner radius (`ShapeObj.rx`): native `roundRect` in canvas, `rx` in SVG, field in the inspector; clamped to half the short side.
+- Horizontal/vertical mirror flip of the selection (`flipH`/`flipV` on all objects): canvas with `scale` about the center, hit-test to local space, SVG with `transform`, union with flipped outline; buttons in ALIGN and `Ctrl+Shift+H/V`; undoable command. Root-cause fix: bare tool keys now ignore modifiers (Ctrl+V paste was being eaten by the selection tool).
+- Per-object opacity (`fx.opacity` on all objects): "Object opacity" slider in Live Effects; canvas multiplies the layer alpha and restores it after the object; SVG exports `opacity` on the wrapper next to `mix-blend-mode`; travels with the Styles by living in `Fx`.
+- Blend modes (`fx.blend` on all objects): the 15 CSS blending modes + Normal; canvas applies `globalCompositeOperation` inside the page clip and resets it after each object; SVG exports `mix-blend-mode` in a wrapper; "Blend mode" selector in the inspector's Live Effects (travels with the Styles by living in `Fx`); classic names in es/en (Multiplicar, Trama, Superponer…) with fallback in the other languages.
+- Multi-object editing in the inspector: with several selected, `editObj` applies the style patch (fill, stroke, effects, typography…) to all objects of the same type in a single history command; absolute x/y/w/h geometry only to the reference object. A single Ctrl+Z reverts the change in all of them. The eyedropper and any panel caller inherit the behavior.
+- Hand with Space+drag; Shift+0 zoom to selection; magnet when drawing new shapes (the dragged corner snaps to edges/centers, page and guides).
+- ALIGN panel sticky to the bottom (always accessible in short windows); UI friction audit in a real browser.
 
-Verificación: `tsc --noEmit` limpio, 269 tests unitarios, 57 e2e Playwright.
+Verification: clean `tsc --noEmit`, 269 unit tests, 57 Playwright e2e.
 
-## Pendientes
+## Status v1.4 (2026-10-13)
 
-- Deuda técnica:
-  - Dirty-rects/offscreen para miles de objetos (redraw completo con rAF, `ponytail:` en `render.ts`).
-  - Fuentes web descargables (solo fuentes del sistema por ahora).
-  - Unión booleana por convex hull (suficiente para formas convexas; unión exacta con huecos requiere clipping de paths).
+- White dots in strokes fixed (root cause): in `fillRibbon` the cap arcs were drawn clockwise while `strokeOutline` quads run the other way; with opposite winding, the nonzero fill left a hole (white dot) at every capture point. Arcs now drawn anticlockwise. Confirmed with a headless canvas probe and an e2e pixel check along the capture line.
+- Node tool (A, `subselect`): FreeHand-style vector reshaping. With a vector selected (stroke/poly-line/line) it shows its vertices as black squares instead of bbox handles; dragging a vertex reshapes the vector (bbox recomputed and points re-normalized, same format as at creation) and shows a floating FreeHand-like readout with the segment's angle (0–360°, CCW from east) and length. Body drag = select/move; empty canvas = marquee. One history command per drag (single Ctrl+Z). Toolbar button, icon, es/en i18n and help updated.
+
+Verification: clean `tsc --noEmit`, 271 unit tests, 59 Playwright e2e.
+
+## Pending
+
+- Technical debt:
+  - Dirty-rects/offscreen for thousands of objects (full redraw with rAF, `ponytail:` in `render.ts`).
+  - Downloadable web fonts (system fonts only for now).
+  - Boolean union via convex hull (enough for convex shapes; exact union with holes requires path clipping).

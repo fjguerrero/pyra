@@ -1,62 +1,64 @@
-# Análisis: Macromedia / Adobe Fireworks
+# Analysis: Macromedia / Adobe Fireworks
 
-## Qué era
+## What it was
 
-Fireworks (1998, Macromedia; adquirida por Adobe en 2005; discontinuado en mayo de 2013,
-CS6 fue la última versión). Un editor **híbrido bitmap + vector** dirigido a una sola tarea:
-producir los gráficos de los que se ensambla una interfaz. No era "otro Photoshop" ni
-"otro Illustrator": era la herramienta con la que se diseñaron Gmail, Google Maps o Google
-Docs en los 2000.
+Fireworks (1998, Macromedia; acquired by Adobe in 2005; discontinued in May 2013,
+CS6 was the last version). A **hybrid bitmap + vector** editor aimed at a single task:
+producing the graphics from which a user interface is assembled. It wasn't "another
+Photoshop" or "another Illustrator": it was the tool with which Gmail, Google Maps, and
+Google Docs were designed in the 2000s.
 
-## Modelo mental (lo que lo hacía único)
+## Mental model (what made it unique)
 
-1. **Un solo lienzo híbrido.** Píxeles y paths en el mismo documento, sin cambiar de
-   aplicación ni de modo. Seleccionabas una foto y una forma vectorial con la misma
-   herramienta de selección.
-2. **El documento ERA un PNG.** El formato nativo era `.png` con la fuente editable
-   embebida en los metadatos del propio PNG. Cada archivo era su propia preview:
-   cualquier navegador o viewer mostraba la imagen; Fireworks la reabría editable.
-3. **Capas de primera clase.** Panel de capas simple y rápido: visibilidad, bloqueo,
-   opacidad, blending, renombrar, reordenar. Las capas podían exceder el lienzo.
-   La maquetación (colocar, alinear, agrupar) era directa, sin fricción.
-4. **Páginas y estados.** Un documento con múltiples páginas (pantallas) navegables al
-   instante, y "states" por página para animaciones GIF/prototipos.
-5. **Símbolos.** Instancias reutilizables con biblioteca; editar el maestro propagaba
-   el cambio a todas las instancias. Quince años antes que los componentes de Figma.
-6. **Live effects.** Sombras, brillos, bisels, emboss… aplicados como atributos
-   editables del objeto — sobre vectores Y sobre texto — sin aplanar nunca nada.
-7. **Property Inspector.** Un panel de propiedades contextuales (heredado de
-   Dreamweaver) que mostraba exactamente lo editable del objeto seleccionado.
-8. **Slices y hotspots.** Recortar regiones del lienzo con compresión por slice y
-   export HTML/imágenes optimizados. El flujo "diseñar → exportar assets" integrado.
-9. **Smart guides y snapping.** Guías magnéticas a bordes/centros de objetos, snapping
-   a guías y a otros objetos. Colocar bien era fácil sin esfuerzo.
-10. **Herramientas compartidas.** La misma selección, transformación y edición servía
-    para bitmap y vector. Auto-shapes, pen tool sencillo, texto con control tipográfico.
+1. **A single hybrid canvas.** Pixels and paths in the same document, without switching
+   application or mode. You selected a photo and a vector shape with the same
+   selection tool.
+2. **The document WAS a PNG.** The native format was `.png` with the editable source
+   embedded in the PNG's own metadata. Each file was its own preview:
+   any browser or viewer displayed the image; Fireworks reopened it as editable.
+3. **First-class layers.** A simple, fast layers panel: visibility, locking,
+   opacity, blending, renaming, reordering. Layers could extend beyond the canvas.
+   Layout (placing, aligning, grouping) was direct, without friction.
+4. **Pages and states.** A document with multiple pages (screens) navigable
+   instantly, plus "states" per page for GIF animations/prototypes.
+5. **Symbols.** Reusable instances with a library; editing the master propagated
+   the change to all instances. Fifteen years before Figma's components.
+6. **Live effects.** Shadows, glows, bevels, emboss... applied as editable
+   object attributes — on vectors AND on text — never flattening anything.
+7. **Property Inspector.** A contextual properties panel (inherited from
+   Dreamweaver) that showed exactly what was editable about the selected object.
+8. **Slices and hotspots.** Cropping regions of the canvas with per-slice compression
+   and exporting optimized HTML/images. The "design → export assets" workflow was
+   built in.
+9. **Smart guides and snapping.** Magnetic guides to object edges/centers, snapping
+   to guides and to other objects. Placing things well was easy, with no effort.
+10. **Shared tools.** The same selection, transformation, and editing worked
+    for bitmap and vector. Auto-shapes, a simple pen tool, text with typographic control.
 
-## La UI original
+## The original UI
 
-- Barra de herramientas a la izquierda (herramientas compartidas bitmap/vector).
-- Property Inspector arriba (contextual, lo más característico de la app).
-- Panel de Pages y de Frames/States a la derecha; Layers y Symbols debajo.
-- Paneles flotantes o acoplables en grupos.
-- Atajos de teclado agresivos; flujo de trabajo rápido y directo, sin diálogos.
+- Toolbar on the left (shared bitmap/vector tools).
+- Property Inspector at the top (contextual, the app's most distinctive feature).
+- Pages panel and Frames/States panel on the right; Layers and Symbols below.
+- Floating panels or dockable in groups.
+- Aggressive keyboard shortcuts; a fast, direct workflow, without dialogs.
 
-## Lo que la gente echa de menos (recopilado de comunidades HN/foros + consenso)
+## What people miss (gathered from HN/forum communities + consensus)
 
-- **El lienzo híbrido**: nada posterior combinó bitmap y vector con esa naturalidad
-  (Affinity Designer es lo más cercano; Figma es vector-only).
-- **PNG como fuente editable**: el archivo auto-preview no lo ha igualado nadie.
-- **Live effects no destructivos sobre todo**, incluido texto.
-- **Lo fácil que era maquetar**: capas simples, smart guides, snapping, páginas
-  multi-pantalla. "Fireworks could have been Figma."
-- **Symbols antes de tiempo.**
-- **Ligereza y velocidad**: app nativa, arrancaba al instante, sin plataforma alrededor.
-- **Property Inspector**: propiedades del objeto a mano, siempre, sin cavar en menús.
+- **The hybrid canvas**: nothing later combined bitmap and vector with that naturalness
+  (Affinity Designer is the closest; Figma is vector-only).
+- **PNG as the editable source**: the self-previewing file has never been matched.
+- **Non-destructive live effects on everything**, including text.
+- **How easy layout was**: simple layers, smart guides, snapping, multi-screen
+  pages. "Fireworks could have been Figma."
+- **Symbols ahead of their time.**
+- **Lightness and speed**: native app, launched instantly, no platform around it.
+- **Property Inspector**: the object's properties at hand, always, without digging
+  through menus.
 
-## Qué NO era (para no clonar sus errores)
+## What it was NOT (so as not to clone its mistakes)
 
-- No era para impresión ni fotografía (CMYK, gestión de color pobre).
-- UI de 1998: paneles flotantes densos, sin HiDPI (murió literalmente por la pantalla
-  retina), sin colaboración, sin componentes responsive.
-- Rendimiento malo con documentos grandes en las últimas versiones.
+- It was not for print or photography (CMYK, poor color management).
+- A 1998 UI: dense floating panels, no HiDPI (it literally died from the retina
+  display), no collaboration, no responsive components.
+- Poor performance with large documents in the last versions.

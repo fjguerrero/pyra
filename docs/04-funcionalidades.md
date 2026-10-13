@@ -1,121 +1,122 @@
-# Pyra — inventario completo de funcionalidades de Fireworks
+# Pyra — complete Fireworks feature inventory
 
-Fuente: **manual de referencia oficial de Adobe Fireworks CS6** (PDF completo, extraído
-y analizado — TOC íntegro) + manuales de Fireworks 2/MX/MX 2004 para lo que CS6 da por
-sentado. Este es el mapa completo; al final, qué adopta Pyra y en qué fase.
+Source: **official Adobe Fireworks CS6 reference manual** (full PDF, extracted
+and analyzed — complete TOC) + Fireworks 2/MX/MX 2004 manuals for what CS6 takes
+for granted. This is the complete map; at the end, what Pyra adopts and in which phase.
 
-## 1. Documentos y archivo
-- Documentos `.png` de Fireworks (fuente editable embebida en el PNG).
-- Crear documentos desde archivos HTML (CS6).
-- Abrir/importar: PSD (conservando capas y efectos de Photoshop editables), AI, Flash,
-  GIF, JPEG, TIFF, SVG (extensión), FXG. Export: PNG/GIF/JPEG/TIFF/SWF/PDF/BMP/WBMP.
-- Export Wizard, Image Preview, export por email, emuladores móviles.
-- Batch-processing, comandos personalizados, scripting (JS), find & replace.
+## 1. Documents and files
+- Fireworks `.png` documents (editable source embedded in the PNG).
+- Create documents from HTML files (CS6).
+- Open/import: PSD (preserving Photoshop layers and effects as editable), AI, Flash,
+  GIF, JPEG, TIFF, SVG (extension), FXG. Export: PNG/GIF/JPEG/TIFF/SWF/PDF/BMP/WBMP.
+- Export Wizard, Image Preview, export by email, mobile emulators.
+- Batch-processing, custom commands, scripting (JS), find & replace.
 
 ## 2. Workspace
-- Canvas: redimensionar, Fit/Trim canvas, color de fondo, área de trabajo gris
-  (lo que sale del canvas no se exporta).
-- Navegación: zoom, pan, modos de pantalla (standard / full con menús / full).
-- Preview Original / 2-Up / 4-Up con ajustes de optimización.
-- Undo y "repeat multiple actions" (repetir una acción N veces).
-- Smart guides, guías manuales, grid + snap, reglas, info panel.
+- Canvas: resize, Fit/Trim canvas, background color, gray work area
+  (what falls outside the canvas is not exported).
+- Navigation: zoom, pan, screen modes (standard / full with menus / full).
+- Original / 2-Up / 4-Up preview with optimization settings.
+- Undo and "repeat multiple actions" (repeat an action N times).
+- Smart guides, manual guides, grid + snap, rulers, info panel.
 
-## 3. Selección y transformación
-- Selección por objeto y por píxel (herramientas de selección bitmap: lasso, magic
-  wand, marquee; subselección de puntos de path).
-- Transformar: escalar, skew, distort, rotar, transformar libremente.
-- Agrupar/desagrupar, apilar orden (bring/send), alinear y distribuir, bloquear,
-  ocultar, duplicar/clone, paste inside (recortar al pegar dentro de un path).
-- Modificar selección: expandir, contraer, suavizar, transformar selección de píxeles.
+## 3. Selection and transformation
+- Object and pixel selection (bitmap selection tools: lasso, magic
+  wand, marquee; Subselection of path points).
+- Transform: scale, skew, distort, rotate, free transform.
+- Group/ungroup, stacking order (bring/send), align and distribute, lock,
+  hide, duplicate/clone, paste inside (clipping when pasting inside a path).
+- Modify selection: expand, contract, smooth, transform pixel selection.
 
 ## 4. Bitmap
-- Herramientas: paintbrush, eraser, pencil, spray can, airbrush, smudge, blur,
-  sharpen, dodge, burn, sponge, color replace, red-eye, clone stamp, pen (edición
-  de selecciones), crop, feather.
-- Añadir ruido; ajustar color y tono (levels, brightness/contrast, hue/saturation,
-  color balance, fill color, web snap); desenfocar/afilar.
-- Máscaras de bitmap; modos de imagen.
+- Tools: paintbrush, eraser, pencil, spray can, airbrush, smudge, blur,
+  sharpen, dodge, burn, sponge, replace color, red-eye removal, rubber stamp,
+  pen (editing selections), crop, feather.
+- Add noise; adjust color and tone (levels, brightness/contrast, hue/saturation,
+  color balance, fill color, web snap); blur/sharpen.
+- Bitmap masks; image modes.
 
 ## 5. Vector
-- Auto Shapes (biblioteca de formas: flechas, estrellas, callouts, notas).
-- Formas básicas (rect, elipse, línea, polígono), compound shapes, free-form
-  (pen tool, pencil vectorial, reshape tools: freeform reshape, reshape area,
+- Auto Shapes (shape library: arrows, stars, callouts, notes).
+- Basic shapes (rect, ellipse, line, polygon), compound shapes, free-form
+  (pen tool, vector pencil, reshape tools: freeform reshape, reshape area,
   path scrubber add/subtract).
-- Path operations: union, intersect, punch out, simplify, exclude, plus, minus.
-- Edición de subselección: mover/añadir/eliminar/bisectar puntos, convertir
-  esquina/suave, open/close path, expandir stroke a path.
-- Strokes y fills: sólidos, gradientes, patrones/roturas (pattern fills),
-  strokes con estilos variados; texturas.
-- 9-slice scaling (mantener esquinas al escalar símbolos).
+- Path operations: unite, intersect, punch out, simplify, exclude, add path,
+  subtract path.
+- Subselection editing: move/add/delete/bisect points, convert
+  corner/smooth point, open/close path, expand stroke to path.
+- Strokes and fills: solids, gradients, pattern fills,
+  strokes with varied styles; textures.
+- 9-slice scaling (keep corners when scaling symbols).
 
-## 6. Texto
-- Text tool on-canvas + Text Editor; párrafos (indent, space above/below, leading
-  en px o %), estilos de carácter y párrafo reutilizables (Style panel), kerning
-  manual/auto, sesgo, escala horizontal, antialiasing.
-- Texto siempre editable, incluso con Live Effects aplicados.
-- Curvar texto sobre path; texto dentro de path.
+## 6. Text
+- Text tool on-canvas + Text Editor; paragraphs (indent, space above/below, leading
+  in px or %), reusable character and paragraph styles (Style panel), kerning
+  manual/auto, skew, horizontal scale, antialiasing.
+- Text always editable, even with Live Effects applied.
+- Warp text along a path; text inside a path.
 
 ## 7. Color
-- Color Mixer (sólidos y gradientes), Swatches (biblioteca con librerías),
-  eyedropper, web-safe snap, estilos de color reutilizables.
+- Color Mixer (solids and gradients), Swatches (library with libraries),
+  eyedropper, web-safe snap, reusable color styles.
 
 ## 8. Live Filters (Live Effects)
-- No destructivos sobre **vectores, bitmaps y texto**; se actualizan al modificar
-  el objeto (hagas el rectángulo circular, el bevel se adapta).
-- Bevels y embossing, drop shadow, inner shadow, glow (inner/outer),
+- Non-destructive on **vectors, bitmaps, and text**; they update when the
+  object changes (make the rectangle circular, the bevel adapts).
+- Bevels and embossing, drop shadow, inner shadow, glow (inner/outer),
   drop/bevel glow, color correction, blur/sharpen, Gaussian blur,
-  Photoshop Live Effects (compatibilidad CS3+).
-- Apilables en secuencia por objeto.
+  Photoshop Live Effects (CS3+ compatibility).
+- Stackable in sequence per object.
 
-## 9. Capas, máscaras y blending
-- Layers: mostrar/ocultar, bloquear, renombrar, duplicar, reordenar (auto-scroll),
-  opacidad y blending por capa; capas más grandes que el canvas.
-- Masking: máscara de vector sobre bitmap u objeto (mask group).
-- Blending modes completos (multiply, screen, overlay…).
+## 9. Layers, masks, and blending
+- Layers: show/hide, lock, rename, duplicate, reorder (auto-scroll),
+  opacity and blending per layer; layers larger than the canvas.
+- Masking: vector mask over bitmap or object (mask group).
+- Full blending modes (multiply, screen, overlay…).
 
-## 10. Estilos, símbolos, URLs
-- Styles: paquetes reutilizables de fill+stroke+effects+texto aplicables a cualquier
-  objeto (el "componente visual" de FW).
-- Symbols: biblioteca (Assets panel), instancias, edición del maestro propaga;
-  símbolos de botón con estados.
-- URLs por objeto/slice/hotspot.
+## 10. Styles, symbols, URLs
+- Styles: reusable packages of fill+stroke+effects+text applicable to any
+  object (the "visual component" of FW).
+- Symbols: library (Assets panel), instances, editing the master propagates;
+  button symbols with states.
+- URLs per object/slice/hotspot.
 
 ## 11. Slices, hotspots, rollovers (web export)
-- Slices (objeto y user-defined), hotspots/image maps, rollovers (swap image,
-  swap overlay), menús pop-up, botones con estados, export HTML+CSS.
+- Slices (object and user-defined), hotspots/image maps, rollovers (swap image,
+  swap overlay), pop-up menus, buttons with states, HTML+CSS export.
 
-## 12. Páginas y prototipado
-- Páginas múltiples por documento; prototipos navegables entre páginas; slide shows.
-- Prototipos Flex/AIR (CS4-CS6).
+## 12. Pages and prototyping
+- Multiple pages per document; navigable prototypes between pages; slide shows.
+- Flex/AIR prototypes (CS4-CS6).
 
-## 13. Animación
-- States por página/frame; tweening; onion skinning; símbolos de animación;
-  GIF animado export.
+## 13. Animation
+- States per page/frame; tweening; onion skinning; animation symbols;
+  animated GIF export.
 
-## 14. Optimización
-- Optimize panel: formato, paleta, calidad, transparencia por documento y por slice;
-  export multi-archivo desde el workspace.
+## 14. Optimization
+- Optimize panel: format, palette, quality, transparency per document and per slice;
+  multi-file export from the workspace.
 
 ---
 
-## Qué adopta Pyra (mapeo a fases)
+## What Pyra adopts (mapping to phases)
 
-| Área FW | Pyra | Fase |
+| FW area | Pyra | Phase |
 |---|---|---|
-| Documento PNG editable | `.f.png` | M6 (desde M0 se guarda en IndexedDB) |
-| Canvas, zoom/pan, undo | núcleo | M0 |
-| Capas, blending, opacidad, masking | completo | M1 |
-| Smart guides, snap, alinear/distribuir, transformar, agrupar, apilar | completo | M1 |
-| Selección por objeto | completo (por píxel en M3) | M0/M1 |
-| Auto shapes, formas, pen, path ops, subselección, strokes/fills/gradientes | completo | M2 |
-| Bitmap: importar, recorte, filtros, retouch, ajuste color/tono | lo esencial | M3 |
-| Texto: párrafo, estilos, kerning/leading, texto sobre path | completo sin path-text en M4 | M4 |
-| Live Filters (sombras, glow, bevel, blur, color correction) | completo | M5 |
-| Styles (paquetes reutilizables) | sí — es la idea clave de FW | M5 |
-| Symbols + biblioteca | sí | M6 |
-| Páginas | sí | M1 |
-| States/animación/onion skin | no por ahora | — |
-| Slices/hotspots/rollovers/HTML export | no (descartado) | — |
-| Optimize panel | export simple por selección | M6 |
-| Batch/scripting/comandos | no por ahora | — |
-| Integración con Dreamweaver/Flash/PSD | import PNG/JPEG; PSD después | — |
+| Editable PNG document | `.f.png` | M6 (from M0 it saves to IndexedDB) |
+| Canvas, zoom/pan, undo | core | M0 |
+| Layers, blending, opacity, masking | full | M1 |
+| Smart guides, snap, align/distribute, transform, group, stacking | full | M1 |
+| Object selection | full (pixel selection in M3) | M0/M1 |
+| Auto shapes, shapes, pen, path ops, subselection, strokes/fills/gradients | full | M2 |
+| Bitmap: import, cropping, filters, retouch, color/tone adjustment | the essentials | M3 |
+| Text: paragraph, styles, kerning/leading, text on path | full without path-text in M4 | M4 |
+| Live Filters (shadows, glow, bevel, blur, color correction) | full | M5 |
+| Styles (reusable packages) | yes — it's the key idea of FW | M5 |
+| Symbols + library | yes | M6 |
+| Pages | yes | M1 |
+| States/animation/onion skin | not for now | — |
+| Slices/hotspots/rollovers/HTML export | no (dropped) | — |
+| Optimize panel | simple export by selection | M6 |
+| Batch/scripting/commands | not for now | — |
+| Dreamweaver/Flash/PSD integration | import PNG/JPEG; PSD later | — |
