@@ -8,7 +8,7 @@ import { snapBox, type Guide, type Snap } from './guides';
 import { rdpSimplify } from './freehand';
 import { applyTaper, BRUSH_PRESETS, interpolateStamps, PRESET_ORDER, StrokeCapture, type BrushParams, type BrushPreset, type WPt } from './brush-engine';
 import { exportSvg } from './svg-export';
-import { computeAlign, type AlignKind, type Move } from './align';
+import { bbox, computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { DEFAULT_FONT, measureText } from './text';
 import { duplicateCmd, groupCmd, pasteCmd, unionCmd, zOrderCmd } from './commands';
@@ -1707,6 +1707,19 @@ window.addEventListener('keydown', (e) => {
     select(null);
     persist();
     invalidate();
+  } else if (e.code === 'Digit0' && e.shiftKey) {
+    // Zoom a la selección (estándar de diseño): encaja el bbox con margen
+    const objs = selectedObjs();
+    if (objs.length) {
+      const b = bbox(objs);
+      const cw = canvas.clientWidth;
+      const ch = canvas.clientHeight;
+      const z = Math.max(0.02, Math.min(8, Math.min((cw - 120) / Math.max(1, b.w), (ch - 120) / Math.max(1, b.h))));
+      view.zoom = z;
+      view.panX = (cw - b.w * z) / 2 - b.x * z;
+      view.panY = (ch - b.h * z) / 2 - b.y * z;
+      invalidate();
+    }
   } else if (e.key === '0') {
     fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
     invalidate();

@@ -359,6 +359,21 @@ test('Space+arrastrar desplaza el lienzo (mano temporal)', async ({ page }) => {
   await expect.poll(() => isRectBlue(160, 140)).toBe(false);
 });
 
+test('Shift+0 acerca la vista a la selección', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [140, 130]); // rect pequeño, queda seleccionado
+  const zoom = page.locator('#zoom-num');
+  const before = Number(await zoom.inputValue());
+  await page.keyboard.press('Shift+0');
+  await expect.poll(async () => Number(await zoom.inputValue())).toBeGreaterThan(before);
+  // el rect debe cubrir ahora una zona mucho mayor: azul en el centro del lienzo
+  await expect.poll(() => page.evaluate(() => {
+    const c = document.getElementById('canvas') as HTMLCanvasElement;
+    const d = c.getContext('2d')!.getImageData(Math.round(c.width / 2), Math.round(c.height / 2), 1, 1).data;
+    return `#${[d[0], d[1], d[2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+  })).toBe('#4f8cff');
+});
+
 test('degradado radial: el inspector ofrece alternar lineal/radial', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);

@@ -86,7 +86,7 @@ const en: Msg = {
 <h4>Fills, styles & effects</h4><p>Solid color with alpha, linear gradients, reusable Styles (save from an object, apply to another), live effects: shadow, glow, blur, bevel. Polygon objects keep stroke and fill independent (color, width, dashed, no-fill).</p>
 <h4>Text</h4><p>Double-click to edit; system font picker; bold/italic; bbox re-measured.</p>
 <h4>Files</h4><p>Import images (PNG/JPEG/WebP/GIF/SVG). <code>.f.png</code> export/import keeps the full editable document. Export flat PNG, JPEG, WebP (quality configurable) or one PNG per selected object. Autosaves to your browser (IndexedDB).</p>
-<h4>View & settings</h4><p>Scroll to zoom, middle-drag or Space to pan, <code>0</code> fit page. Settings (bottom-left): language (15), theme (light/dark/system), workspace background color and grid.</p>`,
+<h4>View & settings</h4><p>Scroll to zoom, middle-drag or Space to pan, <code>0</code> fit page, <code>Shift+0</code> zoom to selection. Settings (bottom-left): language (15), theme (light/dark/system), workspace background color and grid.</p>`,
   brush_round: 'Round tip', brush_square: 'Square tip', brush_tip: 'Custom tip (SVG or image)', brush_tip_none: 'Remove custom tip',
 };
 
@@ -126,7 +126,7 @@ const es: Partial<Msg> = {
 <h4>Rellenos, estilos y efectos</h4><p>Color sólido con alfa, degradados lineales, Styles reutilizables (guardar desde un objeto, aplicar a otro), efectos en vivo: sombra, glow, blur, bisel. Los polígonos mantienen borde y relleno independientes (color, grosor, discontinuo, sin relleno).</p>
 <h4>Texto</h4><p>Doble clic para editar; selector de fuentes del sistema; negrita/cursiva; el bbox se re-mide.</p>
 <h4>Archivos</h4><p>Importa imágenes (PNG/JPEG/WebP/GIF/SVG). Exportar/importar <code>.f.png</code> conserva el documento editable completo. Exporta PNG plano, JPEG, WebP (calidad configurable) o un PNG por objeto seleccionado. Autoguardado en el navegador (IndexedDB).</p>
-<h4>Vista y ajustes</h4><p>Rueda para zoom, arrastre con rueda/Space para mover, <code>0</code> ajustar a página. Ajustes (abajo a la izquierda): idioma (15), tema (claro/oscuro/sistema), color de fondo del área de trabajo y cuadrícula.</p>`,
+<h4>Vista y ajustes</h4><p>Rueda para zoom, arrastre con rueda/Space para mover, <code>0</code> ajustar a página, <code>Shift+0</code> zoom a la selección. Ajustes (abajo a la izquierda): idioma (15), tema (claro/oscuro/sistema), color de fondo del área de trabajo y cuadrícula.</p>`,
   brush_round: 'Punta redonda', brush_square: 'Punta cuadrada', brush_tip: 'Punta personalizada (SVG o imagen)', brush_tip_none: 'Quitar punta personalizada',
 };
 
