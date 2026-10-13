@@ -1,5 +1,6 @@
 import { FONTS } from './text';
 import { activePage, isLineLike, NO_FX, type BitmapObj, type BrushSettings, type Doc, type Fx, type Layer, type Obj, type ShapeObj, type TextObj } from './model';
+import { addStopAt } from './gradient';
 import { findObj } from './hit';
 import type { View } from './view';
 import { statusText, t } from './i18n';
@@ -512,8 +513,48 @@ export function renderPanels(
         if (g) {
           insp.appendChild(btn('', g.radial ? t('gradient_linear') : t('gradient_radial'), t('gradient_hint'), Boolean(g.radial), () =>
             api.editObj(obj, { gradient: { ...g, radial: !g.radial } })));
-          colorField(t('gradient_from'), g.from, (v) => api.editObj(obj, { gradient: { ...g, from: v } }));
-          colorField(t('gradient_to'), g.to, (v) => api.editObj(obj, { gradient: { ...g, to: v } }));
+          const stops = g.stops && g.stops.length >= 2 ? [...g.stops].sort((a, b) => a.p - b.p) : null;
+          if (stops) {
+            // editor de paradas estilo Fireworks: posición + color por parada
+            stops.forEach((st, i) => {
+              const row = document.createElement('div');
+              row.className = 'field row';
+              const pos = document.createElement('input');
+              pos.type = 'number'; pos.min = '0'; pos.max = '100'; pos.step = '1';
+              pos.value = String(Math.round(st.p * 100));
+              pos.title = t('gradient_stop_pos');
+              pos.dataset.stopPos = String(i);
+              pos.addEventListener('change', () => {
+                const ns = stops.map((x) => ({ ...x }));
+                ns[i].p = Math.max(0, Math.min(1, Number(pos.value) / 100));
+                api.editObj(obj, { gradient: { ...g, stops: ns } });
+              });
+              const col = document.createElement('input');
+              col.type = 'color'; col.value = st.c;
+              col.dataset.stopColor = String(i);
+              col.addEventListener('change', () => {
+                const ns = stops.map((x) => ({ ...x }));
+                ns[i].c = col.value;
+                api.editObj(obj, { gradient: { ...g, stops: ns } });
+              });
+              row.append(pos, col);
+              if (stops.length > 2) {
+                const del = document.createElement('button');
+                del.textContent = '×'; del.title = t('gradient_stop_del');
+                del.dataset.stopDel = String(i);
+                del.addEventListener('click', () => {
+                  // nunca por debajo de 2 paradas: el botón solo aparece con >2
+                  api.editObj(obj, { gradient: { ...g, stops: stops.filter((_, j) => j !== i) } });
+                });
+                row.appendChild(del);
+              }
+              insp.appendChild(row);
+            });
+          } else {
+            colorField(t('gradient_from'), g.from, (v) => api.editObj(obj, { gradient: { ...g, from: v } }));
+            colorField(t('gradient_to'), g.to, (v) => api.editObj(obj, { gradient: { ...g, to: v } }));
+          }
+          insp.appendChild(btn('', t('gradient_add_stop'), t('gradient_hint'), false, () => api.editObj(obj, { gradient: { ...g, stops: addStopAt(g) } })));
           const angleWrap = document.createElement('label');
           angleWrap.className = 'field';
           angleWrap.innerHTML = `<span>${t('angle')}</span>`;

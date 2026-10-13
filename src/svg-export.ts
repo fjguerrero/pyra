@@ -30,6 +30,12 @@ interface Ctx {
 
 const nextId = (c: Ctx, p: string): string => `${p}${c.seq++}`;
 
+/** Paradas del degradado: las intermedias mandan si hay >=2 (igual que en canvas). */
+function stopsMarkup(g: Gradient): string {
+  const st = g.stops && g.stops.length >= 2 ? [...g.stops].sort((a, b) => a.p - b.p) : [{ p: 0, c: g.from }, { p: 1, c: g.to }];
+  return st.map((s) => `<stop offset="${n2(Math.max(0, Math.min(1, s.p)))}" stop-color="${esc(s.c)}"/>`).join('');
+}
+
 /** Gradiente lineal (ángulo CSS-like: 0° izq→der, 90° arriba→abajo). */
 function gradientDef(c: Ctx, g: Gradient): string {
   const id = nextId(c, 'grad');
@@ -37,7 +43,7 @@ function gradientDef(c: Ctx, g: Gradient): string {
     // objectBoundingBox: el círculo se deforma a la elipse del bbox (igual que el canvas)
     c.defs.push(
       `<radialGradient id="${id}" cx="0.5" cy="0.5" r="0.5">` +
-      `<stop offset="0" stop-color="${esc(g.from)}"/><stop offset="1" stop-color="${esc(g.to)}"/></radialGradient>`,
+      stopsMarkup(g) + `</radialGradient>`,
     );
     return `url(#${id})`;
   }
@@ -46,7 +52,7 @@ function gradientDef(c: Ctx, g: Gradient): string {
   const dy = Math.sin(rad) / 2;
   c.defs.push(
     `<linearGradient id="${id}" x1="${n2(0.5 - dx)}" y1="${n2(0.5 - dy)}" x2="${n2(0.5 + dx)}" y2="${n2(0.5 + dy)}">` +
-    `<stop offset="0" stop-color="${esc(g.from)}"/><stop offset="1" stop-color="${esc(g.to)}"/></linearGradient>`,
+    stopsMarkup(g) + `</linearGradient>`,
   );
   return `url(#${id})`;
 }

@@ -85,6 +85,12 @@ describe('exportSvg: formas', () => {
     expect(svg).toContain('fill="url(#grad0)"');
     expect(svg).not.toContain('<linearGradient');
   });
+  it('degradado con paradas intermedias: stops en el defs', () => {
+    const svg = svgOf([shape({ shape: 'rect', gradient: { from: '#000000', to: '#ffffff', angle: 0, stops: [{ p: 0, c: '#000000' }, { p: 0.5, c: '#ff0000' }, { p: 1, c: '#ffffff' }] } })]);
+    expect(svg).toContain('<stop offset="0" stop-color="#000000"/>');
+    expect(svg).toContain('<stop offset="0.5" stop-color="#ff0000"/>');
+    expect(svg).toContain('<stop offset="1" stop-color="#ffffff"/>');
+  });
 });
 
 describe('exportSvg: trazos del motor de pinceles', () => {

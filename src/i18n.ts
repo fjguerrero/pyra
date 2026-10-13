@@ -30,7 +30,7 @@ type Msg = {
   page_width: string; page_height: string; width: string; height: string;
   saturation: string; brightness: string; crop_x: string; crop_y: string; crop_w: string; crop_h: string; remove_crop: string; show_full_image: string;
   text: string; size: string; font: string; bold: string; italic: string; color: string; stroke_color: string; fill: string; rotation: string;
-  remove_gradient: string; add_gradient: string; gradient_hint: string; gradient_from: string; gradient_to: string; gradient_radial: string; gradient_linear: string; angle: string;
+  remove_gradient: string; add_gradient: string; gradient_hint: string; gradient_from: string; gradient_to: string; gradient_radial: string; gradient_linear: string; gradient_add_stop: string; gradient_stop_pos: string; gradient_stop_del: string; angle: string;
   live_effects: string; blur: string; remove_shadow: string; add_shadow: string; shadow_hint: string;
   shadow_x: string; shadow_y: string; shadow_blur: string; shadow_color: string;
   remove_glow: string; add_glow: string; glow_hint: string; glow_blur: string; glow_color: string;
@@ -65,6 +65,7 @@ const en: Msg = {
   saturation: 'Saturation', brightness: 'Brightness', crop_x: 'Crop X', crop_y: 'Crop Y', crop_w: 'Crop width', crop_h: 'Crop height', remove_crop: 'Remove crop', show_full_image: 'Show the full image',
   text: 'Text', size: 'Size', font: 'Font', bold: 'Bold', italic: 'Italic', color: 'Color', stroke_color: 'Stroke color', fill: 'Fill', rotation: 'Rotation',
   remove_gradient: 'Remove gradient', add_gradient: 'Add gradient', gradient_hint: 'Linear gradient fill', gradient_from: 'Gradient from', gradient_to: 'Gradient to', gradient_radial: 'Radial', gradient_linear: 'Linear', angle: 'Angle',
+  gradient_add_stop: 'Add stop', gradient_stop_pos: 'Stop %', gradient_stop_del: 'Remove stop',
   live_effects: 'Live effects', blur: 'Blur', remove_shadow: 'Remove shadow', add_shadow: 'Add shadow', shadow_hint: 'Live drop shadow',
   shadow_x: 'Shadow X', shadow_y: 'Shadow Y', shadow_blur: 'Shadow blur', shadow_color: 'Shadow color',
   remove_glow: 'Remove glow', add_glow: 'Add glow', glow_hint: 'Live glow', glow_blur: 'Glow blur', glow_color: 'Glow color',
@@ -83,7 +84,7 @@ const en: Msg = {
 <h4>Selection & editing</h4><p>Click or marquee-drag to select; Shift adds. Move/resize with handles; Shift while dragging locks to one axis; Ctrl disables snapping. Arrow keys nudge (Shift=10px). <code>Ctrl+D</code> duplicate, <code>Ctrl+C/V</code> copy-paste, <code>Ctrl+G</code>/<code>Ctrl+Shift+G</code> group/ungroup, <code>Ctrl+U</code> union of shapes, <code>Delete</code> delete. <code>[</code>/<code>]</code> adjust the size of the active drawing tool; with the selection tool they change z-order. <code>Ctrl+Z</code>/<code>Ctrl+Shift+Z</code> undo/redo everything.</p>
 <h4>Smart guides & snapping</h4><p>Guides appear only against real references (other objects, page rules, manual guides). Snaps to them; hold <code>Ctrl</code> while dragging to move freely. Right-click the canvas creates a manual guide; right-click on it deletes it; drag it to move.</p>
 <h4>Layers & pages</h4><p>Layers panel: visibility, lock, opacity, drag to reorder/nest, z-order buttons. Pages panel: multiple pages per document. Panels are collapsible and reorderable.</p>
-<h4>Fills, styles & effects</h4><p>Solid color with alpha, linear gradients, reusable Styles (save from an object, apply to another), live effects: shadow, glow, blur, bevel. Polygon objects keep stroke and fill independent (color, width, dashed, no-fill).</p>
+<h4>Fills, styles & effects</h4><p>Solid color with alpha, linear and radial gradients with multiple color stops (Add stop in the inspector), reusable Styles (save from an object, apply to another), live effects: shadow, glow, blur, bevel. Polygon objects keep stroke and fill independent (color, width, dashed, no-fill).</p>
 <h4>Text</h4><p>Double-click to edit; system font picker; bold/italic; bbox re-measured.</p>
 <h4>Files</h4><p>Import images (PNG/JPEG/WebP/GIF/SVG). <code>.f.png</code> export/import keeps the full editable document. Export flat PNG, JPEG, WebP (quality configurable) or one PNG per selected object. Autosaves to your browser (IndexedDB).</p>
 <h4>View & settings</h4><p>Scroll to zoom, middle-drag or Space to pan, <code>0</code> fit page, <code>Shift+0</code> zoom to selection. Settings (bottom-left): language (15), theme (light/dark/system), workspace background color and grid.</p>`,
@@ -105,6 +106,7 @@ const es: Partial<Msg> = {
   saturation: 'Saturación', brightness: 'Brillo', crop_x: 'Recorte X', crop_y: 'Recorte Y', crop_w: 'Recorte ancho', crop_h: 'Recorte alto', remove_crop: 'Quitar recorte', show_full_image: 'Mostrar la imagen completa',
   text: 'Texto', size: 'Tamaño', font: 'Fuente', bold: 'Negrita', italic: 'Cursiva', color: 'Color', stroke_color: 'Color trazo', fill: 'Relleno', rotation: 'Rotación',
   remove_gradient: 'Quitar degradado', add_gradient: 'Añadir degradado', gradient_hint: 'Relleno con degradado lineal', gradient_from: 'Degradado desde', gradient_to: 'Degradado hasta', gradient_radial: 'Radial', gradient_linear: 'Lineal', angle: 'Ángulo',
+  gradient_add_stop: 'Añadir parada', gradient_stop_pos: 'Parada %', gradient_stop_del: 'Quitar parada',
   live_effects: 'Efectos en vivo', blur: 'Desenfoque', remove_shadow: 'Quitar sombra', add_shadow: 'Añadir sombra', shadow_hint: 'Sombra paralela en vivo',
   shadow_x: 'Sombra X', shadow_y: 'Sombra Y', shadow_blur: 'Sombra desenfoque', shadow_color: 'Sombra color',
   remove_glow: 'Quitar glow', add_glow: 'Añadir glow', glow_hint: 'Resplandor en vivo', glow_blur: 'Glow desenfoque', glow_color: 'Glow color',
@@ -123,7 +125,7 @@ const es: Partial<Msg> = {
 <h4>Selección y edición</h4><p>Clic o arrastre por marco para seleccionar; Shift añade. Mueve y redimensiona con las asas; Shift durante el arrastre bloquea a un eje; Ctrl desactiva el snap. Flechas mueven (Shift=10px). <code>Ctrl+D</code> duplicar, <code>Ctrl+C/V</code> copiar/pegar, <code>Ctrl+G</code>/<code>Ctrl+Shift+G</code> agrupar/desagrupar, <code>Ctrl+U</code> unión de formas, <code>Supr</code> eliminar. <code>[</code>/<code>]</code> ajustan el grosor de la herramienta de dibujo activa; con la de selección cambian el orden de apilado. <code>Ctrl+Z</code>/<code>Ctrl+Shift+Z</code> deshacer/rehacer de todo.</p>
 <h4>Guías inteligentes y snap</h4><p>Las guías aparecen solo ante referencias reales (otros objetos, reglas de página, guías manuales) y atraen el snap; mantén <code>Ctrl</code> durante el arrastre para moverte libre. Clic derecho en el lienzo crea una guía manual; clic derecho sobre ella la borra; arrástrala para moverla.</p>
 <h4>Capas y páginas</h4><p>Panel de capas: visibilidad, bloqueo, opacidad, drag para reordenar/anidar, botones de orden. Panel de páginas: varias páginas por documento. Los paneles se colapsan y reordenan.</p>
-<h4>Rellenos, estilos y efectos</h4><p>Color sólido con alfa, degradados lineales, Styles reutilizables (guardar desde un objeto, aplicar a otro), efectos en vivo: sombra, glow, blur, bisel. Los polígonos mantienen borde y relleno independientes (color, grosor, discontinuo, sin relleno).</p>
+<h4>Rellenos, estilos y efectos</h4><p>Color sólido con alfa, degradados lineales y radiales con paradas de color (Añadir parada en el inspector), Styles reutilizables (guardar desde un objeto, aplicar a otro), efectos en vivo: sombra, glow, blur, bisel. Los polígonos mantienen borde y relleno independientes (color, grosor, discontinuo, sin relleno).</p>
 <h4>Texto</h4><p>Doble clic para editar; selector de fuentes del sistema; negrita/cursiva; el bbox se re-mide.</p>
 <h4>Archivos</h4><p>Importa imágenes (PNG/JPEG/WebP/GIF/SVG). Exportar/importar <code>.f.png</code> conserva el documento editable completo. Exporta PNG plano, JPEG, WebP (calidad configurable) o un PNG por objeto seleccionado. Autoguardado en el navegador (IndexedDB).</p>
 <h4>Vista y ajustes</h4><p>Rueda para zoom, arrastre con rueda/Space para mover, <code>0</code> ajustar a página, <code>Shift+0</code> zoom a la selección. Ajustes (abajo a la izquierda): idioma (15), tema (claro/oscuro/sistema), color de fondo del área de trabajo y cuadrícula.</p>`,
@@ -144,6 +146,7 @@ const zh: Partial<Msg> = {
   saturation: '饱和度', brightness: '亮度', crop_x: '裁剪 X', crop_y: '裁剪 Y', crop_w: '裁剪宽度', crop_h: '裁剪高度', remove_crop: '移除裁剪', show_full_image: '显示完整图像',
   text: '文本', size: '字号', font: '字体', bold: '粗体', italic: '斜体', color: '颜色', stroke_color: '描边颜色', fill: '填充', rotation: '旋转',
   remove_gradient: '移除渐变', add_gradient: '添加渐变', gradient_hint: '线性渐变填充', gradient_from: '渐变起始', gradient_to: '渐变结束', gradient_radial: '径向', gradient_linear: '线性', angle: '角度',
+  gradient_add_stop: '添加色标', gradient_stop_pos: '色标 %', gradient_stop_del: '删除色标',
   live_effects: '实时效果', blur: '模糊', remove_shadow: '移除阴影', add_shadow: '添加阴影', shadow_hint: '实时投影',
   shadow_x: '阴影 X', shadow_y: '阴影 Y', shadow_blur: '阴影模糊', shadow_color: '阴影颜色',
   remove_glow: '移除光晕', add_glow: '添加光晕', glow_hint: '实时光晕', glow_blur: '光晕模糊', glow_color: '光晕颜色',
@@ -168,6 +171,7 @@ const hi: Partial<Msg> = {
   saturation: 'संतृप्ति', brightness: 'चमक', crop_x: 'क्रॉप X', crop_y: 'क्रॉप Y', crop_w: 'क्रॉप चौड़ाई', crop_h: 'क्रॉप ऊँचाई', remove_crop: 'क्रॉप हटाएँ', show_full_image: 'पूरी छवि दिखाएँ',
   text: 'पाठ', size: 'आकार', font: 'फ़ॉन्ट', bold: 'बोल्ड', italic: 'इटैलिक', color: 'रंग', stroke_color: 'स्ट्रोक रंग', fill: 'फ़िल', rotation: 'घूर्णन',
   remove_gradient: 'ग्रेडिएंट हटाएँ', add_gradient: 'ग्रेडिएंट जोड़ें', gradient_hint: 'रेखीय ग्रेडिएंट फ़िल', gradient_from: 'ग्रेडिएंट से', gradient_to: 'ग्रेडिएंट तक', gradient_radial: 'रीय', gradient_linear: 'रेखीय', angle: 'कोण',
+  gradient_add_stop: 'स्टॉप जोड़ें', gradient_stop_pos: 'स्टॉप %', gradient_stop_del: 'स्टॉप हटाएँ',
   live_effects: 'लाइव प्रभाव', blur: 'धुंधलापन', remove_shadow: 'छाया हटाएँ', add_shadow: 'छाया जोड़ें', shadow_hint: 'लाइव ड्रॉप छाया',
   shadow_x: 'छाया X', shadow_y: 'छाया Y', shadow_blur: 'छाया धुंधलापन', shadow_color: 'छाया रंग',
   remove_glow: 'ग्लो हटाएँ', add_glow: 'ग्लो जोड़ें', glow_hint: 'लाइव ग्लो', glow_blur: 'ग्लो धुंधलापन', glow_color: 'ग्लो रंग',
@@ -192,6 +196,7 @@ const ar: Partial<Msg> = {
   saturation: 'التشبع', brightness: 'السطوع', crop_x: 'اقتصاص X', crop_y: 'اقتصاص Y', crop_w: 'عرض الاقتصاص', crop_h: 'ارتفاع الاقتصاص', remove_crop: 'إزالة الاقتصاص', show_full_image: 'إظهار الصورة كاملة',
   text: 'نص', size: 'الحجم', font: 'الخط', bold: 'عريض', italic: 'مائل', color: 'اللون', stroke_color: 'لون الحد', fill: 'التعبئة', rotation: 'التدوير',
   remove_gradient: 'إزالة التدرج', add_gradient: 'إضافة تدرج', gradient_hint: 'تعبئة بتدرج خطي', gradient_from: 'بداية التدرج', gradient_to: 'نهاية التدرج', gradient_radial: 'شعاعي', gradient_linear: 'خطي', angle: 'الزاوية',
+  gradient_add_stop: 'إضافة نقطة تدرج', gradient_stop_pos: 'نقطة %', gradient_stop_del: 'إزالة نقطة التدرج',
   live_effects: 'تأثيرات مباشرة', blur: 'طمس', remove_shadow: 'إزالة الظل', add_shadow: 'إضافة ظل', shadow_hint: 'ظل مباشر',
   shadow_x: 'ظل X', shadow_y: 'ظل Y', shadow_blur: 'طمس الظل', shadow_color: 'لون الظل',
   remove_glow: 'إزالة التوهج', add_glow: 'إضافة توهج', glow_hint: 'توهج مباشر', glow_blur: 'طمس التوهج', glow_color: 'لون التوهج',
@@ -216,6 +221,7 @@ const pt: Partial<Msg> = {
   saturation: 'Saturação', brightness: 'Brilho', crop_x: 'Recorte X', crop_y: 'Recorte Y', crop_w: 'Recorte largura', crop_h: 'Recorte altura', remove_crop: 'Remover recorte', show_full_image: 'Mostrar a imagem completa',
   text: 'Texto', size: 'Tamanho', font: 'Fonte', bold: 'Negrito', italic: 'Itálico', color: 'Cor', stroke_color: 'Cor do traço', fill: 'Preenchimento', rotation: 'Rotação',
   remove_gradient: 'Remover gradiente', add_gradient: 'Adicionar gradiente', gradient_hint: 'Preenchimento com gradiente linear', gradient_from: 'Gradiente de', gradient_to: 'Gradiente até', gradient_radial: 'Radial', gradient_linear: 'Linear', angle: 'Ângulo',
+  gradient_add_stop: 'Adicionar parada', gradient_stop_pos: 'Parada %', gradient_stop_del: 'Remover parada',
   live_effects: 'Efeitos ao vivo', blur: 'Desfoque', remove_shadow: 'Remover sombra', add_shadow: 'Adicionar sombra', shadow_hint: 'Sombra projetada ao vivo',
   shadow_x: 'Sombra X', shadow_y: 'Sombra Y', shadow_blur: 'Desfoque da sombra', shadow_color: 'Cor da sombra',
   remove_glow: 'Remover brilho', add_glow: 'Adicionar brilho', glow_hint: 'Brilho ao vivo', glow_blur: 'Desfoque do brilho', glow_color: 'Cor do brilho',
@@ -240,6 +246,7 @@ const ru: Partial<Msg> = {
   saturation: 'Насыщенность', brightness: 'Яркость', crop_x: 'Обрезка X', crop_y: 'Обрезка Y', crop_w: 'Обрезка ширины', crop_h: 'Обрезка высоты', remove_crop: 'Убрать обрезку', show_full_image: 'Показать изображение целиком',
   text: 'Текст', size: 'Размер', font: 'Шрифт', bold: 'Жирный', italic: 'Курсив', color: 'Цвет', stroke_color: 'Цвет обводки', fill: 'Заливка', rotation: 'Поворот',
   remove_gradient: 'Убрать градиент', add_gradient: 'Добавить градиент', gradient_hint: 'Заливка линейным градиентом', gradient_from: 'Градиент от', gradient_to: 'Градиент до', gradient_radial: 'Радиальный', gradient_linear: 'Линейный', angle: 'Угол',
+  gradient_add_stop: 'Добавить точку', gradient_stop_pos: 'Точка %', gradient_stop_del: 'Удалить точку',
   live_effects: 'Живые эффекты', blur: 'Размытие', remove_shadow: 'Убрать тень', add_shadow: 'Добавить тень', shadow_hint: 'Живая падающая тень',
   shadow_x: 'Тень X', shadow_y: 'Тень Y', shadow_blur: 'Размытие тени', shadow_color: 'Цвет тени',
   remove_glow: 'Убрать свечение', add_glow: 'Добавить свечение', glow_hint: 'Живое свечение', glow_blur: 'Размытие свечения', glow_color: 'Цвет свечения',
@@ -264,6 +271,7 @@ const ja: Partial<Msg> = {
   saturation: '彩度', brightness: '明度', crop_x: '切り抜き X', crop_y: '切り抜き Y', crop_w: '切り抜き幅', crop_h: '切り抜き高さ', remove_crop: '切り抜きを解除', show_full_image: '画像全体を表示',
   text: 'テキスト', size: 'サイズ', font: 'フォント', bold: '太字', italic: '斜体', color: '色', stroke_color: '線の色', fill: '塗り', rotation: '回転',
   remove_gradient: 'グラデーションを削除', add_gradient: 'グラデーションを追加', gradient_hint: '線形グラデーション塗り', gradient_from: 'グラデーション開始', gradient_to: 'グラデーション終了', gradient_radial: '放射状', gradient_linear: '線形', angle: '角度',
+  gradient_add_stop: 'ストップを追加', gradient_stop_pos: '位置 %', gradient_stop_del: 'ストップを削除',
   live_effects: 'ライブ効果', blur: 'ぼかし', remove_shadow: '影を削除', add_shadow: '影を追加', shadow_hint: 'ライブドロップシャドウ',
   shadow_x: '影 X', shadow_y: '影 Y', shadow_blur: '影のぼかし', shadow_color: '影の色',
   remove_glow: 'グローを削除', add_glow: 'グローを追加', glow_hint: 'ライブグロー', glow_blur: 'グローのぼかし', glow_color: 'グローの色',
@@ -288,6 +296,7 @@ const fr: Partial<Msg> = {
   saturation: 'Saturation', brightness: 'Luminosité', crop_x: 'Recadrage X', crop_y: 'Recadrage Y', crop_w: 'Recadrage largeur', crop_h: 'Recadrage hauteur', remove_crop: 'Supprimer le recadrage', show_full_image: 'Afficher l’image entière',
   text: 'Texte', size: 'Taille', font: 'Police', bold: 'Gras', italic: 'Italique', color: 'Couleur', stroke_color: 'Couleur du contour', fill: 'Remplissage', rotation: 'Rotation',
   remove_gradient: 'Supprimer le dégradé', add_gradient: 'Ajouter un dégradé', gradient_hint: 'Remplissage en dégradé linéaire', gradient_from: 'Dégradé depuis', gradient_to: 'Dégradé vers', gradient_radial: 'Radial', gradient_linear: 'Linéaire', angle: 'Angle',
+  gradient_add_stop: 'Ajouter un arrêt', gradient_stop_pos: 'Arrêt %', gradient_stop_del: "Supprimer l'arrêt",
   live_effects: 'Effets en direct', blur: 'Flou', remove_shadow: 'Supprimer l’ombre', add_shadow: 'Ajouter une ombre', shadow_hint: 'Ombre portée en direct',
   shadow_x: 'Ombre X', shadow_y: 'Ombre Y', shadow_blur: 'Flou de l’ombre', shadow_color: 'Couleur de l’ombre',
   remove_glow: 'Supprimer la lueur', add_glow: 'Ajouter une lueur', glow_hint: 'Lueur en direct', glow_blur: 'Flou de la lueur', glow_color: 'Couleur de la lueur',
@@ -312,6 +321,7 @@ const de: Partial<Msg> = {
   saturation: 'Sättigung', brightness: 'Helligkeit', crop_x: 'Beschnitt X', crop_y: 'Beschnitt Y', crop_w: 'Beschnitt Breite', crop_h: 'Beschnitt Höhe', remove_crop: 'Beschnitt entfernen', show_full_image: 'Vollständiges Bild anzeigen',
   text: 'Text', size: 'Größe', font: 'Schrift', bold: 'Fett', italic: 'Kursiv', color: 'Farbe', stroke_color: 'Konturfarbe', fill: 'Füllung', rotation: 'Drehung',
   remove_gradient: 'Verlauf entfernen', add_gradient: 'Verlauf hinzufügen', gradient_hint: 'Lineare Verlaufsfüllung', gradient_from: 'Verlauf von', gradient_to: 'Verlauf nach', gradient_radial: 'Radial', gradient_linear: 'Linear', angle: 'Winkel',
+  gradient_add_stop: 'Haltepunkt hinzufügen', gradient_stop_pos: 'Haltepunkt %', gradient_stop_del: 'Haltepunkt entfernen',
   live_effects: 'Live-Effekte', blur: 'Unschärfe', remove_shadow: 'Schatten entfernen', add_shadow: 'Schatten hinzufügen', shadow_hint: 'Live-Schlagschatten',
   shadow_x: 'Schatten X', shadow_y: 'Schatten Y', shadow_blur: 'Schattenunschärfe', shadow_color: 'Schattenfarbe',
   remove_glow: 'Glühen entfernen', add_glow: 'Glühen hinzufügen', glow_hint: 'Live-Glühen', glow_blur: 'Glühunschärfe', glow_color: 'Glühfarbe',
@@ -336,6 +346,7 @@ const ko: Partial<Msg> = {
   saturation: '채도', brightness: '밝기', crop_x: '자르기 X', crop_y: '자르기 Y', crop_w: '자르기 너비', crop_h: '자르기 높이', remove_crop: '자르기 제거', show_full_image: '전체 이미지 표시',
   text: '텍스트', size: '크기', font: '글꼴', bold: '굵게', italic: '기울임', color: '색상', stroke_color: '선 색상', fill: '채우기', rotation: '회전',
   remove_gradient: '그라데이션 제거', add_gradient: '그라데이션 추가', gradient_hint: '선형 그라데이션 채우기', gradient_from: '그라데이션 시작', gradient_to: '그라데이션 끝', gradient_radial: '방사형', gradient_linear: '선형', angle: '각도',
+  gradient_add_stop: '정점 추가', gradient_stop_pos: '정점 %', gradient_stop_del: '정점 삭제',
   live_effects: '라이브 효과', blur: '흐림', remove_shadow: '그림자 제거', add_shadow: '그림자 추가', shadow_hint: '라이브 드롭 섀도',
   shadow_x: '그림자 X', shadow_y: '그림자 Y', shadow_blur: '그림자 흐림', shadow_color: '그림자 색상',
   remove_glow: '발광 제거', add_glow: '발광 추가', glow_hint: '라이브 발광', glow_blur: '발광 흐림', glow_color: '발광 색상',
@@ -360,6 +371,7 @@ const it: Partial<Msg> = {
   saturation: 'Saturazione', brightness: 'Luminosità', crop_x: 'Ritaglio X', crop_y: 'Ritaglio Y', crop_w: 'Ritaglio larghezza', crop_h: 'Ritaglio altezza', remove_crop: 'Rimuovi ritaglio', show_full_image: 'Mostra l’immagine completa',
   text: 'Testo', size: 'Dimensione', font: 'Carattere', bold: 'Grassetto', italic: 'Corsivo', color: 'Colore', stroke_color: 'Colore contorno', fill: 'Riempimento', rotation: 'Rotazione',
   remove_gradient: 'Rimuovi sfumatura', add_gradient: 'Aggiungi sfumatura', gradient_hint: 'Riempimento con sfumatura lineare', gradient_from: 'Sfumatura da', gradient_to: 'Sfumatura a', gradient_radial: 'Radiale', gradient_linear: 'Lineare', angle: 'Angolo',
+  gradient_add_stop: 'Aggiungi fermata', gradient_stop_pos: 'Fermata %', gradient_stop_del: 'Rimuovi fermata',
   live_effects: 'Effetti live', blur: 'Sfocatura', remove_shadow: 'Rimuovi ombra', add_shadow: 'Aggiungi ombra', shadow_hint: 'Ombra portata live',
   shadow_x: 'Ombra X', shadow_y: 'Ombra Y', shadow_blur: 'Sfocatura ombra', shadow_color: 'Colore ombra',
   remove_glow: 'Rimuovi bagliore', add_glow: 'Aggiungi bagliore', glow_hint: 'Bagliore live', glow_blur: 'Sfocatura bagliore', glow_color: 'Colore bagliore',
@@ -384,6 +396,7 @@ const tr: Partial<Msg> = {
   saturation: 'Doygunluk', brightness: 'Parlaklık', crop_x: 'Kırpma X', crop_y: 'Kırpma Y', crop_w: 'Kırpma genişliği', crop_h: 'Kırpma yüksekliği', remove_crop: 'Kırpmayı kaldır', show_full_image: 'Tüm görüntüyü göster',
   text: 'Metin', size: 'Boyut', font: 'Yazı tipi', bold: 'Kalın', italic: 'İtalik', color: 'Renk', stroke_color: 'Çizgi rengi', fill: 'Dolgu', rotation: 'Döndürme',
   remove_gradient: 'Gradyanı kaldır', add_gradient: 'Gradyan ekle', gradient_hint: 'Doğrusal gradyan dolgu', gradient_from: 'Gradyan başlangıcı', gradient_to: 'Gradyan sonu', gradient_radial: 'Radyal', gradient_linear: 'Doğrusal', angle: 'Açı',
+  gradient_add_stop: 'Durak noktası ekle', gradient_stop_pos: 'Durak %', gradient_stop_del: 'Durak noktasını kaldır',
   live_effects: 'Canlı efektler', blur: 'Bulanıklık', remove_shadow: 'Gölgeyi kaldır', add_shadow: 'Gölge ekle', shadow_hint: 'Canlı düşme gölgesi',
   shadow_x: 'Gölge X', shadow_y: 'Gölge Y', shadow_blur: 'Gölge bulanıklığı', shadow_color: 'Gölge rengi',
   remove_glow: 'Işıltıyı kaldır', add_glow: 'Işıltı ekle', glow_hint: 'Canlı ışıltı', glow_blur: 'Işıltı bulanıklığı', glow_color: 'Işıltı rengi',
@@ -408,6 +421,7 @@ const vi: Partial<Msg> = {
   saturation: 'Độ bão hòa', brightness: 'Độ sáng', crop_x: 'Cắt X', crop_y: 'Cắt Y', crop_w: 'Cắt chiều rộng', crop_h: 'Cắt chiều cao', remove_crop: 'Bỏ cắt', show_full_image: 'Hiện ảnh đầy đủ',
   text: 'Văn bản', size: 'Kích cỡ', font: 'Phông chữ', bold: 'Đậm', italic: 'Nghiêng', color: 'Màu', stroke_color: 'Màu viền', fill: 'Tô', rotation: 'Xoay',
   remove_gradient: 'Bỏ chuyển màu', add_gradient: 'Thêm chuyển màu', gradient_hint: 'Tô chuyển màu tuyến tính', gradient_from: 'Chuyển màu từ', gradient_to: 'Chuyển màu đến', gradient_radial: 'Tỏa tròn', gradient_linear: 'Tuyến tính', angle: 'Góc',
+  gradient_add_stop: 'Thêm điểm dừng', gradient_stop_pos: 'Điểm dừng %', gradient_stop_del: 'Xóa điểm dừng',
   live_effects: 'Hiệu ứng trực tiếp', blur: 'Làm mờ', remove_shadow: 'Bỏ bóng', add_shadow: 'Thêm bóng', shadow_hint: 'Bóng đổ trực tiếp',
   shadow_x: 'Bóng X', shadow_y: 'Bóng Y', shadow_blur: 'Làm mờ bóng', shadow_color: 'Màu bóng',
   remove_glow: 'Bỏ phát sáng', add_glow: 'Thêm phát sáng', glow_hint: 'Phát sáng trực tiếp', glow_blur: 'Làm mờ phát sáng', glow_color: 'Màu phát sáng',
@@ -432,6 +446,7 @@ const nl: Partial<Msg> = {
   saturation: 'Verzadiging', brightness: 'Helderheid', crop_x: 'Bijsnijden X', crop_y: 'Bijsnijden Y', crop_w: 'Bijsnijden breedte', crop_h: 'Bijsnijden hoogte', remove_crop: 'Bijsnijden verwijderen', show_full_image: 'Volledige afbeelding tonen',
   text: 'Tekst', size: 'Grootte', font: 'Lettertype', bold: 'Vet', italic: 'Cursief', color: 'Kleur', stroke_color: 'Lijnkleur', fill: 'Vulling', rotation: 'Rotatie',
   remove_gradient: 'Verloop verwijderen', add_gradient: 'Verloop toevoegen', gradient_hint: 'Vulling met lineair verloop', gradient_from: 'Verloop van', gradient_to: 'Verloop naar', gradient_radial: 'Radiaal', gradient_linear: 'Lineair', angle: 'Hoek',
+  gradient_add_stop: 'Haltepunt toevoegen', gradient_stop_pos: 'Haltepunt %', gradient_stop_del: 'Haltepunt verwijderen',
   live_effects: 'Live-effecten', blur: 'Vervaging', remove_shadow: 'Schaduw verwijderen', add_shadow: 'Schaduw toevoegen', shadow_hint: 'Live slagschaduw',
   shadow_x: 'Schaduw X', shadow_y: 'Schaduw Y', shadow_blur: 'Schaduvervaging', shadow_color: 'Schaduwkleur',
   remove_glow: 'Gloed verwijderen', add_glow: 'Gloed toevoegen', glow_hint: 'Live gloed', glow_blur: 'Gloedvervaging', glow_color: 'Gloedkleur',

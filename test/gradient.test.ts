@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { Renderer } from '../src/render';
-import { fillGradient, gradientFill } from '../src/gradient';
+import { addStopAt, fillGradient, gradientFill, stopsOf } from '../src/gradient';
 import { activePage, newDoc, uid, type ShapeObj } from '../src/model';
 
 const rect = (partial: Partial<ShapeObj> = {}): ShapeObj => ({
@@ -92,4 +92,27 @@ describe('fillGradient', () => {
     fillGradient(ctx, rect(), { from: '#000', to: '#fff', angle: 0 }, 1, 0, 0);
     expect(ops).toEqual(['fill']);
   });
+
+describe('paradas intermedias', () => {
+  it('stopsOf: sin stops usa from/to; con stops los ordena', () => {
+    expect(stopsOf({ from: '#000', to: '#fff', angle: 0 })).toEqual([{ p: 0, c: '#000' }, { p: 1, c: '#fff' }]);
+    const g = { from: '#000', to: '#fff', angle: 0, stops: [{ p: 0.7, c: '#f00' }, { p: 0.2, c: '#0f0' }, { p: 0, c: '#000' }, { p: 1, c: '#fff' }] };
+    expect(stopsOf(g).map((s) => s.p)).toEqual([0, 0.2, 0.7, 1]);
+  });
+  it('addStopAt: inserta en el hueco más ancho con color medio', () => {
+    const st = addStopAt({ from: '#000000', to: '#ffffff', angle: 0 });
+    expect(st.length).toBe(3);
+    expect(st[1]).toEqual({ p: 0.5, c: '#808080' });
+  });
+  it('fillGradient usa las paradas intermedias', () => {
+    const stops: [number, string][] = [];
+    const ctx = {
+      fill: () => {},
+      createLinearGradient: () => ({ addColorStop: (o: number, c: string) => stops.push([o, c]) }),
+    } as unknown as CanvasRenderingContext2D;
+    fillGradient(ctx, rect(), { from: '#000', to: '#fff', angle: 0, stops: [{ p: 0, c: '#000' }, { p: 0.5, c: '#f00' }, { p: 1, c: '#fff' }] }, 1, 0, 0);
+    expect(stops).toEqual([[0, '#000'], [0.5, '#f00'], [1, '#fff']]);
+  });
+});
+
 });

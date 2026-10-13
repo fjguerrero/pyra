@@ -394,6 +394,19 @@ test('Shift+0 acerca la vista a la selección', async ({ page }) => {
   })).toBe('#4f8cff');
 });
 
+test('degradado multi-parada: añadir parada abre el editor con 3 filas y se puede borrar', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  await page.locator('#inspector-body button', { hasText: 'Add gradient' }).click();
+  await expect(page.locator('input[data-stop-pos]')).toHaveCount(0);
+  await page.locator('#inspector-body button', { hasText: 'Add stop' }).click();
+  await expect(page.locator('input[data-stop-pos]')).toHaveCount(3);
+  await expect(page.locator('input[data-stop-color]')).toHaveCount(3);
+  await page.locator('button[data-stop-del="1"]').dispatchEvent('click');
+  await expect(page.locator('input[data-stop-pos]')).toHaveCount(2); // nunca baja de 2 paradas
+  await expect(page.locator('button[data-stop-del]')).toHaveCount(0);
+});
+
 test('degradado radial: el inspector ofrece alternar lineal/radial', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);
