@@ -1158,3 +1158,39 @@ test.describe('ventana baja', () => {
     await align.dispatchEvent('click');
   });
 });
+
+/** Rellenos de todos los objetos persistidos (orden de documento). */
+function docFills(page: Page): () => Promise<string[]> {
+  return () =>
+    page.evaluate(() =>
+      new Promise<string[]>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve((req.result?.pages?.[0]?.layers?.[0]?.objects ?? []).map((o: { fill?: string }) => String(o.fill ?? '')));
+          req.onerror = () => resolve([]);
+        };
+        open.onerror = () => resolve([]);
+      }),
+    );
+}
+
+test('edición multi-objeto: el inspector cambia el relleno de todos los seleccionados y un Ctrl+Z lo deshace', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  await page.keyboard.press('r'); // tras dibujar vuelve a selección: reactivar la herramienta
+  await drag(page, [300, 100], [420, 180]);
+  await page.keyboard.press('Escape');
+  await drag(page, [50, 40], [620, 260]); // marco sobre ambos (B llega a x≈577 en pantalla)
+  await expect(page.locator('#status')).toContainText('2 objects');
+  const fillInput = page.locator('label').filter({ hasText: 'Fill' }).locator('input[type=color]').first();
+  await expect(fillInput).toBeVisible();
+  await fillInput.evaluate((el: HTMLInputElement) => {
+    el.value = '#ff0000';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect.poll(docFills(page), { timeout: 5000 }).toEqual(['#ff0000', '#ff0000']);
+  await page.keyboard.press('Control+z'); // un solo undo revierte los dos
+  await expect.poll(docFills(page), { timeout: 5000 }).toEqual(['#4f8cff', '#4f8cff']);
+});

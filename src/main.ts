@@ -1321,7 +1321,16 @@ canvas.addEventListener('pointerup', (e) => {
 
 const panelApi = {
   editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj>): void {
-    const before = { ...obj };
+    // Fireworks: con varios seleccionados, el inspector edita a todos los del
+    // mismo tipo; la geometría absoluta (x/y/w/h) solo al objeto de referencia
+    // (poner el mismo x en todos los apilaría).
+    const geo = new Set(['x', 'y', 'w', 'h']);
+    const stylePatch = Object.fromEntries(Object.entries(patch).filter(([k]) => !geo.has(k)));
+    const targets: { o: Obj; p: typeof patch }[] = [{ o: obj, p: patch }];
+    if (selectedIds.length > 1 && selectedIds.includes(obj.id))
+      for (const o of selectedObjs())
+        if (o !== obj && o.shape === obj.shape) targets.push({ o, p: stylePatch as typeof patch });
+    const before = targets.map(({ o }) => ({ o, snap: { ...o } }));
     // recordar el último color usado: es el que pintan el pincel y las líneas
     const c = (patch as { stroke?: string | null }).stroke ?? (patch as { fill?: string }).fill;
     if (typeof c === 'string' && /^#[0-9a-f]{6,8}$/i.test(c)) lastStroke = c;
@@ -1330,10 +1339,13 @@ const panelApi = {
     history.run({
       label: 'editar',
       do: () => {
-        Object.assign(obj, patch);
-        if (obj.shape === 'text' && ('font' in patch || 'size' in patch || 'bold' in patch || 'italic' in patch)) remeasureText(obj);
+        for (const { o, p } of targets) {
+          // clonar por destino: los valores objeto (gradientes, fx) no deben compartirse
+          Object.assign(o, targets.length > 1 ? structuredClone(p) : p);
+          if (o.shape === 'text' && ('font' in p || 'size' in p || 'bold' in p || 'italic' in p)) remeasureText(o);
+        }
       },
-      undo: () => Object.assign(obj, before),
+      undo: () => { for (const { o, snap } of before) Object.assign(o, snap); },
     });
     persist();
     invalidate();
