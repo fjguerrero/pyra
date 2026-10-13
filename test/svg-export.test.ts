@@ -92,6 +92,18 @@ describe('exportSvg: formas', () => {
     expect(s).toContain(' Z"');
   });
 
+  it('nodo cúspide (polyH2): el lado entrante es libre → pico anguloso', () => {
+    const s = svgOf([shape({
+      shape: 'polygon',
+      poly: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }],
+      polyH: [null, { x: -0.3, y: 0 }, null, null],
+      polyH2: [null, { x: 0, y: 0.5 }, null, null],
+    })]);
+    // tramo 0→1: c2 = nodo1 + polyH2 = (110, 20+25) en vez del espejo (140,20)
+    expect(s).toContain('C 10 20 110 45 110 20');
+    expect(s).toContain('C 80 20 110 70 110 70'); // el lado saliente no cambia
+  });
+
   it('degradado: defs con linearGradient y stops', () => {
     const svg = svgOf([shape({ shape: 'rect', gradient: { from: '#f00', to: '#00f', angle: 90 } })]);
     expect(svg).toContain('<linearGradient id="grad0"');

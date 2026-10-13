@@ -92,6 +92,9 @@ export interface ShapeObj {
   /** Asas Bézier por vértice, estilo FreeHand: offset relativo al vértice, normalizado como poly
    * (el mismo asa se usa espejada a ambos lados = nodo suave). null/ausente = nodo esquina (sin curva). */
   polyH?: ({ x: number; y: number } | null)[];
+  /** Asa del lado entrante para nodos cúspide (pico anguloso, FreeHand): solo con polyH[i] puesto.
+   * Ausente = el nodo es suave (asa espejada). */
+  polyH2?: ({ x: number; y: number } | null)[];
   /** Trazo/lápiz suavizado o polígono con vértices curvos: se dibuja con Catmull-Rom. */
   smooth?: boolean;
   /** Guión del borde de un polígono (px de mundo); undefined = línea continua. */
@@ -156,26 +159,29 @@ export const polyPoints = (o: { x: number; y: number; w: number; h: number; poly
   (o.poly ?? []).map((p) => ({ x: o.x + p.x * o.w, y: o.y + p.y * o.h }));
 
 /** ¿El polígono tiene nodos Bézier (asas polyH)? Entonces manda la curva cúbica sobre `smooth`. */
-export const polyHasCurves = (o: { polyH?: ({ x: number; y: number } | null)[] }): boolean => !!o.polyH?.some(Boolean);
+export const polyHasCurves = (o: { polyH?: ({ x: number; y: number } | null)[]; polyH2?: ({ x: number; y: number } | null)[] }): boolean => !!o.polyH?.some(Boolean) || !!o.polyH2?.some(Boolean);
 
 type WPt = { x: number; y: number };
+/** Polígono con asas Bézier (entrada de polySegs/polyOutline). */
+export type PolyBezier = { x: number; y: number; w: number; h: number; poly?: WPt[]; polyH?: ({ x: number; y: number } | null)[]; polyH2?: ({ x: number; y: number } | null)[] };
 
 /** Segmentos de mundo de un polígono cerrado (FreeHand): cúbicos si el nodo tiene asa, rectos si es esquina.
- * El asa de un nodo se usa espejada para ambos tramos (nodo suave); sin asa = esquina. */
-export function polySegs(o: { x: number; y: number; w: number; h: number; poly?: WPt[]; polyH?: ({ x: number; y: number } | null)[] }): { a: WPt; b: WPt; c1?: WPt; c2?: WPt }[] {
+ * Sin polyH2, el asa se espeja a ambos lados (nodo suave); con polyH2 el lado entrante es libre (cúspide/pico). */
+export function polySegs(o: PolyBezier): { a: WPt; b: WPt; c1?: WPt; c2?: WPt }[] {
   const v = polyPoints(o);
   const H = (o.polyH ?? []).map((h) => (h ? { x: h.x * o.w, y: h.y * o.h } : null));
+  const H2 = (o.polyH2 ?? []).map((h) => (h ? { x: h.x * o.w, y: h.y * o.h } : null));
   const segs: { a: WPt; b: WPt; c1?: WPt; c2?: WPt }[] = [];
   for (let i = 0; i < v.length; i++) {
-    const a = v[i], b = v[(i + 1) % v.length], ha = H[i], hb = H[(i + 1) % v.length];
+    const a = v[i], b = v[(i + 1) % v.length], ha = H[i], hb = H[(i + 1) % v.length], hb2 = H2[(i + 1) % v.length];
     if (!ha && !hb) segs.push({ a, b });
-    else segs.push({ a, b, c1: { x: a.x + (ha?.x ?? 0), y: a.y + (ha?.y ?? 0) }, c2: { x: b.x - (hb?.x ?? 0), y: b.y - (hb?.y ?? 0) } });
+    else segs.push({ a, b, c1: { x: a.x + (ha?.x ?? 0), y: a.y + (ha?.y ?? 0) }, c2: hb2 ? { x: b.x + hb2.x, y: b.y + hb2.y } : { x: b.x - (hb?.x ?? 0), y: b.y - (hb?.y ?? 0) } });
   }
   return segs;
 }
 
 /** Contorno de mundo de un polígono: aplanado si tiene curvas (para hit-test y unión). */
-export function polyOutline(o: { x: number; y: number; w: number; h: number; poly?: WPt[]; polyH?: ({ x: number; y: number } | null)[] }, samples = 12): WPt[] {
+export function polyOutline(o: PolyBezier, samples = 12): WPt[] {
   if (!polyHasCurves(o)) return polyPoints(o);
   const out: WPt[] = [];
   for (const s of polySegs(o)) {

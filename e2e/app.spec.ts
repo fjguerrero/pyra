@@ -1240,20 +1240,19 @@ test('herramienta de nodos (A): arrastrar un vértice remodela el vector', async
   await expect.poll(docH(page), { timeout: 5000 }).toBeLessThanOrEqual(2);
 });
 
-/** polyH (asas Bézier) persistido del primer objeto del documento. */
-function docPolyH(page: Page): () => Promise<unknown[] | null> {
+/** polyH/polyH2 (asas Bézier) persistido del primer objeto del documento. */
+function docPolyH(page: Page, field: 'polyH' | 'polyH2' = 'polyH'): () => Promise<unknown[] | null> {
   return () =>
-    page.evaluate(() =>
+    page.evaluate((f) =>
       new Promise<unknown[] | null>((resolve) => {
         const open = indexedDB.open('pyra');
         open.onsuccess = () => {
           const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
-          req.onsuccess = () => resolve((req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.polyH as unknown[]) ?? null);
+          req.onsuccess = () => resolve((req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.[f] as unknown[]) ?? null);
           req.onerror = () => resolve(null);
         };
         open.onerror = () => resolve(null);
-      }),
-    );
+      }), field);
 }
 
 test('nodo Bézier (A): Alt+clic vuelve curva un vértice, arrastrar su asa lo remodela y un Ctrl+Z lo revierte', async ({ page }) => {
@@ -1274,6 +1273,16 @@ test('nodo Bézier (A): Alt+clic vuelve curva un vértice, arrastrar su asa lo r
   // punta del asa por defecto: nodo (350,150) + tangente (1,1)/√2·72 ≈ (401,201)
   await drag(page, [401, 201], [500, 250]); // arrastrar el asa deforma la curva
   await expect.poll(() => polyH().then((h) => JSON.stringify(h) !== afterToggle), { timeout: 5000 }).toBe(true);
+  // Alt+arrastrar el asa = romper el espejo → nodo cúspide con pico anguloso (FreeHand)
+  const hh = (await polyH())![1] as { x: number; y: number };
+  const tip: [number, number] = [350 + hh.x * 200, 150 + hh.y * 200]; // el bbox son 200×200 px de lienzo
+  await page.keyboard.down('Alt');
+  await drag(page, tip, [tip[0] + 40, tip[1] - 30]);
+  await page.keyboard.up('Alt');
+  const polyH2 = docPolyH(page, 'polyH2');
+  await expect.poll(() => polyH2().then((h) => !!h?.some(Boolean)), { timeout: 5000 }).toBe(true);
+  await page.keyboard.press('Control+z'); // deshace el pico: vuelve el espejo
+  await expect.poll(() => polyH2().then((h) => !h?.some(Boolean)), { timeout: 5000 }).toBe(true);
   await page.keyboard.press('Control+z'); // un solo undo devuelve el asa a su posición del toggle
   await expect.poll(() => polyH().then((h) => JSON.stringify(h) === afterToggle), { timeout: 5000 }).toBe(true);
   { const [X, Y] = at(350, 150); await page.mouse.dblclick(X, Y); } // doble clic en el vértice = volver a esquina
