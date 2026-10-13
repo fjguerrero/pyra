@@ -69,6 +69,7 @@ resolver los problemas por uno mismo y continuar.
 - [x] F15 Imán al dibujar formas nuevas (esquina arrastrada encaja en bordes/centros, página, guías). → commit 4556596.
 - [x] F16 Degradado multi-parada: `Gradient.stops` + editor de paradas en el inspector (posición %, color, borrar; nunca <2), canvas y SVG con las paradas, i18n 15 idiomas, ayuda es/en. Rescatado de un trabajador cortado; corregido su e2e (esperaba volver a from/to al borrar) y rama muerta en panels.ts.
 - [x] F17 Radio de esquina en rects (`ShapeObj.rx`): campo en el inspector, canvas vía roundRect nativo y SVG vía rx (limitado a mitad del lado corto), i18n es/en, ayuda. Tests render+svg+e2e. → commit 692a084.
+- [x] F18 Voltear H/V (`flipH`/`flipV` en todos los objetos): espejo sobre el centro del bbox en canvas/hit/SVG/unión, comando undoable, botones en ALINEAR, atajos Ctrl+Shift+H/V, ayuda es/en. Además fix de raíz: todas las teclas sueltas de herramienta protegidas con !mod (Ctrl+V pegar estaba roto y sin test). → commit 648244e.
 
 ## Registro de progreso
 - 00:32 F1–F6 completadas y commiteadas (797bf59). Gate completo verde.
@@ -81,3 +82,4 @@ resolver los problemas por uno mismo y continuar.
 - 02:49 F15 imán al dibujar (4556596). Trabajador cortado a mitad de F16.
 - 03:55 F16 rescatada y completada: multi-parada en canvas+SVG+inspector, e2e corregido, docs/02 v1.3 al día. 251 unit + 52 e2e verdes.
 - 04:05 F17 radio de esquina en rects (roundRect nativo + rx en SVG + campo inspector). 255 unit + 53 e2e verdes.
+- 05:15 F18 voltear H/V (canvas/hit/SVG/unión + botones ALINEAR + Ctrl+Shift+H/V) y fix !mod de teclas de herramienta (Ctrl+V roto). 263 unit + 54 e2e verdes (un fallo e2e fue flaky: re-run limpio).
