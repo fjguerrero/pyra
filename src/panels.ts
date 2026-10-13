@@ -1,9 +1,9 @@
 import { FONTS } from './text';
-import { activePage, isLineLike, NO_FX, type BitmapObj, type BrushSettings, type Doc, type Fx, type Layer, type Obj, type ShapeObj, type TextObj } from './model';
+import { activePage, isLineLike, NO_FX, BLEND_MODES, type BitmapObj, type BlendMode, type BrushSettings, type Doc, type Fx, type Layer, type Obj, type ShapeObj, type TextObj } from './model';
 import { addStopAt } from './gradient';
 import { findObj } from './hit';
 import type { View } from './view';
-import { statusText, t } from './i18n';
+import { statusText, t, type MsgKey } from './i18n';
 import { flattenLayers } from './layers';
 import type { AlignKind } from './align';
 import { icon, hasIcon } from './icons';
@@ -438,6 +438,7 @@ export function renderPanels(
       fontWrap.className = 'field';
       fontWrap.innerHTML = `<span>${t('font')}</span>`;
       const fontSel = document.createElement('select');
+      fontSel.dataset.act = 'font';
       for (const f of FONTS) {
         const opt = document.createElement('option');
         opt.value = f.css;
@@ -590,6 +591,23 @@ export function renderPanels(
     const fx: Fx = obj.fx ?? { ...NO_FX };
     const editFx = (patch: Partial<Fx>): void => api.editObj(obj, { fx: { ...fx, ...patch } });
     insp.insertAdjacentHTML('beforeend', `<span class="hint">${t('live_effects')}</span>`);
+    const blendWrap = document.createElement('label');
+    blendWrap.className = 'field';
+    blendWrap.innerHTML = `<span>${t('blend_mode')}</span>`;
+    const blendSel = document.createElement('select');
+    blendSel.dataset.act = 'blend';
+    for (const m of BLEND_MODES) {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = t(('bm_' + m.replace(/-/g, '_')) as MsgKey);
+      blendSel.appendChild(opt);
+    }
+    blendSel.value = fx.blend ?? 'normal';
+    blendSel.addEventListener('change', () =>
+      editFx({ blend: blendSel.value === 'normal' ? undefined : (blendSel.value as BlendMode) }),
+    );
+    blendWrap.appendChild(blendSel);
+    insp.appendChild(blendWrap);
     const numField = (label: string, value: number, onSet: (v: number) => void) => {
       const wrap = document.createElement('label');
       wrap.className = 'field';

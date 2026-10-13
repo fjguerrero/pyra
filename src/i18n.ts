@@ -32,6 +32,9 @@ type Msg = {
   text: string; size: string; font: string; bold: string; italic: string; color: string; stroke_color: string; fill: string; rotation: string;
   remove_gradient: string; add_gradient: string; gradient_hint: string; gradient_from: string; gradient_to: string; gradient_radial: string; gradient_linear: string; gradient_add_stop: string; gradient_stop_pos: string; gradient_stop_del: string; angle: string;
   live_effects: string; blur: string; remove_shadow: string; add_shadow: string; shadow_hint: string;
+  blend_mode: string; bm_normal: string; bm_multiply: string; bm_screen: string; bm_overlay: string; bm_darken: string; bm_lighten: string;
+  bm_color_dodge: string; bm_color_burn: string; bm_hard_light: string; bm_soft_light: string; bm_difference: string; bm_exclusion: string;
+  bm_hue: string; bm_saturation: string; bm_color: string; bm_luminosity: string;
   shadow_x: string; shadow_y: string; shadow_blur: string; shadow_color: string;
   remove_glow: string; add_glow: string; glow_hint: string; glow_blur: string; glow_color: string;
   styles: string; save_style: string; save_style_hint: string; delete_style: string;
@@ -67,6 +70,9 @@ const en: Msg = {
   remove_gradient: 'Remove gradient', add_gradient: 'Add gradient', gradient_hint: 'Linear gradient fill', gradient_from: 'Gradient from', gradient_to: 'Gradient to', gradient_radial: 'Radial', gradient_linear: 'Linear', angle: 'Angle',
   gradient_add_stop: 'Add stop', gradient_stop_pos: 'Stop %', gradient_stop_del: 'Remove stop',
   live_effects: 'Live effects', blur: 'Blur', remove_shadow: 'Remove shadow', add_shadow: 'Add shadow', shadow_hint: 'Live drop shadow',
+  blend_mode: 'Blend mode', bm_normal: 'Normal', bm_multiply: 'Multiply', bm_screen: 'Screen', bm_overlay: 'Overlay', bm_darken: 'Darken', bm_lighten: 'Lighten',
+  bm_color_dodge: 'Color dodge', bm_color_burn: 'Color burn', bm_hard_light: 'Hard light', bm_soft_light: 'Soft light', bm_difference: 'Difference', bm_exclusion: 'Exclusion',
+  bm_hue: 'Hue', bm_saturation: 'Saturation', bm_color: 'Color', bm_luminosity: 'Luminosity',
   shadow_x: 'Shadow X', shadow_y: 'Shadow Y', shadow_blur: 'Shadow blur', shadow_color: 'Shadow color',
   remove_glow: 'Remove glow', add_glow: 'Add glow', glow_hint: 'Live glow', glow_blur: 'Glow blur', glow_color: 'Glow color',
   styles: 'Styles', save_style: 'Save style', save_style_hint: 'Save this object\u2019s look as a reusable style', delete_style: 'Delete style',
@@ -84,7 +90,7 @@ const en: Msg = {
 <h4>Selection & editing</h4><p>Click or marquee-drag to select; Shift adds. Move/resize with handles; Shift while dragging locks to one axis; Ctrl disables snapping. Arrow keys nudge (Shift=10px). <code>Ctrl+D</code> duplicate, <code>Ctrl+C/V</code> copy-paste, <code>Ctrl+G</code>/<code>Ctrl+Shift+G</code> group/ungroup, <code>Ctrl+U</code> union of shapes, <code>Ctrl+Shift+H/V</code> flip horizontal/vertical, <code>Delete</code> delete. <code>[</code>/<code>]</code> adjust the size of the active drawing tool; with the selection tool they change z-order. <code>Ctrl+Z</code>/<code>Ctrl+Shift+Z</code> undo/redo everything.</p>
 <h4>Smart guides & snapping</h4><p>Guides appear only against real references (other objects, page rules, manual guides). Snaps to them; hold <code>Ctrl</code> while dragging to move freely. Right-click the canvas creates a manual guide; right-click on it deletes it; drag it to move.</p>
 <h4>Layers & pages</h4><p>Layers panel: visibility, lock, opacity, drag to reorder/nest, z-order buttons. Pages panel: multiple pages per document. Panels are collapsible and reorderable.</p>
-<h4>Fills, styles & effects</h4><p>Solid color with alpha, linear and radial gradients with multiple color stops (Add stop in the inspector), reusable Styles (save from an object, apply to another), live effects: shadow, glow, blur, bevel. Polygon objects keep stroke and fill independent (color, width, dashed, no-fill).</p>
+<h4>Fills, styles & effects</h4><p>Solid color with alpha, linear and radial gradients with multiple color stops (Add stop in the inspector), reusable Styles (save from an object, apply to another), live effects: shadow, glow, blur, bevel, and 16 blend modes (Multiply, Screen, Overlay…) that composite the object over what is already painted on the page. Polygon objects keep stroke and fill independent (color, width, dashed, no-fill).</p>
 <h4>Text</h4><p>Double-click to edit; system font picker; bold/italic; bbox re-measured.</p>
 <h4>Files</h4><p>Import images (PNG/JPEG/WebP/GIF/SVG). <code>.f.png</code> export/import keeps the full editable document. Export flat PNG, JPEG, WebP (quality configurable) or one PNG per selected object. Autosaves to your browser (IndexedDB).</p>
 <h4>View & settings</h4><p>Scroll to zoom, middle-drag or Space to pan, <code>0</code> fit page, <code>Shift+0</code> zoom to selection. Settings (bottom-left): language (15), theme (light/dark/system), workspace background color and grid.</p>`,
@@ -108,6 +114,9 @@ const es: Partial<Msg> = {
   remove_gradient: 'Quitar degradado', add_gradient: 'Añadir degradado', gradient_hint: 'Relleno con degradado lineal', gradient_from: 'Degradado desde', gradient_to: 'Degradado hasta', gradient_radial: 'Radial', gradient_linear: 'Lineal', angle: 'Ángulo',
   gradient_add_stop: 'Añadir parada', gradient_stop_pos: 'Parada %', gradient_stop_del: 'Quitar parada',
   live_effects: 'Efectos en vivo', blur: 'Desenfoque', remove_shadow: 'Quitar sombra', add_shadow: 'Añadir sombra', shadow_hint: 'Sombra paralela en vivo',
+  blend_mode: 'Modo de mezcla', bm_normal: 'Normal', bm_multiply: 'Multiplicar', bm_screen: 'Trama', bm_overlay: 'Superponer', bm_darken: 'Oscurecer', bm_lighten: 'Clarificar',
+  bm_color_dodge: 'Sobreexponer', bm_color_burn: 'Subexponer', bm_hard_light: 'Luz fuerte', bm_soft_light: 'Luz suave', bm_difference: 'Diferencia', bm_exclusion: 'Exclusión',
+  bm_hue: 'Tono', bm_saturation: 'Saturación', bm_color: 'Color', bm_luminosity: 'Luminosidad',
   shadow_x: 'Sombra X', shadow_y: 'Sombra Y', shadow_blur: 'Sombra desenfoque', shadow_color: 'Sombra color',
   remove_glow: 'Quitar glow', add_glow: 'Añadir glow', glow_hint: 'Resplandor en vivo', glow_blur: 'Glow desenfoque', glow_color: 'Glow color',
   styles: 'Estilos', save_style: 'Guardar estilo', save_style_hint: 'Guardar el aspecto de este objeto como estilo reutilizable', delete_style: 'Eliminar estilo',
@@ -125,7 +134,7 @@ const es: Partial<Msg> = {
 <h4>Selección y edición</h4><p>Clic o arrastre por marco para seleccionar; Shift añade. Mueve y redimensiona con las asas; Shift durante el arrastre bloquea a un eje; Ctrl desactiva el snap. Flechas mueven (Shift=10px). <code>Ctrl+D</code> duplicar, <code>Ctrl+C/V</code> copiar/pegar, <code>Ctrl+G</code>/<code>Ctrl+Shift+G</code> agrupar/desagrupar, <code>Ctrl+U</code> unión de formas, <code>Ctrl+Mayús+H/V</code> voltear espejo, <code>Supr</code> eliminar. <code>[</code>/<code>]</code> ajustan el grosor de la herramienta de dibujo activa; con la de selección cambian el orden de apilado. <code>Ctrl+Z</code>/<code>Ctrl+Shift+Z</code> deshacer/rehacer de todo.</p>
 <h4>Guías inteligentes y snap</h4><p>Las guías aparecen solo ante referencias reales (otros objetos, reglas de página, guías manuales) y atraen el snap; mantén <code>Ctrl</code> durante el arrastre para moverte libre. Clic derecho en el lienzo crea una guía manual; clic derecho sobre ella la borra; arrástrala para moverla.</p>
 <h4>Capas y páginas</h4><p>Panel de capas: visibilidad, bloqueo, opacidad, drag para reordenar/anidar, botones de orden. Panel de páginas: varias páginas por documento. Los paneles se colapsan y reordenan.</p>
-<h4>Rellenos, estilos y efectos</h4><p>Color sólido con alfa, degradados lineales y radiales con paradas de color (Añadir parada en el inspector), Styles reutilizables (guardar desde un objeto, aplicar a otro), efectos en vivo: sombra, glow, blur, bisel. Los polígonos mantienen borde y relleno independientes (color, grosor, discontinuo, sin relleno).</p>
+<h4>Rellenos, estilos y efectos</h4><p>Color sólido con alfa, degradados lineales y radiales con paradas de color (Añadir parada en el inspector), Styles reutilizables (guardar desde un objeto, aplicar a otro), efectos en vivo: sombra, glow, blur, bisel, y 16 modos de mezcla (Multiplicar, Trama, Superponer…) que componen el objeto sobre lo ya pintado en la página. Los polígonos mantienen borde y relleno independientes (color, grosor, discontinuo, sin relleno).</p>
 <h4>Texto</h4><p>Doble clic para editar; selector de fuentes del sistema; negrita/cursiva; el bbox se re-mide.</p>
 <h4>Archivos</h4><p>Importa imágenes (PNG/JPEG/WebP/GIF/SVG). Exportar/importar <code>.f.png</code> conserva el documento editable completo. Exporta PNG plano, JPEG, WebP (calidad configurable) o un PNG por objeto seleccionado. Autoguardado en el navegador (IndexedDB).</p>
 <h4>Vista y ajustes</h4><p>Rueda para zoom, arrastre con rueda/Space para mover, <code>0</code> ajustar a página, <code>Shift+0</code> zoom a la selección. Ajustes (abajo a la izquierda): idioma (15), tema (claro/oscuro/sistema), color de fondo del área de trabajo y cuadrícula.</p>`,
@@ -482,6 +491,8 @@ export function setLang(l: Lang): void {
 export function t(key: keyof Msg): string {
   return LOCALES[lang][key] ?? en[key];
 }
+
+export type MsgKey = keyof Msg;
 
 /** Barra de estado: `120% · selección 30×40 (2 objetos)`. */
 export function statusText(zoomPct: number, selW: number, selH: number, n: number): string {

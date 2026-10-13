@@ -198,12 +198,21 @@ function textSvg(c: Ctx, o: TextObj): string {
 }
 
 function objSvg(c: Ctx, o: Obj, opts: SvgExportOpts): string {
-  if (o.shape === 'text') return textSvg(c, o);
-  if (o.shape === 'bitmap') return bitmapSvg(c, o, opts.bitmapDims);
+  // mezcla: mix-blend-mode en un envoltorio (mismo orden que el canvas: sobre lo ya pintado)
+  const blend = o.fx?.blend && o.fx.blend !== 'normal' ? ` style="mix-blend-mode:${o.fx.blend}"` : '';
+  if (o.shape === 'text') {
+    const s = textSvg(c, o);
+    return blend ? `<g${blend}>${s}</g>` : s;
+  }
+  if (o.shape === 'bitmap') {
+    const s = bitmapSvg(c, o, opts.bitmapDims);
+    return blend ? `<g${blend}>${s}</g>` : s;
+  }
   const filter = fxFilter(c, o.fx);
   const s = shapeSvg(c, o);
   if (!s) return '';
-  return filter ? `<g filter="${filter}">${s}</g>` : s;
+  if (filter) return `<g filter="${filter}"${blend}>${s}</g>`;
+  return blend ? `<g${blend}>${s}</g>` : s;
 }
 
 /** SVG de una página completa (fondo incluido), en coordenadas de mundo. */

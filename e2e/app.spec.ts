@@ -147,7 +147,7 @@ test('texto: crear con la herramienta T y editar con doble clic', async ({ page 
   await expect(page.locator('#inspector-body textarea')).toHaveValue('Text');
   await expect(page.locator('#inspector-body')).toContainText('Size');
   // fuente: el selector cambia la fuente del objeto
-  const fontSel = page.locator('#inspector-body select');
+  const fontSel = page.locator('#inspector-body select[data-act="font"]');
   await expect(fontSel.locator('option')).toHaveCount(14);
   await fontSel.selectOption({ index: 9 }); // Courier New
   await expect
@@ -450,6 +450,28 @@ test('Ctrl+Shift+H voltea la selección (flipH en el documento) y Ctrl+Z lo desh
   await expect.poll(docFlipH).toBe('true');
   await page.keyboard.press('Control+z');
   await expect.poll(docFlipH).toBe('');
+});
+
+test('modo de mezcla: el inspector aplica fx.blend al objeto (queda en el documento)', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [240, 200]);
+  await expect.poll(docShape(page)).toBe('rect');
+  const docBlend = () =>
+    page.evaluate(() =>
+      new Promise<string>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve(String(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.fx?.blend ?? ''));
+          req.onerror = () => resolve('');
+        };
+        open.onerror = () => resolve('');
+      }),
+    );
+  await page.locator('select[data-act="blend"]').selectOption('multiply');
+  await expect.poll(docBlend).toBe('multiply');
+  await page.locator('select[data-act="blend"]').selectOption('normal');
+  await expect.poll(docBlend).toBe('');
 });
 
 test('degradado radial: el inspector ofrece alternar lineal/radial', async ({ page }) => {

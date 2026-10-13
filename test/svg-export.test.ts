@@ -158,6 +158,13 @@ describe('exportSvg: bitmap y texto', () => {
     expect(s).toContain('<feDropShadow dx="3" dy="4" stdDeviation="3" flood-color="#000"/>');
   });
 
+  it('blend: mix-blend-mode en un envoltorio; sin blend no hay mezcla', () => {
+    const s = svgOf([shape({ shape: 'rect', fx: { shadow: null, glow: null, blur: 0, blend: 'multiply' } })]);
+    expect(s).toContain('<g style="mix-blend-mode:multiply">');
+    const plain = svgOf([shape({ shape: 'rect' })]);
+    expect(plain).not.toContain('mix-blend-mode');
+  });
+
   it('texto: fuente, multilinea con tspans y escape XML', () => {
     const svg = svgOf([text({ text: 'a<b>&c\nsegunda', bold: true, size: 20 })]);
     expect(svg).toContain('<text x="5" y="23" fill="#000" font-family="Arial" font-size="20" font-weight="bold"');

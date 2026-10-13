@@ -7,14 +7,15 @@ import { newDoc, activePage, uid, type ShapeObj } from '../src/model';
 
 function fakeCtx(): { ctx: CanvasRenderingContext2D; ops: { op: string; args: unknown[] }[] } {
   const ops: { op: string; args: unknown[] }[] = [];
+  const rec = (op: string) => () => { ops.push({ op, args: [] }); };
   const ctx: Record<string, unknown> = {
     setTransform: () => {}, save: () => {}, restore: () => {}, beginPath: () => {},
-    rect: () => {}, clip: () => {}, fill: () => {}, stroke: () => {}, fillRect: () => {},
+    rect: () => {}, clip: () => {}, fill: rec('fill'), stroke: () => {}, fillRect: () => {},
     strokeRect: () => {}, moveTo: () => {}, lineTo: () => {}, ellipse: () => {},
     setLineDash: () => {}, drawImage: () => {}, fillText: () => {},
     measureText: () => ({ width: 10, actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2 }),
   };
-  for (const p of ['fillStyle', 'strokeStyle', 'lineWidth', 'filter', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalAlpha', 'font', 'textBaseline']) {
+  for (const p of ['fillStyle', 'strokeStyle', 'lineWidth', 'filter', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalAlpha', 'globalCompositeOperation', 'font', 'textBaseline']) {
     Object.defineProperty(ctx, p, { get: () => undefined, set: (v: unknown) => { ops.push({ op: `set:${p}`, args: [v] }); } });
   }
   return { ctx: ctx as unknown as CanvasRenderingContext2D, ops };
@@ -60,6 +61,25 @@ describe('live effects (M5)', () => {
     r.draw({ page, view: { zoom: 2, panX: 0, panY: 0 }, selectedId: null, selectedIds: [], draft: null, guides: [] });
     expect(ops).toContainEqual({ op: 'set:filter', args: ['blur(8px)'] });
     expect(ops.filter((o) => o.op === 'set:filter').at(-1)!.args[0]).toBe('none');
+  });
+
+  it('blend pone globalCompositeOperation antes del objeto y la resetea después', () => {
+    const { ctx, ops } = fakeCtx();
+    const r = new Renderer({ width: 100, height: 100, getContext: () => ctx } as unknown as HTMLCanvasElement);
+    draw(r, rectObj({ fx: { shadow: null, glow: null, blur: 0, blend: 'multiply' } }));
+    const setIdx = ops.findIndex((o) => o.op === 'set:globalCompositeOperation' && o.args[0] === 'multiply');
+    expect(setIdx).toBeGreaterThanOrEqual(0);
+    const fillIdx = ops.findIndex((o, i) => i > setIdx && o.op === 'fill');
+    expect(fillIdx).toBeGreaterThan(setIdx);
+    const resetIdx = ops.findIndex((o, i) => i > fillIdx && o.op === 'set:globalCompositeOperation' && o.args[0] === 'source-over');
+    expect(resetIdx).toBeGreaterThan(fillIdx);
+  });
+
+  it('sin blend no se toca globalCompositeOperation', () => {
+    const { ctx, ops } = fakeCtx();
+    const r = new Renderer({ width: 100, height: 100, getContext: () => ctx } as unknown as HTMLCanvasElement);
+    draw(r, rectObj());
+    expect(ops.some((o) => o.op === 'set:globalCompositeOperation')).toBe(false);
   });
 
   it('sin fx no se toca filter ni shadow', () => {

@@ -394,21 +394,28 @@ export class Renderer {
   }
 
   private drawObj(o: Obj, v: View): void {
+    // mezcla: se aplica sobre lo ya pintado dentro del clip de la página y se deshace tras el objeto
+    const blend = o.fx?.blend && o.fx.blend !== 'normal' ? o.fx.blend : null;
+    if (blend) this.ctx.globalCompositeOperation = blend;
     const rot = o.rot ?? 0;
     const sx = o.flipH ? -1 : 1;
     const sy = o.flipV ? -1 : 1;
-    if (!rot && sx === 1 && sy === 1) return this.drawObjRaw(o, v);
-    // rotación/espejo visuales alrededor del centro del bbox
-    const ctx = this.ctx;
+    if (rot || sx !== 1 || sy !== 1) {
+      // rotación/espejo visuales alrededor del centro del bbox
+      const ctx = this.ctx;
     const cx = (o.x + o.w / 2) * v.zoom + v.panX;
     const cy = (o.y + o.h / 2) * v.zoom + v.panY;
     ctx.save();
     ctx.translate(cx, cy);
     if (rot) ctx.rotate((rot * Math.PI) / 180);
     if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
-    ctx.translate(-cx, -cy);
-    this.drawObjRaw(o, v);
-    ctx.restore();
+      ctx.translate(-cx, -cy);
+      this.drawObjRaw(o, v);
+      ctx.restore();
+    } else {
+      this.drawObjRaw(o, v);
+    }
+    if (blend) this.ctx.globalCompositeOperation = 'source-over';
   }
 
   private drawObjRaw(o: Obj, v: View): void {

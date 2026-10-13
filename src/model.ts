@@ -20,12 +20,26 @@ export interface BrushSettings {
 /** Esquina del bbox donde empieza una línea: el arrastre puede ir en cualquier signo (↖↗↙↘). */
 export type LineFrom = 'nw' | 'ne' | 'sw' | 'se';
 
+/** Modos de mezcla (los 15 de CSS blending + normal): canvas usa globalCompositeOperation, SVG mix-blend-mode. */
+export type BlendMode =
+  | 'normal' | 'multiply' | 'screen' | 'overlay' | 'darken' | 'lighten'
+  | 'color-dodge' | 'color-burn' | 'hard-light' | 'soft-light'
+  | 'difference' | 'exclusion' | 'hue' | 'saturation' | 'color' | 'luminosity';
+
+export const BLEND_MODES: BlendMode[] = [
+  'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten',
+  'color-dodge', 'color-burn', 'hard-light', 'soft-light',
+  'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity',
+];
+
 export interface Fx {
   shadow: { x: number; y: number; blur: number; color: string } | null;
   glow: { blur: number; color: string } | null;
   blur: number; // px de desenfoque aplicado al dibujar, 0 = ninguno
   /** Bisel: grosor del relieve interior dibujado al rellenar, 0 = ninguno. */
   bevel?: number;
+  /** Modo de mezcla con lo ya pintado en la página (Fireworks: blending); ausente = normal. */
+  blend?: BlendMode;
 }
 
 /** Efectos en vivo no destructivos: válidos para cualquier objeto. */
