@@ -1306,6 +1306,13 @@ test('nodo Bézier (A): Alt+clic vuelve curva un vértice, arrastrar su asa lo r
   await page.keyboard.up('Alt');
   const polyH = docPolyH(page);
   await expect.poll(() => polyH().then((h) => !!h?.some(Boolean)), { timeout: 5000 }).toBe(true);
+  // el nodo alternado queda resaltado en azul (nodo activo reconocible)
+  await expect.poll(() => page.evaluate(([x, y]) => {
+    const c = document.querySelector('#canvas') as HTMLCanvasElement;
+    const d = window.devicePixelRatio;
+    const px = c.getContext('2d')!.getImageData(Math.round(x * d), Math.round(y * d), 1, 1).data;
+    return px[2] > 200 && px[0] < 100; // azul #0a7cff
+  }, [350, 150] as [number, number]), { timeout: 5000 }).toBe(true);
   const afterToggle = JSON.stringify(await polyH());
   // punta del asa por defecto: nodo (350,150) + tangente (1,1)/√2·72 ≈ (401,201)
   await drag(page, [401, 201], [500, 250]); // arrastrar el asa deforma la curva

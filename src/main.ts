@@ -131,7 +131,9 @@ function invalidate(): void {
   dirty = true;
   requestAnimationFrame(() => {
     dirty = false;
-    let nodes: { pts: { x: number; y: number; kind?: 'corner' | 'smooth' | 'cusp' }[]; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] } | undefined;
+    let nodes: { pts: { x: number; y: number; kind?: 'corner' | 'smooth' | 'cusp' }[]; active?: number; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] } | undefined;
+    // el nodo activo solo vive mientras su objeto siga seleccionado (cubre cualquier cambio de selección)
+    if (activeNode && activeNode.id !== selectedId && !selectedIds.includes(activeNode.id)) activeNode = null;
     if (tool === 'subselect') {
       const o = drag?.mode === 'node' ? drag.obj : findObj(activePage(doc), selectedId);
       const pts = o ? nodePoints(o) : [];
@@ -141,6 +143,7 @@ function invalidate(): void {
         const kind = (i: number): 'corner' | 'smooth' | 'cusp' => ((o as ShapeObj).polyH2?.[i] ? 'cusp' : (o as ShapeObj).polyH?.[i] ? 'smooth' : 'corner');
         nodes = {
           pts: pts.map((p, i) => ({ ...p, kind: o.shape === 'polygon' ? kind(i) : 'corner' })),
+          active: activeNode && activeNode.id === o.id ? activeNode.i : undefined,
           handles: tips.map((t) => ({ x: t.x, y: t.y, vx: polyPoints(o)[t.vi].x, vy: polyPoints(o)[t.vi].y })),
           readout: drag?.mode === 'node' ? nodeReadout(drag.obj, drag.index) : drag?.mode === 'handle' ? handleReadout(drag.obj, drag.index, drag.side) : null,
         };
@@ -750,6 +753,8 @@ function handleTips(o: Obj): { x: number; y: number; vi: number; side: 'out' | '
 }
 const tipHit = (px: number, py: number, o: Obj): number =>
   handleTips(o).findIndex((t) => Math.abs(px - (t.x * view.zoom + view.panX)) <= 6 && Math.abs(py - (t.y * view.zoom + view.panY)) <= 6);
+/** Nodo activo de la herramienta de nodos: el último clickeado/alternado/arrastrado, para resaltarlo. */
+let activeNode: { id: string; i: number } | null = null;
 /** Alt+clic o doble clic en un vértice de polígono: cicla el tipo de nodo (FreeHand):
  * esquina → suave (asa espejada sobre la tangente media, ~1/3 del tramo) → cúspide (segunda asa
  * naciendo espejada, luego cada lado se arrastra independiente = curva doble configurable) → esquina. */
@@ -776,6 +781,7 @@ function toggleVertex(s: ShapeObj, vi: number): void {
   const snap = (o: ShapeObj) => ({ h: o.polyH?.map((x) => (x ? { ...x } : null)), h2: o.polyH2?.map((x) => (x ? { ...x } : null)) });
   const before = snap(s);
   toggleNodeCurve(s, vi);
+  activeNode = { id: s.id, i: vi };
   const after = snap(s);
   const set = (v: ReturnType<typeof snap>) => {
     if (v.h) s.polyH = v.h.map((x) => (x ? { ...x } : null)); else delete s.polyH;
@@ -986,6 +992,7 @@ canvas.addEventListener('pointerdown', (e) => {
           H2[t.vi] = { x: -h.x, y: -h.y };
           s.polyH2 = H2;
         }
+        activeNode = { id: s.id, i: t.vi };
         drag = { mode: 'handle', obj: s, index: t.vi, side: t.side, moved: false, before };
         canvas.style.cursor = 'move';
         invalidate();
@@ -994,6 +1001,7 @@ canvas.addEventListener('pointerdown', (e) => {
     }
     if (sel && vi >= 0) {
       const s = sel as ShapeObj; // con nodo al hit solo llegan objetos con puntos/poly/extremos
+      activeNode = { id: sel.id, i: vi };
       drag = {
         mode: 'node', obj: sel, index: vi, moved: false,
         before: { x: s.x, y: s.y, w: s.w, h: s.h, points: s.points?.map((q) => ({ ...q })), poly: s.poly?.map((q) => ({ ...q })), polyH: s.polyH?.map((h) => (h ? { ...h } : null)), lineFrom: s.lineFrom },

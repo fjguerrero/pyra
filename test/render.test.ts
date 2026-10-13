@@ -409,6 +409,14 @@ describe('Renderer.draw: cinta de trazo sin puntos blancos', () => {
     expect(ops.some((o) => o.op === 'moveTo' && o.args[0] === 50 && Number(o.args[1]) < 10)).toBe(true); // cúspide: triángulo
     expect(ops.some((o) => o.op === 'fillRect' && o.args[0] === 87.5)).toBe(true); // esquina: cuadrado
   });
+
+  it('el nodo activo (nodes.active) se pinta en azul y los demás en negro', () => {
+    const s = scene({ selectedId: 'x', nodes: { pts: [{ x: 10, y: 10 }, { x: 50, y: 10 }], active: 1 } });
+    const ops = draw(s);
+    const styles = styleOrder(ops, 'fillStyle');
+    expect(styles).toContain('#0a7cff');
+    expect(styles.lastIndexOf('#0a7cff')).toBeGreaterThan(styles.lastIndexOf('#111111')); // el activo es el segundo
+  });
 });
 
 describe('polígono con nodos Bézier (polyH)', () => {
