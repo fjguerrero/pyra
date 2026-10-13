@@ -1194,3 +1194,48 @@ test('edición multi-objeto: el inspector cambia el relleno de todos los selecci
   await page.keyboard.press('Control+z'); // un solo undo revierte los dos
   await expect.poll(docFills(page), { timeout: 5000 }).toEqual(['#4f8cff', '#4f8cff']);
 });
+
+test('la cinta del pincel no deja puntos blancos en la línea de captura', async ({ page }) => {
+  // regresión del bug de winding: los arcos de tope a sentido contrario dejaban
+  // un agujero (punto blanco) en cada punto de captura del trazo
+  await page.keyboard.press('b');
+  await drag(page, [150, 200], [450, 200]);
+  await page.keyboard.press('Escape'); // sin asas de selección sobre la línea de muestreo
+  const whiteOnPath = () =>
+    page.evaluate(() => {
+      const c = document.getElementById('canvas') as HTMLCanvasElement;
+      for (let i = 1; i <= 9; i++) {
+        const x = Math.round(150 + (300 * i) / 10);
+        const d = c.getContext('2d')!.getImageData(x, 200, 1, 1).data;
+        if (d[0] > 240 && d[1] > 240 && d[2] > 240) return true;
+      }
+      return false;
+    });
+  await expect.poll(whiteOnPath, { timeout: 3000 }).toBe(false);
+});
+
+/** Altura (h) persistida del primer objeto del documento. */
+function docH(page: Page): () => Promise<number> {
+  return () =>
+    page.evaluate(() =>
+      new Promise<number>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve(Number(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.h ?? -1));
+          req.onerror = () => resolve(-1);
+        };
+        open.onerror = () => resolve(-1);
+      }),
+    );
+}
+
+test('herramienta de nodos (A): arrastrar un vértice remodela el vector', async ({ page }) => {
+  await page.keyboard.press('l');
+  await drag(page, [100, 100], [300, 100]); // línea horizontal, queda seleccionada
+  await page.keyboard.press('a');
+  await drag(page, [300, 100], [300, 300]); // arrastra el nodo final hacia abajo
+  await expect.poll(docH(page), { timeout: 5000 }).toBeGreaterThan(100); // el bbox crece: vector remodelado
+  await page.keyboard.press('Control+z'); // un undo devuelve la línea a horizontal
+  await expect.poll(docH(page), { timeout: 5000 }).toBeLessThanOrEqual(2);
+});

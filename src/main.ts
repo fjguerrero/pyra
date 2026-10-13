@@ -1,4 +1,4 @@
-import { activePage, isLineLike, newDoc, uid, type BitmapObj, type BrushSettings, type Doc, type LineFrom, type Obj, type ShapeKind, type ShapeObj, type Style, type TextObj } from './model';
+import { activePage, isLineLike, lineEnds, newDoc, polyPoints, uid, type BitmapObj, type BrushSettings, type Doc, type LineFrom, type Obj, type ShapeKind, type ShapeObj, type Style, type TextObj } from './model';
 import { History, type Command } from './history';
 import type { Draft } from './render';
 import { fitAll, screenToWorld, type View } from './view';
@@ -37,7 +37,7 @@ const view: View = { zoom: 1, panX: 0, panY: 0 };
 let selectedId: string | null = null;
 let selectedIds: string[] = [];
 let selectedLayerId: string | null = null;
-let tool: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' | 'polypen' | 'eraser' | 'eyedropper' = 'select';
+let tool: 'select' | 'subselect' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' | 'polypen' | 'eraser' | 'eyedropper' = 'select';
 let draft: Draft | null = null;
 // vértices de la pluma en coords de mundo; c = vértice curvo (Shift o modo curvo)
 let penPts: { x: number; y: number; c: boolean }[] = [];
@@ -124,7 +124,13 @@ function invalidate(): void {
   dirty = true;
   requestAnimationFrame(() => {
     dirty = false;
-    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, groupHandles: selectedIds.length > 1, draft, marquee, guides, workspace: bg });
+    let nodes: { pts: { x: number; y: number }[]; readout?: { x: number; y: number; text: string } | null } | undefined;
+    if (tool === 'subselect') {
+      const o = drag?.mode === 'node' ? drag.obj : findObj(activePage(doc), selectedId);
+      const pts = o ? nodePoints(o) : [];
+      if (pts.length) nodes = { pts, readout: drag?.mode === 'node' ? nodeReadout(drag.obj, drag.index) : null };
+    }
+    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, groupHandles: selectedIds.length > 1, draft, marquee, guides, workspace: bg, nodes });
     if (!pointerDownInInspector) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi, currentBrushPanel());
   });
 }
@@ -181,6 +187,7 @@ type Drag =
   | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number }
   | { mode: 'guide'; index: number; startPos: number }
   | { mode: 'erase' }
+  | { mode: 'node'; obj: Obj; index: number; moved: boolean; before: { x: number; y: number; w: number; h: number; points?: { x: number; y: number; p: number }[]; poly?: { x: number; y: number }[]; lineFrom?: LineFrom } }
   | { mode: 'groupresize'; objs: { obj: Obj; start: { x: number; y: number; w: number; h: number } }[]; start: { x: number; y: number; w: number; h: number }; role: HandleRole; grab: { x: number; y: number } };
 
 const NAMES: Record<ShapeKind, string> = { rect: t('obj_rect'), ellipse: t('obj_ellipse'), line: t('obj_line'), stroke: t('obj_stroke'), polygon: t('obj_polygon') };
@@ -258,7 +265,7 @@ function finishPen(): void {
 let drag: Drag | null = null;
 
 // Modelo de herramientas de Fireworks: la herramienta define qué hace el arrastre.
-function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' | 'polypen' | 'eraser' | 'eyedropper'): void {
+function setTool(t: 'select' | 'subselect' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' | 'polypen' | 'eraser' | 'eyedropper'): void {
   tool = t;
   penPts = [];
   document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) => {
@@ -266,7 +273,7 @@ function setTool(t: 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'pencil' |
     el.classList.toggle('active', on);
     el.setAttribute('aria-pressed', String(on));
   });
-  canvas.style.cursor = t === 'select' ? 'default' : 'crosshair';
+  canvas.style.cursor = t === 'select' || t === 'subselect' ? 'default' : 'crosshair';
   const ring = ringEl();
   if (ring && !toolRingSize()) ring.hidden = true; // el anillo solo para herramientas de tamaño
   invalidate();
@@ -413,7 +420,7 @@ helpModal.addEventListener('click', () => { helpModal.hidden = true; });
 applyStaticI18n();
 
 document.querySelectorAll<HTMLElement>('#toolbar .tool[data-tool]').forEach((el) =>
-  el.addEventListener('click', () => setTool(el.dataset.tool as 'select' | ShapeKind | 'text' | 'brush' | 'pen' | 'eraser')),
+  el.addEventListener('click', () => setTool(el.dataset.tool as Parameters<typeof setTool>[0])),
 );
 document.querySelector<HTMLElement>('#toolbar .tool[data-fit]')?.addEventListener('click', () => {
   fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
@@ -694,8 +701,71 @@ const RESIZE_CURSORS: Record<HandleRole, string> = {
 };
 
 // ponytail: hit-test por pointermove, O(objetos) por movimiento; vale para documentos de tamaño normal
+// ---- Herramienta de nodos (A): transformar vectores como el puntero de FreeHand ----
+/** Vértices editables del objeto en coords de mundo; [] si no es un vector editable. */
+function nodePoints(o: Obj): { x: number; y: number }[] {
+  if (o.shape === 'stroke' && o.points) return o.points.map((p) => ({ x: o.x + p.x * o.w, y: o.y + p.y * o.h }));
+  if (o.shape === 'polygon') return polyPoints(o);
+  if (o.shape === 'line') {
+    const e = lineEnds(o);
+    return [{ x: e.x1, y: e.y1 }, { x: e.x2, y: e.y2 }];
+  }
+  return [];
+}
+const nodeHit = (px: number, py: number, pts: { x: number; y: number }[]): number =>
+  pts.findIndex((p) => Math.abs(px - (p.x * view.zoom + view.panX)) <= 6 && Math.abs(py - (p.y * view.zoom + view.panY)) <= 6);
+/** Mover el nodo i: recalcula el bbox y re-normaliza (mismo formato que al crear). */
+function setNode(o: Obj, i: number, p: { x: number; y: number }): void {
+  if (o.shape === 'stroke' && o.points) {
+    const pts = o.points.map((q) => ({ x: o.x + q.x * o.w, y: o.y + q.y * o.h, pr: q.p }));
+    pts[i] = { x: p.x, y: p.y, pr: pts[i].pr };
+    const half = (o.strokeWidth * Math.max(0.05, ...pts.map((q) => q.pr))) / 2;
+    const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
+    const x0 = Math.round(Math.min(...xs) - half), y0 = Math.round(Math.min(...ys) - half);
+    const w = Math.max(1, Math.round(Math.max(...xs) + half - x0)), h = Math.max(1, Math.round(Math.max(...ys) + half - y0));
+    Object.assign(o, { x: x0, y: y0, w, h });
+    o.points = pts.map((q) => ({ x: (q.x - x0) / w, y: (q.y - y0) / h, p: q.pr }));
+  } else if (o.shape === 'polygon' && o.poly) {
+    const pts = o.poly.map((q) => ({ x: o.x + q.x * o.w, y: o.y + q.y * o.h }));
+    pts[i] = { x: p.x, y: p.y };
+    const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
+    const x0 = Math.round(Math.min(...xs)), y0 = Math.round(Math.min(...ys));
+    const w = Math.max(1, Math.round(Math.max(...xs) - x0)), h = Math.max(1, Math.round(Math.max(...ys) - y0));
+    Object.assign(o, { x: x0, y: y0, w, h });
+    o.poly = pts.map((q) => ({ x: (q.x - x0) / w, y: (q.y - y0) / h }));
+  } else if (o.shape === 'line') {
+    const e = lineEnds(o);
+    let a = { x: e.x1, y: e.y1 }, b = { x: e.x2, y: e.y2 };
+    if (i === 0) a = p;
+    else b = p;
+    const x = Math.round(Math.min(a.x, b.x)), y = Math.round(Math.min(a.y, b.y));
+    const w = Math.max(1, Math.round(Math.abs(b.x - a.x))), h = Math.max(1, Math.round(Math.abs(b.y - a.y)));
+    Object.assign(o, { x, y, w, h, lineFrom: (`${a.y < b.y ? 'n' : 's'}${a.x < b.x ? 'w' : 'e'}`) as LineFrom });
+  }
+}
+/** Lectura estilo FreeHand: ángulo (0–360°, antihorario desde el este) y longitud del segmento del nodo arrastrado. */
+function nodeReadout(o: Obj, i: number): { x: number; y: number; text: string } | null {
+  const pts = nodePoints(o);
+  if (pts.length < 2) return null;
+  let a: { x: number; y: number };
+  if (o.shape === 'line') a = pts[0];
+  else if (i === 0) a = o.shape === 'polygon' ? pts[pts.length - 1] : pts[1];
+  else a = pts[i - 1];
+  const b = pts[i];
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const ang = (Math.atan2(-dy, dx) * 180 / Math.PI + 360) % 360;
+  return { x: b.x, y: b.y, text: `${ang.toFixed(1)}° ${Math.hypot(dx, dy).toFixed(1)}` };
+}
+
 function hoverCursor(px: number, py: number, wx: number, wy: number): string {
   if (spaceDown) return 'grab';
+  if (tool === 'subselect') {
+    const page = activePage(doc);
+    const sel = findObj(page, selectedId);
+    if (sel && nodeHit(px, py, nodePoints(sel)) >= 0) return 'move';
+    if (hitTest(page, wx, wy, 4 / view.zoom, selectedIds)) return 'move';
+    return 'default';
+  }
   if (tool !== 'select') return 'crosshair';
   const page = activePage(doc);
   if ((page.guides ?? []).some((g) => Math.abs((g.axis === 'v' ? wx : wy) - g.pos) <= 5 / view.zoom)) return 'grab';
@@ -798,6 +868,34 @@ canvas.addEventListener('pointerdown', (e) => {
       eraseAt(obj, wx, wy);
       invalidate();
       return;
+    }
+    return;
+  }
+
+  if (tool === 'subselect') {
+    // FreeHand: nodo = remodelar el vector; cuerpo = seleccionar/mover; vacío = marquee
+    const sel = findObj(page, selectedId);
+    const vi = sel ? nodeHit(px, py, nodePoints(sel)) : -1;
+    if (sel && vi >= 0) {
+      const s = sel as ShapeObj; // con nodo al hit solo llegan objetos con puntos/poly/extremos
+      drag = {
+        mode: 'node', obj: sel, index: vi, moved: false,
+        before: { x: s.x, y: s.y, w: s.w, h: s.h, points: s.points?.map((q) => ({ ...q })), poly: s.poly?.map((q) => ({ ...q })), lineFrom: s.lineFrom },
+      };
+      canvas.style.cursor = 'move';
+      invalidate();
+      return;
+    }
+    const hit = hitTest(page, wx, wy, 4 / view.zoom, e.shiftKey ? undefined : selectedIds);
+    if (hit) {
+      if (!selectedIds.includes(hit.id)) select(hit.id);
+      drag = { mode: 'move', items: selectedObjs().map((o) => ({ obj: o, start: { x: o.x, y: o.y } })), grab: { x: wx, y: wy }, moved: false };
+      canvas.style.cursor = 'move';
+      invalidate();
+    } else {
+      select(null);
+      drag = { mode: 'marquee', ox: wx, oy: wy, additive: e.shiftKey };
+      invalidate();
     }
     return;
   }
@@ -1050,6 +1148,13 @@ canvas.addEventListener('pointermove', (e) => {
   if (drag.mode === 'resize') {
     applyResize(drag.obj, drag.start, drag.role, wx - drag.grab.x, wy - drag.grab.y);
     if (drag.obj.shape === 'text') resizeText(drag.obj, { ...drag.start, size: drag.start.size ?? drag.obj.size } as { x: number; y: number; w: number; h: number; size: number }, drag.role); // escalar la fuente, no estirar glifos
+    invalidate();
+    return;
+  }
+
+  if (drag.mode === 'node') {
+    setNode(drag.obj, drag.index, { x: wx, y: wy });
+    drag.moved = true;
     invalidate();
     return;
   }
@@ -1313,6 +1418,18 @@ canvas.addEventListener('pointerup', (e) => {
       undo: () => Object.assign(obj, start),
     });
     persist();
+  } else if (drag.mode === 'node') {
+    if (drag.moved) {
+      const { obj, before } = drag;
+      const s = obj as ShapeObj;
+      const end = { x: s.x, y: s.y, w: s.w, h: s.h, points: s.points?.map((q) => ({ ...q })), poly: s.poly?.map((q) => ({ ...q })), lineFrom: s.lineFrom };
+      history.record({
+        label: 'editar nodo',
+        do: () => Object.assign(obj, end),
+        undo: () => Object.assign(obj, before),
+      });
+      persist();
+    }
   }
 
   drag = null;
@@ -1769,6 +1886,8 @@ window.addEventListener('keydown', (e) => {
     invalidate();
   } else if (!mod && (e.key === 'v' || e.key === 'V')) {
     setTool('select');
+  } else if (!mod && (e.key === 'a' || e.key === 'A')) {
+    setTool('subselect');
   } else if (!mod && (e.key === 'r' || e.key === 'R')) {
     setTool('rect');
   } else if (!mod && (e.key === 'e' || e.key === 'E')) {

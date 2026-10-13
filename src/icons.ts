@@ -3,6 +3,7 @@
 
 const P: Record<string, string> = {
   cursor: 'M5 3l14 8-6 2-2 6z',
+  subselect: 'M5 3l14 8-6 2-2 6z M16 16h4v4h-4z',
   rect: 'M4 5h16v14H4z',
   ellipse: 'M12 5a8 7 0 1 0 0 14a8 7 0 1 0 0-14',
   line: 'M5 19L19 5',

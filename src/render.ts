@@ -39,6 +39,8 @@ export interface Scene {
   guides: Guide[];
   /** Fondo del área de trabajo: color sólido y/o rejilla de cuadrados. */
   workspace?: { color?: string; grid?: number };
+  /** Herramienta de nodos (estilo FreeHand): vértices del vector seleccionado en coords de mundo. */
+  nodes?: { pts: { x: number; y: number }[]; readout?: { x: number; y: number; text: string } | null };
 }
 
 const WORKSPACE = '#0e1013';
@@ -226,7 +228,9 @@ export class Renderer {
       }
       ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
       if (srot) ctx.restore();
-      for (const hd of handles(sel, v)) {
+      // con la herramienta de nodos no hay asas de bbox: el vector se transforma por sus vértices (FreeHand)
+      if (!scene.nodes)
+        for (const hd of handles(sel, v)) {
         if (hd.role === 'rot') {
           // línea del centro a la manija + círculo
           const cx = x + w / 2;
@@ -266,6 +270,29 @@ export class Renderer {
           ctx.fillRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
           ctx.strokeRect(hd.x - 3.5, hd.y - 3.5, 7, 7);
         }
+      }
+    }
+
+    if (scene.nodes) {
+      // FreeHand: los vértices del camino seleccionado como cuadritos negros rellenos
+      ctx.fillStyle = '#111111';
+      for (const p of scene.nodes.pts) {
+        ctx.fillRect(p.x * v.zoom + v.panX - 2.5, p.y * v.zoom + v.panY - 2.5, 5, 5);
+      }
+      // lectura flotante ángulo/longitud durante el arrastre, como el puntero de FreeHand
+      const r = scene.nodes.readout;
+      if (r) {
+        const sx = r.x * v.zoom + v.panX + 12;
+        const sy = r.y * v.zoom + v.panY - 12;
+        ctx.font = '11px ui-monospace, monospace';
+        const tw = ctx.measureText(r.text).width;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(sx - 4, sy - 11, tw + 8, 16);
+        ctx.strokeStyle = '#999999';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx - 4, sy - 11, tw + 8, 16);
+        ctx.fillStyle = '#111111';
+        ctx.fillText(r.text, sx, sy + 1);
       }
     }
   }
@@ -553,8 +580,11 @@ export class Renderer {
     ctx.beginPath();
     for (const op of strokeOutline(P)) {
       if (op.op === 'arc') {
+        // sentido antihorario: los quads de strokeOutline se recorren en sentido
+        // contrario al arco por defecto del canvas; con winding opuesto el fill
+        // nonzero dejaba un AGUJERO (punto blanco) en cada punto de captura.
         ctx.moveTo(op.x + op.r, op.y);
-        ctx.arc(op.x, op.y, op.r, 0, Math.PI * 2);
+        ctx.arc(op.x, op.y, op.r, 0, Math.PI * 2, true);
       } else if (op.op === 'move') ctx.moveTo(op.x, op.y);
       else ctx.lineTo(op.x, op.y);
     }

@@ -18,6 +18,7 @@ function fakeCtx(): { ctx: CanvasRenderingContext2D; ops: Op[] } {
   for (const m of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'rect', 'roundRect', 'ellipse', 'clip', 'save', 'restore', 'setTransform', 'setLineDash', 'closePath', 'arc', 'translate', 'rotate', 'scale']) {
     ctx[m] = call(m);
   }
+  ctx.measureText = () => ({ width: 0 });
   // los estilos se asignan por propiedad, no por método: hay que interceptar el setter
   for (const p of ['fillStyle', 'strokeStyle', 'lineWidth', 'globalAlpha', 'shadowColor', 'shadowBlur']) {
     Object.defineProperty(ctx, p, {
@@ -373,4 +374,21 @@ describe('Renderer.resize: tamaño del lienzo', () => {
 
 beforeEach(() => {
   window.devicePixelRatio = 1;
+});
+
+describe('Renderer.draw: cinta de trazo sin puntos blancos', () => {
+  it('los arcos de tope van en sentido antihorario (winding igual que los quads)', () => {
+    const s = scene();
+    s.page.layers[0].objects.push({ id: uid(), shape: 'stroke', name: 's', x: 10, y: 10, w: 100, h: 10, fill: '', stroke: '#000000', strokeWidth: 4, points: [{ x: 0, y: 0.5, p: 1 }, { x: 0.5, y: 0.5, p: 0.5 }, { x: 1, y: 0.5, p: 1 }] });
+    const arcs = draw(s).filter((o) => o.op === 'arc');
+    expect(arcs.length).toBeGreaterThan(0);
+    for (const a of arcs) expect(a.args[5]).toBe(true);
+  });
+
+  it('con scene.nodes se pintan cuadrados de vértice y se omiten las asas del marco', () => {
+    const s = scene({ selectedId: 'x', nodes: { pts: [{ x: 10, y: 10 }], readout: { x: 10, y: 10, text: '45.0° 14.1' } } });
+    const ops = draw(s);
+    expect(ops.some((o) => o.op === 'fillRect' && o.args[2] === 5 && o.args[3] === 5)).toBe(true);
+    expect(ops.some((o) => o.op === 'fillText' && String(o.args[0]).includes('45.0'))).toBe(true);
+  });
 });
