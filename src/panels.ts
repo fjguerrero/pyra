@@ -496,7 +496,27 @@ export function renderPanels(
         sw.addEventListener('change', () => api.editObj(obj, { strokeWidth: Math.max(0, Number(sw.value)) } as Partial<ShapeObj>));
         swWrap.appendChild(sw);
         insp.appendChild(swWrap);
-        insp.appendChild(btn('', obj.dash ? t('stroke_dashed') : t('stroke_solid'), t('stroke_style'), Boolean(obj.dash), () => api.editObj(obj, { dash: obj.dash ? null : [6, 4] } as Partial<ShapeObj>)));
+        // estilos de trazo (cambiables en cualquier momento): patrones dash predefinidos
+        const dashWrap = document.createElement('label');
+        dashWrap.className = 'field';
+        dashWrap.innerHTML = `<span>${t('stroke_style')}</span>`;
+        const dashSel = document.createElement('select');
+        const dashPresets: [string, number[] | null][] = [
+          [t('stroke_solid'), null],
+          [t('stroke_dashed'), [6, 4]],
+          [t('stroke_dotted'), [0.01, Math.max(4, obj.strokeWidth * 2)]], // con punta redonda = puntos
+          [t('stroke_dashdot'), [10, 4, 0.01, 4]],
+        ];
+        for (let i = 0; i < dashPresets.length; i++) {
+          const opt = document.createElement('option');
+          opt.value = String(i);
+          opt.textContent = dashPresets[i][0];
+          dashSel.appendChild(opt);
+        }
+        dashSel.value = String(Math.max(0, dashPresets.findIndex(([, p]) => JSON.stringify(p) === JSON.stringify(obj.dash ?? null))));
+        dashSel.addEventListener('change', () => api.editObj(obj, { dash: dashPresets[dashSel.selectedIndex][1] } as Partial<ShapeObj>));
+        dashWrap.appendChild(dashSel);
+        insp.appendChild(dashWrap);
         if (obj.shape === 'polygon')
           insp.appendChild(btn('', obj.smooth ? t('pencil_smooth') : t('poly_straight'), t('stroke_style'), Boolean(obj.smooth), () => api.editObj(obj, { smooth: !obj.smooth } as Partial<ShapeObj>)));
       }

@@ -48,7 +48,7 @@ type Msg = {
   alpha: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
   export_menu: string; export_jpeg: string; export_webp: string; export_quality: string;
   tool_brush: string; tool_eraser: string; tool_eyedropper: string; export_asset: string; obj_stroke: string; brush_size: string; brush_pressure: string; brush_opacity: string;
-  bevel: string; tool_pen: string; tool_pencil: string; pencil_continuous: string; pencil_smooth: string; pen_curved: string; pen_straight: string; pencil_polygon: string; poly_freehand: string; poly_straight: string; poly_stylized: string; stroke_width: string; stroke_style: string; stroke_solid: string; stroke_dashed: string; no_fill: string; obj_polygon: string; union: string; union_hint: string; flip_h: string; flip_v: string;
+  bevel: string; tool_pen: string; tool_pencil: string; pencil_continuous: string; pencil_smooth: string; pen_curved: string; pen_straight: string; pencil_polygon: string; poly_freehand: string; poly_straight: string; poly_stylized: string; stroke_width: string; stroke_style: string; stroke_solid: string; stroke_dashed: string; stroke_dotted: string; stroke_dashdot: string; no_fill: string; obj_polygon: string; union: string; union_hint: string; flip_h: string; flip_v: string;
   preset_pencil: string; preset_pen: string; preset_marker: string; preset_brush: string; brush_stabilizer: string; brush_taper: string; eraser_size: string;
   help: string; help_html: string;
   brush_round: string; brush_square: string; brush_tip: string; brush_tip_none: string;
@@ -56,7 +56,7 @@ type Msg = {
 
 const en: Msg = {
   order_front: 'Bring to front', order_up: 'Bring forward', order_down: 'Send backward', order_back: 'Send to back',
-  tool_pencil: 'Pencil (N)', pencil_continuous: 'Continuous', pencil_smooth: 'Smoothed', pen_curved: 'Curved', pen_straight: 'Straight', pencil_polygon: 'Polygon pencil', poly_freehand: 'Freehand', poly_straight: 'Straight lines', poly_stylized: 'Stylized', stroke_width: 'Stroke width', stroke_style: 'Stroke style', stroke_solid: 'Solid', stroke_dashed: 'Dashed', no_fill: 'No fill',
+  tool_pencil: 'Pencil (N)', pencil_continuous: 'Continuous', pencil_smooth: 'Smoothed', pen_curved: 'Curved', pen_straight: 'Straight', pencil_polygon: 'Polygon pencil', poly_freehand: 'Freehand', poly_straight: 'Straight lines', poly_stylized: 'Stylized', stroke_width: 'Stroke width', stroke_style: 'Stroke style', stroke_solid: 'Solid', stroke_dashed: 'Dashed', stroke_dotted: 'Dotted', stroke_dashdot: 'Dash-dot', no_fill: 'No fill',
   preset_pencil: 'Pencil', preset_pen: 'Ink pen', preset_marker: 'Marker', preset_brush: 'Soft brush', brush_stabilizer: 'Stabilizer', brush_taper: 'End taper', eraser_size: 'Eraser size',
   tool_select: 'Selection (V)', tool_subselect: 'Edit nodes (A): reshape vectors like the FreeHand pointer', tool_rect: 'Rectangle (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Line (L)', tool_text: 'Text (T)',
   import_image: 'Import image', export_fpng: 'Export .f.png', export_png: 'Export flat PNG', export_svg: 'Export SVG', fit_zoom: 'Fit zoom (0)', change_lang: 'Change language',
@@ -100,7 +100,7 @@ const en: Msg = {
 const es: Partial<Msg> = {
   ...en,
   order_front: 'Traer al frente', order_up: 'Traer adelante', order_down: 'Enviar atrás', order_back: 'Enviar al fondo',
-  tool_pencil: 'Lápiz (N)', pencil_continuous: 'Continuo', pencil_smooth: 'Suavizado', pen_curved: 'Curvado', pen_straight: 'Recto', pencil_polygon: 'Lápiz de polígonos', poly_freehand: 'A mano alzada', poly_straight: 'Líneas rectas', poly_stylized: 'Estilizado', stroke_width: 'Grosor del trazo', stroke_style: 'Estilo del trazo', stroke_solid: 'Sólido', stroke_dashed: 'Discontinuo', no_fill: 'Sin relleno',
+  tool_pencil: 'Lápiz (N)', pencil_continuous: 'Continuo', pencil_smooth: 'Suavizado', pen_curved: 'Curvado', pen_straight: 'Recto', pencil_polygon: 'Lápiz de polígonos', poly_freehand: 'A mano alzada', poly_straight: 'Líneas rectas', poly_stylized: 'Estilizado', stroke_width: 'Grosor del trazo', stroke_style: 'Estilo del trazo', stroke_solid: 'Sólido', stroke_dashed: 'Discontinuo', stroke_dotted: 'Punteado', stroke_dashdot: 'Raya-punto', no_fill: 'Sin relleno',
   preset_pencil: 'Lápiz', preset_pen: 'Pluma de tinta', preset_marker: 'Marcador', preset_brush: 'Pincel suave', brush_stabilizer: 'Estabilizador', brush_taper: 'Afinado final', eraser_size: 'Tamaño de goma',
   tool_select: 'Selección (V)', tool_subselect: 'Editar nodos (A): transforma vectores como el puntero de FreeHand', tool_rect: 'Rectángulo (R)', tool_ellipse: 'Elipse (E)', tool_line: 'Línea (L)', tool_text: 'Texto (T)',
   import_image: 'Importar imagen', export_fpng: 'Exportar .f.png', export_png: 'Exportar PNG plano', export_svg: 'Exportar SVG', fit_zoom: 'Zoom ajustar (0)', change_lang: 'Cambiar idioma',
@@ -144,7 +144,7 @@ const es: Partial<Msg> = {
 const zh: Partial<Msg> = {
   ...en,
   order_front: '置于顶层', order_up: '上移一层', order_down: '下移一层', order_back: '置于底层',
-  tool_pencil: '铅笔 (N)', tool_eyedropper: '吸管 (I)', pencil_continuous: '连续', pencil_smooth: '平滑', pen_curved: '曲线', pen_straight: '直线', pencil_polygon: '多边形铅笔', poly_freehand: '手绘', poly_straight: '直线', stroke_width: '描边宽度', stroke_style: '描边样式', stroke_solid: '实线', stroke_dashed: '虚线', no_fill: '无填充',
+  tool_pencil: '铅笔 (N)', tool_eyedropper: '吸管 (I)', pencil_continuous: '连续', pencil_smooth: '平滑', pen_curved: '曲线', pen_straight: '直线', pencil_polygon: '多边形铅笔', poly_freehand: '手绘', poly_straight: '直线', stroke_width: '描边宽度', stroke_style: '描边样式', stroke_solid: '实线', stroke_dashed: '虚线', stroke_dotted: '点线', stroke_dashdot: '点划线', no_fill: '无填充',
   tool_select: '选择 (V)', tool_rect: '矩形 (R)', tool_ellipse: '椭圆 (E)', tool_line: '直线 (L)', tool_text: '文本 (T)',
   import_image: '导入图像', export_fpng: '导出 .f.png', export_png: '导出平面 PNG', export_svg: '导出 SVG', fit_zoom: '缩放适配 (0)', change_lang: '更改语言',
   panel_layers: '图层', panel_pages: '页面', panel_inspector: '属性', panel_align: '对齐',
@@ -169,7 +169,7 @@ const zh: Partial<Msg> = {
 const hi: Partial<Msg> = {
   ...en,
   order_front: 'सामने लाएँ', order_up: 'आगे लाएँ', order_down: 'पीछे भेजें', order_back: 'पीछे भेजें',
-  tool_pencil: 'पेंसिल (N)', tool_eyedropper: 'आईड्रॉपर (I)', pencil_continuous: 'निरंतर', pencil_smooth: 'कोमल', pen_curved: 'वक्र', pen_straight: 'सीधा', pencil_polygon: 'बहुभुज पेंसिल', poly_freehand: 'हस्तचित्र', poly_straight: 'सीधी रेखाएँ', stroke_width: 'स्ट्रोक चौड़ाई', stroke_style: 'स्ट्रोक शैली', stroke_solid: 'ठोस', stroke_dashed: 'डैश', no_fill: 'कोई भराव नहीं',
+  tool_pencil: 'पेंसिल (N)', tool_eyedropper: 'आईड्रॉपर (I)', pencil_continuous: 'निरंतर', pencil_smooth: 'कोमल', pen_curved: 'वक्र', pen_straight: 'सीधा', pencil_polygon: 'बहुभुज पेंसिल', poly_freehand: 'हस्तचित्र', poly_straight: 'सीधी रेखाएँ', stroke_width: 'स्ट्रोक चौड़ाई', stroke_style: 'स्ट्रोक शैली', stroke_solid: 'ठोस', stroke_dashed: 'डैश', stroke_dotted: 'बिंदुदार', stroke_dashdot: 'डैश-बिंदु', no_fill: 'कोई भराव नहीं',
   tool_select: 'चयन (V)', tool_rect: 'आयत (R)', tool_ellipse: 'अंडाकार (E)', tool_line: 'रेखा (L)', tool_text: 'पाठ (T)',
   import_image: 'छवि आयात करें', export_fpng: '.f.png निर्यात करें', export_png: 'सपाट PNG निर्यात करें', export_svg: 'SVG निर्यात करें', fit_zoom: 'ज़ूम फ़िट (0)', change_lang: 'भाषा बदलें',
   panel_layers: 'लेयर', panel_pages: 'पृष्ठ', panel_inspector: 'गुण', panel_align: 'संरेखित करें',
@@ -194,7 +194,7 @@ const hi: Partial<Msg> = {
 const ar: Partial<Msg> = {
   ...en,
   order_front: 'إحضار إلى المقدمة', order_up: 'إحضار للأمام', order_down: 'إرسال للخلف', order_back: 'إرسال إلى المؤخرة',
-  tool_pencil: 'رصاص (N)', tool_eyedropper: 'قطارة (I)', pencil_continuous: 'متصل', pencil_smooth: 'ناعم', pen_curved: 'منحني', pen_straight: 'مستقيم', pencil_polygon: 'رصاص المضلعات', poly_freehand: 'حر', poly_straight: 'خطوط مستقيمة', stroke_width: 'سماكة الخط', stroke_style: 'نمط الخط', stroke_solid: 'متصل', stroke_dashed: 'متقطع', no_fill: 'بدون تعبئة',
+  tool_pencil: 'رصاص (N)', tool_eyedropper: 'قطارة (I)', pencil_continuous: 'متصل', pencil_smooth: 'ناعم', pen_curved: 'منحني', pen_straight: 'مستقيم', pencil_polygon: 'رصاص المضلعات', poly_freehand: 'حر', poly_straight: 'خطوط مستقيمة', stroke_width: 'سماكة الخط', stroke_style: 'نمط الخط', stroke_solid: 'متصل', stroke_dashed: 'متقطع', stroke_dotted: 'منقّط', stroke_dashdot: 'متقطع-منقّط', no_fill: 'بدون تعبئة',
   tool_select: 'تحديد (V)', tool_rect: 'مستطيل (R)', tool_ellipse: 'قطع ناقص (E)', tool_line: 'خط (L)', tool_text: 'نص (T)',
   import_image: 'استيراد صورة', export_fpng: 'تصدير ‎.f.png', export_png: 'تصدير PNG مسطحة', export_svg: 'تصدير SVG', fit_zoom: 'تكييف التكبير (0)', change_lang: 'تغيير اللغة',
   panel_layers: 'الطبقات', panel_pages: 'الصفحات', panel_inspector: 'الخصائص', panel_align: 'محاذاة',
@@ -219,7 +219,7 @@ const ar: Partial<Msg> = {
 const pt: Partial<Msg> = {
   ...en,
   order_front: 'Trazer para a frente', order_up: 'Trazer para frente', order_down: 'Enviar para trás', order_back: 'Enviar para o fundo',
-  tool_pencil: 'Lápis (N)', tool_eyedropper: 'Conta-gotas (I)', pencil_continuous: 'Contínuo', pencil_smooth: 'Suavizado', pen_curved: 'Curvado', pen_straight: 'Reto', pencil_polygon: 'Lápis de polígonos', poly_freehand: 'À mão livre', poly_straight: 'Linhas retas', stroke_width: 'Espessura do traço', stroke_style: 'Estilo do traço', stroke_solid: 'Sólido', stroke_dashed: 'Tracejado', no_fill: 'Sem preenchimento',
+  tool_pencil: 'Lápis (N)', tool_eyedropper: 'Conta-gotas (I)', pencil_continuous: 'Contínuo', pencil_smooth: 'Suavizado', pen_curved: 'Curvado', pen_straight: 'Reto', pencil_polygon: 'Lápis de polígonos', poly_freehand: 'À mão livre', poly_straight: 'Linhas retas', stroke_width: 'Espessura do traço', stroke_style: 'Estilo do traço', stroke_solid: 'Sólido', stroke_dashed: 'Tracejado', stroke_dotted: 'Pontilhado', stroke_dashdot: 'Traço-ponto', no_fill: 'Sem preenchimento',
   tool_select: 'Seleção (V)', tool_rect: 'Retângulo (R)', tool_ellipse: 'Elipse (E)', tool_line: 'Linha (L)', tool_text: 'Texto (T)',
   import_image: 'Importar imagem', export_fpng: 'Exportar .f.png', export_png: 'Exportar PNG plano', export_svg: 'Exportar SVG', fit_zoom: 'Ajustar zoom (0)', change_lang: 'Mudar idioma',
   panel_layers: 'Camadas', panel_pages: 'Páginas', panel_inspector: 'Propriedades', panel_align: 'Alinhar',
@@ -244,7 +244,7 @@ const pt: Partial<Msg> = {
 const ru: Partial<Msg> = {
   ...en,
   order_front: 'На передний план', order_up: 'Назад на один слой', order_down: 'Вперёд на один слой', order_back: 'На задний план',
-  tool_pencil: 'Карандаш (N)', tool_eyedropper: 'Пипетка (I)', pencil_continuous: 'Непрерывный', pencil_smooth: 'Сглаженный', pen_curved: 'Изогнутый', pen_straight: 'Прямой', pencil_polygon: 'Карандаш полигонов', poly_freehand: 'От руки', poly_straight: 'Прямые линии', stroke_width: 'Толщина штриха', stroke_style: 'Стиль штриха', stroke_solid: 'Сплошной', stroke_dashed: 'Штриховой', no_fill: 'Без заливки',
+  tool_pencil: 'Карандаш (N)', tool_eyedropper: 'Пипетка (I)', pencil_continuous: 'Непрерывный', pencil_smooth: 'Сглаженный', pen_curved: 'Изогнутый', pen_straight: 'Прямой', pencil_polygon: 'Карандаш полигонов', poly_freehand: 'От руки', poly_straight: 'Прямые линии', stroke_width: 'Толщина штриха', stroke_style: 'Стиль штриха', stroke_solid: 'Сплошной', stroke_dashed: 'Штриховой', stroke_dotted: 'Точечный', stroke_dashdot: 'Штрих-пунктирный', no_fill: 'Без заливки',
   tool_select: 'Выделение (V)', tool_rect: 'Прямоугольник (R)', tool_ellipse: 'Эллипс (E)', tool_line: 'Линия (L)', tool_text: 'Текст (T)',
   import_image: 'Импорт изображения', export_fpng: 'Экспорт .f.png', export_png: 'Экспорт плоского PNG', export_svg: 'Экспорт SVG', fit_zoom: 'Вписать масштаб (0)', change_lang: 'Сменить язык',
   panel_layers: 'Слои', panel_pages: 'Страницы', panel_inspector: 'Свойства', panel_align: 'Выравнивание',
@@ -269,7 +269,7 @@ const ru: Partial<Msg> = {
 const ja: Partial<Msg> = {
   ...en,
   order_front: '最前面へ', order_up: '手前に移動', order_down: '奥に移動', order_back: '最背面へ',
-  tool_pencil: 'ペンシル (N)', tool_eyedropper: 'スポイト (I)', pencil_continuous: '連続', pencil_smooth: '滑らか', pen_curved: '曲線', pen_straight: '直線', pencil_polygon: 'ポリゴンペンシル', poly_freehand: 'フリーハンド', poly_straight: '直線', stroke_width: '線幅', stroke_style: '線の種類', stroke_solid: '実線', stroke_dashed: '破線', no_fill: '塗りなし',
+  tool_pencil: 'ペンシル (N)', tool_eyedropper: 'スポイト (I)', pencil_continuous: '連続', pencil_smooth: '滑らか', pen_curved: '曲線', pen_straight: '直線', pencil_polygon: 'ポリゴンペンシル', poly_freehand: 'フリーハンド', poly_straight: '直線', stroke_width: '線幅', stroke_style: '線の種類', stroke_solid: '実線', stroke_dashed: '破線', stroke_dotted: '点線', stroke_dashdot: '一点鎖線', no_fill: '塗りなし',
   tool_select: '選択 (V)', tool_rect: '長方形 (R)', tool_ellipse: '楕円 (E)', tool_line: '直線 (L)', tool_text: 'テキスト (T)',
   import_image: '画像を読み込む', export_fpng: '.f.png として書き出す', export_png: 'フラット PNG を書き出す', export_svg: 'SVG を書き出す', fit_zoom: 'ズーム調整 (0)', change_lang: '言語を変更',
   panel_layers: 'レイヤー', panel_pages: 'ページ', panel_inspector: 'プロパティ', panel_align: '整列',
@@ -294,7 +294,7 @@ const ja: Partial<Msg> = {
 const fr: Partial<Msg> = {
   ...en,
   order_front: 'Envoyer à l\'avant', order_up: 'Avancer', order_down: 'Reculer', order_back: 'Envoyer à l\'arrière',
-  tool_pencil: 'Crayon (N)', tool_eyedropper: 'Pipette (I)', pencil_continuous: 'Continu', pencil_smooth: 'Adouci', pen_curved: 'Courbé', pen_straight: 'Droit', pencil_polygon: 'Crayon de polygones', poly_freehand: 'À main levée', poly_straight: 'Lignes droites', stroke_width: 'Épaisseur du trait', stroke_style: 'Style du trait', stroke_solid: 'Plein', stroke_dashed: 'Pointillés', no_fill: 'Sans remplissage',
+  tool_pencil: 'Crayon (N)', tool_eyedropper: 'Pipette (I)', pencil_continuous: 'Continu', pencil_smooth: 'Adouci', pen_curved: 'Courbé', pen_straight: 'Droit', pencil_polygon: 'Crayon de polygones', poly_freehand: 'À main levée', poly_straight: 'Lignes droites', stroke_width: 'Épaisseur du trait', stroke_style: 'Style du trait', stroke_solid: 'Plein', stroke_dashed: 'Pointillés', stroke_dotted: 'Pointillé', stroke_dashdot: 'Trait-pointillé', no_fill: 'Sans remplissage',
   tool_select: 'Sélection (V)', tool_rect: 'Rectangle (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Ligne (L)', tool_text: 'Texte (T)',
   import_image: 'Importer une image', export_fpng: 'Exporter .f.png', export_png: 'Exporter PNG à plat', export_svg: 'Exporter SVG', fit_zoom: 'Ajuster le zoom (0)', change_lang: 'Changer de langue',
   panel_layers: 'Calques', panel_pages: 'Pages', panel_inspector: 'Propriétés', panel_align: 'Aligner',
@@ -319,7 +319,7 @@ const fr: Partial<Msg> = {
 const de: Partial<Msg> = {
   ...en,
   order_front: 'In den Vordergrund', order_up: 'Nach vorne', order_down: 'Nach hinten', order_back: 'In den Hintergrund',
-  tool_pencil: 'Bleistift (N)', tool_eyedropper: 'Farbpipette (I)', pencil_continuous: 'Durchgehend', pencil_smooth: 'Geglättet', pen_curved: 'Gebogen', pen_straight: 'Gerade', pencil_polygon: 'Polygonstift', poly_freehand: 'Freihand', poly_straight: 'Gerade Linien', stroke_width: 'Strichstärke', stroke_style: 'Strichstil', stroke_solid: 'Durchgehend', stroke_dashed: 'Gestrichelt', no_fill: 'Keine Füllung',
+  tool_pencil: 'Bleistift (N)', tool_eyedropper: 'Farbpipette (I)', pencil_continuous: 'Durchgehend', pencil_smooth: 'Geglättet', pen_curved: 'Gebogen', pen_straight: 'Gerade', pencil_polygon: 'Polygonstift', poly_freehand: 'Freihand', poly_straight: 'Gerade Linien', stroke_width: 'Strichstärke', stroke_style: 'Strichstil', stroke_solid: 'Durchgehend', stroke_dashed: 'Gestrichelt', stroke_dotted: 'Gepunktet', stroke_dashdot: 'Strich-Punkt', no_fill: 'Keine Füllung',
   tool_select: 'Auswahl (V)', tool_rect: 'Rechteck (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Linie (L)', tool_text: 'Text (T)',
   import_image: 'Bild importieren', export_fpng: '.f.png exportieren', export_png: 'Flaches PNG exportieren', export_svg: 'SVG exportieren', fit_zoom: 'Zoom anpassen (0)', change_lang: 'Sprache wechseln',
   panel_layers: 'Ebenen', panel_pages: 'Seiten', panel_inspector: 'Eigenschaften', panel_align: 'Ausrichten',
@@ -344,7 +344,7 @@ const de: Partial<Msg> = {
 const ko: Partial<Msg> = {
   ...en,
   order_front: '맨 앞으로', order_up: '앞으로 이동', order_down: '뒤로 이동', order_back: '맨 뒤로',
-  tool_pencil: '연필 (N)', tool_eyedropper: '스포이드 (I)', pencil_continuous: '연속', pencil_smooth: '부드럽게', pen_curved: '곡선', pen_straight: '직선', pencil_polygon: '다각형 연필', poly_freehand: '손그림', poly_straight: '직선', stroke_width: '선 두께', stroke_style: '선 스타일', stroke_solid: '실선', stroke_dashed: '점선', no_fill: '채우기 없음',
+  tool_pencil: '연필 (N)', tool_eyedropper: '스포이드 (I)', pencil_continuous: '연속', pencil_smooth: '부드럽게', pen_curved: '곡선', pen_straight: '직선', pencil_polygon: '다각형 연필', poly_freehand: '손그림', poly_straight: '직선', stroke_width: '선 두께', stroke_style: '선 스타일', stroke_solid: '실선', stroke_dashed: '점선', stroke_dotted: '점선', stroke_dashdot: '일점선', no_fill: '채우기 없음',
   tool_select: '선택 (V)', tool_rect: '사각형 (R)', tool_ellipse: '타원 (E)', tool_line: '선 (L)', tool_text: '텍스트 (T)',
   import_image: '이미지 가져오기', export_fpng: '.f.png 내보내기', export_png: '플랫 PNG 내보내기', export_svg: 'SVG 내보내기', fit_zoom: '확대 맞춤 (0)', change_lang: '언어 변경',
   panel_layers: '레이어', panel_pages: '페이지', panel_inspector: '속성', panel_align: '정렬',
@@ -369,7 +369,7 @@ const ko: Partial<Msg> = {
 const it: Partial<Msg> = {
   ...en,
   order_front: 'Porta in primo piano', order_up: 'Porta avanti', order_down: 'Porta indietro', order_back: 'Porta in fondo',
-  tool_pencil: 'Matita (N)', tool_eyedropper: 'Contagocce (I)', pencil_continuous: 'Continuo', pencil_smooth: 'Levigato', pen_curved: 'Curvo', pen_straight: 'Dritto', pencil_polygon: 'Matita poligoni', poly_freehand: 'A mano libera', poly_straight: 'Linee rette', stroke_width: 'Spessore tratto', stroke_style: 'Stile tratto', stroke_solid: 'Continuo', stroke_dashed: 'Tratteggiato', no_fill: 'Nessun riempimento',
+  tool_pencil: 'Matita (N)', tool_eyedropper: 'Contagocce (I)', pencil_continuous: 'Continuo', pencil_smooth: 'Levigato', pen_curved: 'Curvo', pen_straight: 'Dritto', pencil_polygon: 'Matita poligoni', poly_freehand: 'A mano libera', poly_straight: 'Linee rette', stroke_width: 'Spessore tratto', stroke_style: 'Stile tratto', stroke_solid: 'Continuo', stroke_dashed: 'Tratteggiato', stroke_dotted: 'Punteggiato', stroke_dashdot: 'Tratto-punto', no_fill: 'Nessun riempimento',
   tool_select: 'Selezione (V)', tool_rect: 'Rettangolo (R)', tool_ellipse: 'Ellisse (E)', tool_line: 'Linea (L)', tool_text: 'Testo (T)',
   import_image: 'Importa immagine', export_fpng: 'Esporta .f.png', export_png: 'Esporta PNG piatta', export_svg: 'Esporta SVG', fit_zoom: 'Adatta zoom (0)', change_lang: 'Cambia lingua',
   panel_layers: 'Livelli', panel_pages: 'Pagine', panel_inspector: 'Proprietà', panel_align: 'Allinea',
@@ -394,7 +394,7 @@ const it: Partial<Msg> = {
 const tr: Partial<Msg> = {
   ...en,
   order_front: 'Öne getir', order_up: 'Öne taşı', order_down: 'Geriye taşı', order_back: 'Arkaya gönder',
-  tool_pencil: 'Kalem (N)', tool_eyedropper: 'Damlalık (I)', pencil_continuous: 'Sürekli', pencil_smooth: 'Yumuşatılmış', pen_curved: 'Eğri', pen_straight: 'Düz', pencil_polygon: 'Çokgen kalemi', poly_freehand: 'Serbest el', poly_straight: 'Düz çizgiler', stroke_width: 'Kontur kalınlığı', stroke_style: 'Kontur stili', stroke_solid: 'Düz', stroke_dashed: 'Kesik çizgi', no_fill: 'Dolgu yok',
+  tool_pencil: 'Kalem (N)', tool_eyedropper: 'Damlalık (I)', pencil_continuous: 'Sürekli', pencil_smooth: 'Yumuşatılmış', pen_curved: 'Eğri', pen_straight: 'Düz', pencil_polygon: 'Çokgen kalemi', poly_freehand: 'Serbest el', poly_straight: 'Düz çizgiler', stroke_width: 'Kontur kalınlığı', stroke_style: 'Kontur stili', stroke_solid: 'Düz', stroke_dashed: 'Kesik çizgi', stroke_dotted: 'Noktalı', stroke_dashdot: 'Kesik-noktalı', no_fill: 'Dolgu yok',
   tool_select: 'Seçim (V)', tool_rect: 'Dikdörtgen (R)', tool_ellipse: 'Elips (E)', tool_line: 'Çizgi (L)', tool_text: 'Metin (T)',
   import_image: 'Görüntü içe aktar', export_fpng: '.f.png dışa aktar', export_png: 'Düz PNG dışa aktar', export_svg: 'SVG dışa aktar', fit_zoom: 'Yakınlaştırmayı sığdır (0)', change_lang: 'Dili değiştir',
   panel_layers: 'Katmanlar', panel_pages: 'Sayfalar', panel_inspector: 'Özellikler', panel_align: 'Hizala',
@@ -419,7 +419,7 @@ const tr: Partial<Msg> = {
 const vi: Partial<Msg> = {
   ...en,
   order_front: 'Đưa lên trước', order_up: 'Đưa lên trước một lớp', order_down: 'Đưa xuống sau một lớp', order_back: 'Đưa xuống dưới cùng',
-  tool_pencil: 'Bút chì (N)', tool_eyedropper: 'Ống nhỏ giọt (I)', pencil_continuous: 'Liên tục', pencil_smooth: 'Làm mượt', pen_curved: 'Cong', pen_straight: 'Thẳng', pencil_polygon: 'Bút chì đa giác', poly_freehand: 'Vẽ tay', poly_straight: 'Đường thẳng', stroke_width: 'Độ nét', stroke_style: 'Kiểu nét', stroke_solid: 'Liền', stroke_dashed: 'Nét đứt', no_fill: 'Không tô',
+  tool_pencil: 'Bút chì (N)', tool_eyedropper: 'Ống nhỏ giọt (I)', pencil_continuous: 'Liên tục', pencil_smooth: 'Làm mượt', pen_curved: 'Cong', pen_straight: 'Thẳng', pencil_polygon: 'Bút chì đa giác', poly_freehand: 'Vẽ tay', poly_straight: 'Đường thẳng', stroke_width: 'Độ nét', stroke_style: 'Kiểu nét', stroke_solid: 'Liền', stroke_dashed: 'Nét đứt', stroke_dotted: 'Nét chấm', stroke_dashdot: 'Nét đứt-chấm', no_fill: 'Không tô',
   tool_select: 'Chọn (V)', tool_rect: 'Hình chữ nhật (R)', tool_ellipse: 'Hình elip (E)', tool_line: 'Đường thẳng (L)', tool_text: 'Văn bản (T)',
   import_image: 'Nhập ảnh', export_fpng: 'Xuất .f.png', export_png: 'Xuất PNG phẳng', export_svg: 'Xuất SVG', fit_zoom: 'Vừa zoom (0)', change_lang: 'Đổi ngôn ngữ',
   panel_layers: 'Lớp', panel_pages: 'Trang', panel_inspector: 'Thuộc tính', panel_align: 'Căn chỉnh',
@@ -444,7 +444,7 @@ const vi: Partial<Msg> = {
 const nl: Partial<Msg> = {
   ...en,
   order_front: 'Naar de voorgrond', order_up: 'Naar voren', order_down: 'Naar achteren', order_back: 'Naar de achtergrond',
-  tool_pencil: 'Potlood (N)', tool_eyedropper: 'Druppelaar (I)', pencil_continuous: 'Doorlopend', pencil_smooth: 'Vloog', pen_curved: 'Gebogen', pen_straight: 'Recht', pencil_polygon: 'Polygoonpotlood', poly_freehand: 'Vrije hand', poly_straight: 'Rechte lijnen', stroke_width: 'Lijndikte', stroke_style: 'Lijnstijl', stroke_solid: 'Doorlopend', stroke_dashed: 'Gestippeld', no_fill: 'Geen vulling',
+  tool_pencil: 'Potlood (N)', tool_eyedropper: 'Druppelaar (I)', pencil_continuous: 'Doorlopend', pencil_smooth: 'Vloog', pen_curved: 'Gebogen', pen_straight: 'Recht', pencil_polygon: 'Polygoonpotlood', poly_freehand: 'Vrije hand', poly_straight: 'Rechte lijnen', stroke_width: 'Lijndikte', stroke_style: 'Lijnstijl', stroke_solid: 'Doorlopend', stroke_dashed: 'Gestippeld', stroke_dotted: 'Stippel', stroke_dashdot: 'Streeppuntlijn', no_fill: 'Geen vulling',
   tool_select: 'Selectie (V)', tool_rect: 'Rechthoek (R)', tool_ellipse: 'Ellips (E)', tool_line: 'Lijn (L)', tool_text: 'Tekst (T)',
   import_image: 'Afbeelding importeren', export_fpng: '.f.png exporteren', export_png: 'Platte PNG exporteren', export_svg: 'SVG exporteren', fit_zoom: 'Zoom aanpassen (0)', change_lang: 'Taal wisselen',
   panel_layers: 'Lagen', panel_pages: 'Pagina\u2019s', panel_inspector: 'Eigenschappen', panel_align: 'Uitlijnen',

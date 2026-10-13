@@ -430,6 +430,43 @@ test('radio de esquina: el inspector aplica rx al rect y queda en el documento',
   ).toBe(12);
 });
 
+test('inspector: color y estilo de trazo se aplican; el selector de color no se destruye a mitad de selección', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [220, 180]);
+  await expect(page.locator('#inspector-body input[type=color]').first()).toBeVisible(); // objeto creado y seleccionado
+  const docField = (field: string) =>
+    page.evaluate((f) =>
+      new Promise<unknown>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.[f] ?? null);
+          req.onerror = () => resolve(null);
+        };
+        open.onerror = () => resolve(null);
+      }), field);
+
+  // el <input type=color> debe seguir en el DOM tras su evento input (antes el
+  // panel lo recreaba y el diálogo nativo de color se cerraba sin aplicar)
+  const survived = await page.evaluate(async () => {
+    const el = document.querySelector('#inspector-body input[type=color]') as HTMLInputElement;
+    el.focus();
+    el.value = '#ff0000';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return el.isConnected;
+  });
+  expect(survived).toBe(true);
+  await expect.poll(() => docField('fill')).toBe('#ff0000');
+
+  // estilos de trazo cambiables: sólido → discontinuo → sólido
+  const sel = page.locator('label').filter({ hasText: 'Stroke style' }).locator('select');
+  await sel.selectOption('1');
+  await expect.poll(() => docField('dash')).toEqual([6, 4]);
+  await sel.selectOption('0');
+  await expect.poll(() => docField('dash')).toBe(null);
+});
+
 test('Ctrl+Shift+H voltea la selección (flipH en el documento) y Ctrl+Z lo deshace', async ({ page }) => {
   await page.keyboard.press('l');
   await drag(page, [100, 100], [240, 200]);

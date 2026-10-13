@@ -116,8 +116,15 @@ let dirty = false;
 let pointerDownInInspector = false;
 const inspPanel = document.querySelector<HTMLElement>('.panel[data-panel="inspector"]')!;
 inspPanel.addEventListener('pointerdown', () => { pointerDownInInspector = true; });
-window.addEventListener('pointerup', () => {
-  if (pointerDownInInspector) { pointerDownInInspector = false; invalidate(); }
+window.addEventListener('pointerup', (e) => {
+  if (!pointerDownInInspector) return;
+  pointerDownInInspector = false;
+  // No reconstruir el panel al soltar sobre un campo que necesita conservar el
+  // foco o abre diálogo nativo (color, texto, número, select): si no, el click
+  // en el selector de color destruye su <input> antes de que abra el diálogo.
+  const t = e.target as Element | null;
+  if (t && inspPanel.contains(t) && t.matches('input:not([type=range]):not([type=checkbox]), select, textarea')) return;
+  invalidate();
 });
 function invalidate(): void {
   if (dirty) return;
@@ -138,7 +145,12 @@ function invalidate(): void {
       }
     }
     renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, groupHandles: selectedIds.length > 1, draft, marquee, guides, workspace: bg, nodes });
-    if (!pointerDownInInspector) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi, currentBrushPanel());
+    // No reconstruir el inspector mientras un <input type=color> suyo tiene el
+    // foco: si no, su <input> desaparece a mitad de selección y el diálogo
+    // nativo de color se cierra sin aplicar (el resto de campos se re-sincroniza).
+    const ae = document.activeElement;
+    const pickingColor = ae instanceof HTMLInputElement && ae.type === 'color' && inspPanel.contains(ae);
+    if (!pointerDownInInspector && !pickingColor) renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, panelApi, currentBrushPanel());
   });
 }
 
