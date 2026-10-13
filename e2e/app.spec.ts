@@ -474,6 +474,37 @@ test('modo de mezcla: el inspector aplica fx.blend al objeto (queda en el docume
   await expect.poll(docBlend).toBe('');
 });
 
+test('opacidad de objeto: el inspector aplica fx.opacity (queda en el documento)', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [240, 200]);
+  await expect.poll(docShape(page)).toBe('rect');
+  const docOpacity = () =>
+    page.evaluate(
+      () =>
+        new Promise<number>((resolve) => {
+          const req = indexedDB.open('pyra');
+          req.onsuccess = () => {
+            const db = req.result;
+            const tx = db.transaction('documents', 'readonly');
+            const get = tx.objectStore('documents').get('doc');
+            get.onsuccess = () => {
+              const o = get.result?.pages?.[0]?.layers?.[0]?.objects?.[0];
+              resolve(o?.fx?.opacity ?? 1);
+            };
+          };
+        }),
+    );
+  const field = page
+    .locator('#inspector-body label.field')
+    .filter({ hasText: 'Object opacity' })
+    .locator('input[type=number]');
+  await field.evaluate((el: HTMLInputElement) => {
+    el.value = '0.4';
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect.poll(docOpacity, { timeout: 5000 }).toBe(0.4);
+});
+
 test('degradado radial: el inspector ofrece alternar lineal/radial', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);

@@ -198,8 +198,11 @@ function textSvg(c: Ctx, o: TextObj): string {
 }
 
 function objSvg(c: Ctx, o: Obj, opts: SvgExportOpts): string {
-  // mezcla: mix-blend-mode en un envoltorio (mismo orden que el canvas: sobre lo ya pintado)
-  const blend = o.fx?.blend && o.fx.blend !== 'normal' ? ` style="mix-blend-mode:${o.fx.blend}"` : '';
+  // mezcla y opacidad: atributos en un envoltorio (mismo orden que el canvas: sobre lo ya pintado)
+  let wrap = '';
+  if (o.fx?.blend && o.fx.blend !== 'normal') wrap += ` style="mix-blend-mode:${o.fx.blend}"`;
+  if (o.fx?.opacity !== undefined && o.fx.opacity < 1) wrap += ` opacity="${n2(o.fx.opacity)}"`;
+  const blend = wrap;
   if (o.shape === 'text') {
     const s = textSvg(c, o);
     return blend ? `<g${blend}>${s}</g>` : s;

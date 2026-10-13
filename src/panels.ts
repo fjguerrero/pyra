@@ -608,6 +608,9 @@ export function renderPanels(
     );
     blendWrap.appendChild(blendSel);
     insp.appendChild(blendWrap);
+    sliderField(t('obj_opacity'), fx.opacity ?? 1, 0.05, 1, 0.05, (v) =>
+      editFx({ opacity: v >= 1 ? undefined : v }),
+    );
     const numField = (label: string, value: number, onSet: (v: number) => void) => {
       const wrap = document.createElement('label');
       wrap.className = 'field';

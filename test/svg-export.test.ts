@@ -165,6 +165,15 @@ describe('exportSvg: bitmap y texto', () => {
     expect(plain).not.toContain('mix-blend-mode');
   });
 
+  it('opacidad por objeto: opacity en el envoltorio; 1 no emite nada', () => {
+    const s = svgOf([shape({ shape: 'rect', fx: { shadow: null, glow: null, blur: 0, opacity: 0.4 } })]);
+    expect(s).toContain('<g opacity="0.4">');
+    const both = svgOf([shape({ shape: 'rect', fx: { shadow: null, glow: null, blur: 0, opacity: 0.4, blend: 'screen' } })]);
+    expect(both).toContain('<g style="mix-blend-mode:screen" opacity="0.4">');
+    const plain = svgOf([shape({ shape: 'rect' })]);
+    expect(plain).not.toContain('opacity=');
+  });
+
   it('texto: fuente, multilinea con tspans y escape XML', () => {
     const svg = svgOf([text({ text: 'a<b>&c\nsegunda', bold: true, size: 20 })]);
     expect(svg).toContain('<text x="5" y="23" fill="#000" font-family="Arial" font-size="20" font-weight="bold"');

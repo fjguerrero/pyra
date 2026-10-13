@@ -40,6 +40,8 @@ export interface Fx {
   bevel?: number;
   /** Modo de mezcla con lo ya pintado en la página (Fireworks: blending); ausente = normal. */
   blend?: BlendMode;
+  /** Opacidad del objeto al pintarse (1 = opaco); ausente = 1. Se multiplica con la de la capa. */
+  opacity?: number;
 }
 
 /** Efectos en vivo no destructivos: válidos para cualquier objeto. */

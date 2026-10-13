@@ -397,6 +397,11 @@ export class Renderer {
     // mezcla: se aplica sobre lo ya pintado dentro del clip de la página y se deshace tras el objeto
     const blend = o.fx?.blend && o.fx.blend !== 'normal' ? o.fx.blend : null;
     if (blend) this.ctx.globalCompositeOperation = blend;
+    // opacidad por objeto: se multiplica con la alfa del entorno y se restaura la del entorno después
+    const op = o.fx?.opacity;
+    const dim = op !== undefined && op < 1;
+    const prevAlpha = dim ? this.ctx.globalAlpha : 0;
+    if (dim) this.ctx.globalAlpha = prevAlpha * op!;
     const rot = o.rot ?? 0;
     const sx = o.flipH ? -1 : 1;
     const sy = o.flipV ? -1 : 1;
@@ -416,6 +421,7 @@ export class Renderer {
       this.drawObjRaw(o, v);
     }
     if (blend) this.ctx.globalCompositeOperation = 'source-over';
+    if (dim) this.ctx.globalAlpha = prevAlpha;
   }
 
   private drawObjRaw(o: Obj, v: View): void {

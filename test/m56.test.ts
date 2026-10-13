@@ -15,9 +15,12 @@ function fakeCtx(): { ctx: CanvasRenderingContext2D; ops: { op: string; args: un
     setLineDash: () => {}, drawImage: () => {}, fillText: () => {},
     measureText: () => ({ width: 10, actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2 }),
   };
-  for (const p of ['fillStyle', 'strokeStyle', 'lineWidth', 'filter', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalAlpha', 'globalCompositeOperation', 'font', 'textBaseline']) {
+  for (const p of ['fillStyle', 'strokeStyle', 'lineWidth', 'filter', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalCompositeOperation', 'font', 'textBaseline']) {
     Object.defineProperty(ctx, p, { get: () => undefined, set: (v: unknown) => { ops.push({ op: `set:${p}`, args: [v] }); } });
   }
+  // globalAlpha legible (1 inicial): la opacidad por objeto lee la del entorno para restaurarla
+  let alpha = 1;
+  Object.defineProperty(ctx, 'globalAlpha', { get: () => alpha, set: (v: number) => { alpha = v; ops.push({ op: 'set:globalAlpha', args: [v] }); } });
   return { ctx: ctx as unknown as CanvasRenderingContext2D, ops };
 }
 
@@ -80,6 +83,26 @@ describe('live effects (M5)', () => {
     const r = new Renderer({ width: 100, height: 100, getContext: () => ctx } as unknown as HTMLCanvasElement);
     draw(r, rectObj());
     expect(ops.some((o) => o.op === 'set:globalCompositeOperation')).toBe(false);
+  });
+
+  it('opacity multiplica globalAlpha antes del objeto y lo restaura después', () => {
+    const { ctx, ops } = fakeCtx();
+    const r = new Renderer({ width: 100, height: 100, getContext: () => ctx } as unknown as HTMLCanvasElement);
+    draw(r, rectObj({ fx: { shadow: null, glow: null, blur: 0, opacity: 0.5 } }));
+    // el renderer pone la alfa de capa (1) alrededor del objeto: lo que se comprueba es el par 0.5 → restauración
+    const idx = ops.findIndex((o) => o.op === 'set:globalAlpha' && o.args[0] === 0.5);
+    expect(idx).toBeGreaterThan(-1);
+    expect(idx).toBeLessThan(ops.findIndex((o) => o.op === 'fill'));
+    const next = ops.slice(idx + 1).find((o) => o.op === 'set:globalAlpha');
+    expect(next?.args[0]).toBe(1);
+  });
+
+  it('sin opacity la alfa nunca baja de 1', () => {
+    const { ctx, ops } = fakeCtx();
+    const r = new Renderer({ width: 100, height: 100, getContext: () => ctx } as unknown as HTMLCanvasElement);
+    draw(r, rectObj());
+    const vals = ops.filter((o) => o.op === 'set:globalAlpha').map((o) => o.args[0]);
+    expect(vals.every((v) => v === 1)).toBe(true);
   });
 
   it('sin fx no se toca filter ni shadow', () => {
