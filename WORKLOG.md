@@ -68,6 +68,7 @@ resolver los problemas por uno mismo y continuar.
 - [x] F14 Shift+0 zoom a la selección. → commit 31c2d0b.
 - [x] F15 Imán al dibujar formas nuevas (esquina arrastrada encaja en bordes/centros, página, guías). → commit 4556596.
 - [x] F16 Degradado multi-parada: `Gradient.stops` + editor de paradas en el inspector (posición %, color, borrar; nunca <2), canvas y SVG con las paradas, i18n 15 idiomas, ayuda es/en. Rescatado de un trabajador cortado; corregido su e2e (esperaba volver a from/to al borrar) y rama muerta en panels.ts.
+- [x] F17 Radio de esquina en rects (`ShapeObj.rx`): campo en el inspector, canvas vía roundRect nativo y SVG vía rx (limitado a mitad del lado corto), i18n es/en, ayuda. Tests render+svg+e2e.
 
 ## Registro de progreso
 - 00:32 F1–F6 completadas y commiteadas (797bf59). Gate completo verde.
@@ -79,3 +80,4 @@ resolver los problemas por uno mismo y continuar.
 - 02:32 F14 Shift+0 zoom a la selección (31c2d0b). 239 unit + 49 e2e.
 - 02:49 F15 imán al dibujar (4556596). Trabajador cortado a mitad de F16.
 - 03:55 F16 rescatada y completada: multi-parada en canvas+SVG+inspector, e2e corregido, docs/02 v1.3 al día. 251 unit + 52 e2e verdes.
+- 04:05 F17 radio de esquina en rects (roundRect nativo + rx en SVG + campo inspector). 255 unit + 53 e2e verdes.

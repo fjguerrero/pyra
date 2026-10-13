@@ -97,10 +97,11 @@ Verificación: `tsc --noEmit` limpio, 185 tests unitarios, 25 e2e Playwright, `v
 - Exportar SVG (`src/svg-export.ts`): formas vectoriales, trazos como path, bitmaps con clip/mask/filters, efectos con feDropShadow.
 - Cuentagotas (I): muestrea píxel real, lo aplica a la selección y al color por defecto, lo guarda en muestras recientes.
 - Degradado radial elíptico ajustado al bbox + degradado multi-parada (`Gradient.stops`, editor de paradas en el inspector: posición %, color, borrar; canvas y SVG usan las paradas).
+- Rectángulos con radio de esquina en vivo (`ShapeObj.rx`): `roundRect` nativo en canvas, `rx` en SVG, campo en el inspector; limitado a la mitad del lado corto.
 - Mano con Space+arrastrar; Shift+0 zoom a la selección; imán al dibujar formas nuevas (la esquina arrastrada encaja en bordes/centros, página y guías).
 - Panel ALINEAR sticky al fondo (siempre accesible en ventanas bajas); auditoría de fricciones UI en navegador real.
 
-Verificación: `tsc --noEmit` limpio, 251 tests unitarios, 52 e2e Playwright.
+Verificación: `tsc --noEmit` limpio, 255 tests unitarios, 53 e2e Playwright.
 
 ## Pendientes
 
