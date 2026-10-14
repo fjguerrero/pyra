@@ -149,7 +149,7 @@ function invalidate(): void {
         };
       }
     }
-    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, groupHandles: selectedIds.length > 1, draft, marquee, guides, workspace: bg, nodes });
+    renderer.draw({ page: activePage(doc), view, selectedId, selectedIds, groupHandles: selectedIds.length > 1, draft, marquee, guides, workspace: bg, nodes, ui: uiColors });
     // No reconstruir el inspector mientras un <input type=color> suyo tiene el
     // foco: si no, su <input> desaparece a mitad de selección y el diálogo
     // nativo de color se cierra sin aplicar (el resto de campos se re-sincroniza).
@@ -392,17 +392,25 @@ mediaDark.addEventListener('change', () => {
 });
 applyTheme();
 
-// ---- Menú de configuración (abajo a la izquierda) ----
-const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
-const settingsMenu = document.getElementById('settings-menu') as HTMLElement;
-settingsBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  settingsMenu.hidden = !settingsMenu.hidden;
-});
+// ---- Barra de menús superior: cada botón abre su desplegable (solo uno a la vez) ----
+const menuBtns = document.querySelectorAll<HTMLButtonElement>('#menubar .mbtn');
+const closeMenus = (): void => {
+  document.querySelectorAll<HTMLElement>('#menubar .pop').forEach((p) => (p.hidden = true));
+  menuBtns.forEach((b) => b.classList.remove('open'));
+};
+menuBtns.forEach((btn) =>
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const pop = document.getElementById(btn.dataset.pop!);
+    if (!pop) return;
+    const wasHidden = pop.hidden;
+    closeMenus();
+    pop.hidden = !wasHidden;
+    if (wasHidden) btn.classList.add('open');
+  }),
+);
 document.addEventListener('pointerdown', (e) => {
-  if (!settingsMenu.hidden && !settingsMenu.contains(e.target as Node) && e.target !== settingsBtn) {
-    settingsMenu.hidden = true;
-  }
+  if (!(e.target as HTMLElement).closest?.('.mbtn-wrap')) closeMenus();
 });
 
 // ---- Fondo del área de trabajo: color y/o rejilla de cuadrados (pyra:bg) ----
@@ -432,13 +440,40 @@ bgGrid.addEventListener('change', () => {
   saveBg();
 });
 
+// ---- Colores de la interfaz de dibujo: nodos de paths y marcos de selección (pyra:ui) ----
+type UiColors = { nodeColor: string; frameColor: string };
+function currentUi(): UiColors {
+  try {
+    const u = JSON.parse(localStorage.getItem('pyra:ui') ?? '');
+    if (u && typeof u.nodeColor === 'string' && typeof u.frameColor === 'string') return u;
+  } catch { /* sin estado previo */ }
+  return { nodeColor: '#111111', frameColor: '#4f8cff' };
+}
+const uiColors = currentUi();
+const nodeColorInput = document.getElementById('node-color') as HTMLInputElement;
+const frameColorInput = document.getElementById('frame-color') as HTMLInputElement;
+nodeColorInput.value = uiColors.nodeColor;
+frameColorInput.value = uiColors.frameColor;
+const saveUi = (): void => {
+  localStorage.setItem('pyra:ui', JSON.stringify(uiColors));
+  invalidate();
+};
+nodeColorInput.addEventListener('input', () => {
+  uiColors.nodeColor = nodeColorInput.value;
+  saveUi();
+});
+frameColorInput.addEventListener('input', () => {
+  uiColors.frameColor = frameColorInput.value;
+  saveUi();
+});
+
 // ---- Ayuda: modal con todas las funcionalidades (texto i18n ya formateado) ----
 const helpBtn = document.getElementById('help-btn') as HTMLButtonElement;
 const helpModal = document.getElementById('help-modal') as HTMLElement;
 helpBtn.addEventListener('click', () => {
   helpModal.innerHTML = `<div class="card">${t('help_html')}</div>`;
   helpModal.hidden = false;
-  settingsMenu.hidden = true;
+  closeMenus();
 });
 helpModal.addEventListener('click', () => { helpModal.hidden = true; });
 
@@ -454,7 +489,7 @@ document.querySelector<HTMLElement>('#toolbar .tool[data-fit]')?.addEventListene
 
 // ---- Importar imagen (M3) / importar .f.png (M6): un solo handler ----
 const importFile = document.getElementById('import-file') as HTMLInputElement;
-document.querySelector<HTMLElement>('#toolbar .tool[data-import]')?.addEventListener('click', () => importFile.click());
+document.querySelector<HTMLElement>('#export-menu [data-import]')?.addEventListener('click', () => { closeMenus(); importFile.click(); });
 importFile.addEventListener('change', () => {
   const file = importFile.files?.[0];
   importFile.value = '';
@@ -528,16 +563,8 @@ function importBitmapFile(file: File): void {
   reader.readAsDataURL(file);
 }
 
-// ---- Exportar: menú con .f.png, PNG, JPEG y WebP (formatos del navegador) ----
+// ---- Exportar: items dentro del menú Archivo (.f.png, PNG, JPEG, WebP, SVG) ----
 const exportMenu = document.getElementById('export-menu')!;
-document.querySelector<HTMLElement>('#toolbar .tool[data-export-menu]')?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  exportMenu.hidden = !exportMenu.hidden;
-});
-document.addEventListener('pointerdown', (e) => {
-  if (!exportMenu.hidden && !exportMenu.contains(e.target as Node) && !(e.target as HTMLElement).closest?.('[data-export-menu]'))
-    exportMenu.hidden = true;
-});
 const baseName = () => doc.name || 'pyra';
 document.querySelector<HTMLElement>('#export-menu [data-export]')?.addEventListener('click', async () => {
   downloadBlob(await exportFpng(doc, renderer), `${baseName()}.f.png`);

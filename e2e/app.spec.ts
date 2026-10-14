@@ -248,7 +248,7 @@ test('exportar .f.png y reimportarlo restaura el documento', async ({ page }) =>
   await drag(page, [100, 100], [220, 180]);
   await expect(layerCount(page)).toContainText('· 1');
   const download = page.waitForEvent('download');
-  await page.locator('#toolbar .tool[data-export-menu]').click();
+  await page.locator('#menu-file-btn').click();
   await page.locator('#export-menu [data-export]').click();
   const dl = await download;
   expect(dl.suggestedFilename()).toMatch(/\.f\.png$/);
@@ -311,7 +311,7 @@ test('agrupar: Ctrl+G selecciona el grupo entero al tocar un miembro', async ({ 
 test('exportar PNG plano descarga un .png', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);
-  await page.locator('#toolbar .tool[data-export-menu]').click();
+  await page.locator('#menu-file-btn').click();
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#export-menu [data-export-png]')]);
   expect(dl.suggestedFilename()).toMatch(/\.png$/);
 });
@@ -319,10 +319,10 @@ test('exportar PNG plano descarga un .png', async ({ page }) => {
 test('exportar JPEG y WebP descarga los formatos del navegador', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);
-  await page.locator('#toolbar .tool[data-export-menu]').click();
+  await page.locator('#menu-file-btn').click();
   const [jpg] = await Promise.all([page.waitForEvent('download'), page.click('#export-menu [data-export-jpeg]')]);
   expect(jpg.suggestedFilename()).toMatch(/\.jpg$/);
-  await page.locator('#toolbar .tool[data-export-menu]').click();
+  await page.locator('#menu-file-btn').click();
   const [webp] = await Promise.all([page.waitForEvent('download'), page.click('#export-menu [data-export-webp]')]);
   expect(webp.suggestedFilename()).toMatch(/\.webp$/);
 });
@@ -583,7 +583,7 @@ test('exportar SVG: vector real (formas y trazos como paths)', async ({ page }) 
   await drag(page, [100, 100], [220, 180]);
   await page.keyboard.press('n'); // lápiz: trazo vectorial
   await drag(page, [300, 120], [420, 200]);
-  await page.locator('#toolbar .tool[data-export-menu]').click();
+  await page.locator('#menu-file-btn').click();
   const [svg] = await Promise.all([page.waitForEvent('download'), page.click('#export-menu [data-export-svg]')]);
   expect(svg.suggestedFilename()).toMatch(/\.svg$/);
   const body = await fs.readFile((await svg.path())!, 'utf8');
@@ -710,7 +710,7 @@ test('i18n: el idioma guardado cambia la UI (es) y hay selector con 15 idiomas e
   await expect(langSel).toHaveValue('de');
 });
 
-test('theme: menú de configuración abajo a la izquierda con claro/oscuro/sistema', async ({ browser }) => {
+test('theme: menú de configuración en la barra superior con claro/oscuro/sistema', async ({ browser }) => {
   const ctx = await browser.newContext({ colorScheme: 'dark' });
   const page = await ctx.newPage();
   await page.goto('/');
@@ -1039,7 +1039,7 @@ test('export de assets: un PNG por objeto seleccionado', async ({ page }) => {
   await page.keyboard.down('Shift');
   await page.mouse.click(box.x + 350, box.y + 200);
   await page.keyboard.up('Shift');
-  await page.locator('#toolbar .tool[data-export-menu]').click();
+  await page.locator('#menu-file-btn').click();
   const downloads = Promise.all(
     [0, 1].map(() => page.waitForEvent('download', { timeout: 5000 }).then((d) => d.suggestedFilename())),
   );
@@ -1405,4 +1405,28 @@ test('insertar punto en trazo (A): doble clic sobre el trazo añade un punto y S
   await expect.poll(nPts, { timeout: 5000 }).toBe(n0 + 1);
   await page.keyboard.press('Delete'); // nodo activo = el insertado
   await expect.poll(nPts, { timeout: 5000 }).toBe(n0);
+});
+
+test('barra superior: menús (solo uno abierto) y colores de nodos/marcos configurables y persistentes', async ({ page }) => {
+  await openApp(page);
+  await expect(page.locator('#menubar')).toBeVisible();
+  await expect(page.locator('#menu-file-btn')).toBeVisible();
+  await expect(page.locator('#settings-btn')).toBeVisible();
+  // solo un desplegable abierto a la vez
+  await page.locator('#menu-file-btn').click();
+  await expect(page.locator('#export-menu')).toBeVisible();
+  await page.locator('#settings-btn').click();
+  await expect(page.locator('#export-menu')).toBeHidden();
+  await expect(page.locator('#settings-menu')).toBeVisible();
+  // colores de nodos y marcos configurables
+  await page.locator('#node-color').fill('#ff0000');
+  await page.locator('#frame-color').fill('#00ff00');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('pyra:ui')))
+    .toContain('"nodeColor":"#ff0000"');
+  // persiste tras recargar
+  await page.reload();
+  await page.locator('#settings-btn').click();
+  await expect(page.locator('#node-color')).toHaveValue('#ff0000');
+  await expect(page.locator('#frame-color')).toHaveValue('#00ff00');
 });

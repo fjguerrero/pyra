@@ -39,6 +39,8 @@ export interface Scene {
   guides: Guide[];
   /** Fondo del área de trabajo: color sólido y/o rejilla de cuadrados. */
   workspace?: { color?: string; grid?: number };
+  /** Colores configurables de la interfaz de dibujo: nodos de paths y marcos de selección. */
+  ui?: { nodeColor: string; frameColor: string };
   /** Herramienta de nodos (estilo FreeHand): vértices del vector seleccionado en coords de mundo. */
   nodes?: { pts: { x: number; y: number; kind?: 'corner' | 'smooth' | 'cusp' }[]; active?: number; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] };
 }
@@ -217,7 +219,7 @@ export class Renderer {
       const y = sel.y * v.zoom + v.panY;
       const w = sel.w * v.zoom;
       const h = sel.h * v.zoom;
-      ctx.strokeStyle = ACCENT;
+      ctx.strokeStyle = scene.ui?.frameColor ?? ACCENT;
       ctx.lineWidth = 1;
       const srot = sel.rot ?? 0;
       if (srot) {
@@ -256,7 +258,7 @@ export class Renderer {
       const objs = multi.map((id) => findObj(scene.page, id)).filter((o): o is Obj => o !== null);
       const x0 = Math.min(...objs.map((o) => o.x)), y0 = Math.min(...objs.map((o) => o.y));
       const x1 = Math.max(...objs.map((o) => o.x + o.w)), y1 = Math.max(...objs.map((o) => o.y + o.h));
-      ctx.strokeStyle = ACCENT;
+      ctx.strokeStyle = scene.ui?.frameColor ?? ACCENT;
       ctx.lineWidth = 1;
       for (const o of objs) ctx.strokeRect(o.x * v.zoom + v.panX - 0.5, o.y * v.zoom + v.panY - 0.5, o.w * v.zoom + 1, o.h * v.zoom + 1);
       if (scene.groupHandles && objs.length > 1) {
@@ -295,7 +297,7 @@ export class Renderer {
       // el nodo activo (último clickeado/alternado/arrastrado) se pinta en azul
       for (const [i, p] of scene.nodes.pts.entries()) {
         const sx = p.x * v.zoom + v.panX, sy = p.y * v.zoom + v.panY;
-        ctx.fillStyle = i === scene.nodes.active ? '#0a7cff' : '#111111';
+        ctx.fillStyle = i === scene.nodes.active ? '#0a7cff' : (scene.ui?.nodeColor ?? '#111111');
         if (p.kind === 'smooth') {
           ctx.beginPath();
           ctx.arc(sx, sy, 3, 0, Math.PI * 2);

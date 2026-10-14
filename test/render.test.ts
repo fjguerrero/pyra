@@ -439,3 +439,32 @@ describe('polígono con nodos Bézier (polyH)', () => {
     expect(ops.filter((o) => o.op === 'bezierCurveTo').length).toBe(0);
   });
 });
+
+describe('colores configurables de la interfaz (scene.ui)', () => {
+  it('scene.ui.nodeColor pinta los nodos con ese color; el nodo activo sigue en azul', () => {
+    const s = scene({ selectedId: 'x', nodes: { pts: [{ x: 10, y: 10 }, { x: 50, y: 10 }], active: 1 }, ui: { nodeColor: '#ff00aa', frameColor: '#4f8cff' } });
+    const styles = styleOrder(draw(s), 'fillStyle');
+    expect(styles).toContain('#ff00aa');
+    expect(styles.lastIndexOf('#0a7cff')).toBeGreaterThan(styles.lastIndexOf('#ff00aa'));
+  });
+
+  it('sin scene.ui los nodos usan el negro de siempre (compatibilidad)', () => {
+    const s = scene({ selectedId: 'x', nodes: { pts: [{ x: 10, y: 10 }] } });
+    expect(styleOrder(draw(s), 'fillStyle')).toContain('#111111');
+  });
+
+  it('scene.ui.frameColor pinta el marco de selección con ese color', () => {
+    const s = scene();
+    const o = rect(10, 10, 40, 30);
+    s.page.layers[0].objects.push(o);
+    const s2 = { ...s, selectedId: o.id, ui: { nodeColor: '#111111', frameColor: '#00ff00' } };
+    expect(styleOrder(draw(s2), 'strokeStyle')).toContain('#00ff00');
+  });
+
+  it('sin scene.ui el marco de selección usa el azul de siempre', () => {
+    const s = scene();
+    const o = rect(10, 10, 40, 30);
+    s.page.layers[0].objects.push(o);
+    expect(styleOrder(draw({ ...s, selectedId: o.id }), 'strokeStyle')).toContain('#4f8cff');
+  });
+});
