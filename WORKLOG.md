@@ -82,8 +82,8 @@ resolver los problemas por uno mismo y continuar.
 - [x] F26c flechas con nodo activo: mueven solo ese nodo (setNode, undo por nudge); sin nodo activo mueven el objeto. → commit 141715b.
 - [x] F27 insertar/borrar nodos estilo FreeHand: doble clic en un tramo lo parte exacto (de Casteljau, `splitSeg`/`polyInsertOnSeg` en model.ts) sin cambiar la forma; Supr borra solo ese nodo; `setNode` a model.ts. → commit 5ef63c1.
 - [x] F28 barra de menús superior (Archivo/Configuración, uno abierto a la vez, estado+zoom a la derecha) sustituyendo la barra inferior; colores configurables de nodos y marcos (`pyra:ui`, `Scene.ui`). → commit 7bf4110.
-- [x] F29 drag & drop de imágenes sobre la ventana → misma ruta de importación que el botón (`handleFile` único compartido). → commit 9fa73b0.
-- [x] F30 proporción al redimensionar: esquinas mantienen proporción por defecto (proyección sobre la diagonal en `applyResize`), Ctrl/⌘ escala libre. → commit f4dfb5a.
+- [x] F29 drag & drop de imágenes sobre la ventana → misma ruta de importación que el botón (`handleFile` único compartido). → commit a4f6ddc.
+- [x] F30 proporción al redimensionar: esquinas mantienen proporción por defecto (proyección sobre la diagonal en `applyResize`), Ctrl/⌘ escala libre. → commit 159c677.
 - [x] F31 unidades e impresión: `doc.unit` (px/in/cm/mm) + `doc.dpi` en Configuración, inspector formateado por `unitFactor` (modelo sigue en px), PNG export con chunk `pHYs` (`pngInsertPhys`). → commit 83547b2.
 - [x] Fix inspector sin barras de scroll (scrollbar-width:none en #side + filas .field encogibles). → commit 296e6d9.
 
