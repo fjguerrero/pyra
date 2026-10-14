@@ -706,13 +706,13 @@ test('guías manuales: clic derecho crea, clic derecho sobre ella borra', async 
 test('i18n: el idioma guardado cambia la UI (es) y hay selector con 15 idiomas en el menú de configuración', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('pyra:lang', 'es'));
   await page.goto('/');
-  await expect(page.locator('.panel-title').first()).toContainText('Capas');
+  await expect(page.locator('.panel[data-panel="layers"] .panel-title')).toContainText('Capas');
   await page.locator('#settings-btn').click();
   const langSel = page.locator('#lang');
   await expect(langSel).toBeVisible();
   await expect(langSel.locator('option')).toHaveCount(15);
   await langSel.selectOption('de');
-  await expect(page.locator('.panel-title').first()).toContainText('Ebenen');
+  await expect(page.locator('.panel[data-panel="layers"] .panel-title')).toContainText('Ebenen');
   await expect(langSel).toHaveValue('de');
 });
 
