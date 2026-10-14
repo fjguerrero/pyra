@@ -1,4 +1,4 @@
-import { activePage, isLineLike, lineEnds, newDoc, polyDeleteVertex, polyInsertOnSeg, polyNearestSeg, polyPoints, setNode, strokeDeletePoint, strokeInsertPoint, strokeNearestPoint, uid, type BitmapObj, type BrushSettings, type Doc, type LineFrom, type Obj, type ShapeKind, type ShapeObj, type Style, type TextObj } from './model';
+import { activePage, docDpi, isLineLike, lineEnds, newDoc, polyDeleteVertex, polyInsertOnSeg, polyNearestSeg, polyPoints, setNode, strokeDeletePoint, strokeInsertPoint, strokeNearestPoint, uid, type BitmapObj, type BrushSettings, type Doc, type LineFrom, type Obj, type ShapeKind, type ShapeObj, type Style, type TextObj, type Unit } from './model';
 import { History, type Command } from './history';
 import type { Draft } from './render';
 import { fitAll, screenToWorld, type View } from './view';
@@ -14,6 +14,7 @@ import { DEFAULT_FONT, measureText } from './text';
 import { duplicateCmd, flipCmd, groupCmd, pasteCmd, unionCmd, zOrderCmd } from './commands';
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
+import { pngInsertPhys } from './png';
 import { renderPanels, type BrushPanelArg } from './panels';
 import { addRecent, loadSwatches } from './swatches';
 import { icon } from './icons';
@@ -467,6 +468,27 @@ frameColorInput.addEventListener('input', () => {
   saveUi();
 });
 
+// ---- Unidades del inspector y resolución de impresión (doc.unit / doc.dpi) ----
+const unitSel = document.getElementById('unit') as HTMLSelectElement;
+const dpiInput = document.getElementById('dpi') as HTMLInputElement;
+const syncDocUnits = (): void => {
+  unitSel.value = doc.unit ?? 'px';
+  dpiInput.value = String(docDpi(doc));
+};
+syncDocUnits();
+unitSel.addEventListener('change', () => {
+  doc.unit = unitSel.value as Unit;
+  void saveDoc(doc);
+  invalidate(); // re-render de paneles: los campos se formatean en la nueva unidad
+});
+dpiInput.addEventListener('change', () => {
+  const v = Math.min(2400, Math.max(1, Math.round(Number(dpiInput.value)) || 72));
+  doc.dpi = v;
+  dpiInput.value = String(v);
+  void saveDoc(doc);
+  invalidate();
+});
+
 // ---- Ayuda: modal con todas las funcionalidades (texto i18n ya formateado) ----
 const helpBtn = document.getElementById('help-btn') as HTMLButtonElement;
 const helpModal = document.getElementById('help-modal') as HTMLElement;
@@ -523,6 +545,7 @@ async function handleFile(file: File): Promise<void> {
     });
     select(null);
     await saveDoc(doc);
+    syncDocUnits(); // el documento importado puede traer sus propias unidades/dpi
     invalidate();
     return;
   }
@@ -589,7 +612,16 @@ exportQuality.addEventListener('change', () => {
 const exportQualityValue = (): number => Number(exportQuality.value) / 100;
 const exportRaster = (mime: string, ext: string): void => {
   void renderer.exportPage(activePage(doc)).then((off) => {
-    off.toBlob((b) => b && downloadBlob(b, `${baseName()}.${ext}`), mime, mime === 'image/png' ? undefined : exportQualityValue());
+    off.toBlob((b) => {
+      if (!b) return;
+      if (mime === 'image/png') {
+        // tamaño de impresión: canvas no escribe pHYs, lo inyectamos con el dpi del documento
+        void b.arrayBuffer().then((ab) => {
+          const bytes = pngInsertPhys(new Uint8Array(ab), docDpi(doc));
+          downloadBlob(new Blob([bytes.buffer as ArrayBuffer], { type: 'image/png' }), `${baseName()}.${ext}`);
+        });
+      } else downloadBlob(b, `${baseName()}.${ext}`);
+    }, mime, mime === 'image/png' ? undefined : exportQualityValue());
   });
 };
 document.querySelector<HTMLElement>('#export-menu [data-export-png]')?.addEventListener('click', () => { exportRaster('image/png', 'png'); exportMenu.hidden = true; });

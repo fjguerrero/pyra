@@ -127,7 +127,9 @@ Verification: clean `tsc --noEmit`, 269 unit tests, 57 Playwright e2e.
 
 - Aspect-locked resizing: corner handles keep the original aspect ratio by default (the cursor is projected onto the anchor→corner diagonal, FreeHand/Figma style); holding Ctrl/⌘ while dragging a corner scales freely. Edge handles stay single-axis. Help text updated (es/en).
 
-Verification: clean `tsc --noEmit`, 293 unit tests, 67 Playwright e2e.
+- Units & print size: the document stores `unit` (px/in/cm/mm) and `dpi` (default 72), configurable under Settings; the inspector shows and edits X/Y/W/H and page size in the chosen unit while the internal model stays px (the unit only formats, via `unitFactor`). Exported PNGs carry a `pHYs` chunk with the print size (dpi→pixels/metre, CRC verified against zlib) — honored by GIMP, ImageMagick, Word and print dialogs; browsers ignore it. Re-importing a `.f.png` syncs the controls with the document's units/dpi.
+
+Verification: clean `tsc --noEmit`, 297 unit tests, 68 Playwright e2e.
 
 ## Pending
 

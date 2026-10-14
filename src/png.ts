@@ -78,3 +78,23 @@ export function pngFindText(bytes: Uint8Array, keyword: string): string | null {
   }
   return null;
 }
+
+/** Inserta un chunk pHYs tras IHDR: tamaño de impresión del PNG (dpi → píxeles/metro). */
+export function pngInsertPhys(bytes: Uint8Array, dpi: number): Uint8Array {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const ppm = Math.max(1, Math.round(dpi / 0.0254));
+  const chunk = new Uint8Array(21); // longitud(4) + tipo(4) + datos(9) + CRC(4)
+  const cv = new DataView(chunk.buffer);
+  cv.setUint32(0, 9);
+  chunk.set(new TextEncoder().encode('pHYs'), 4);
+  cv.setUint32(8, ppm);
+  cv.setUint32(12, ppm);
+  chunk[16] = 1; // especificador de unidad: 1 = metro
+  cv.setUint32(17, crc32(chunk.subarray(4, 17)));
+  const ihdrEnd = 8 + 4 + 4 + dv.getUint32(8) + 4;
+  const out = new Uint8Array(bytes.length + chunk.length);
+  out.set(bytes.subarray(0, ihdrEnd), 0);
+  out.set(chunk, ihdrEnd);
+  out.set(bytes.subarray(ihdrEnd), ihdrEnd + chunk.length);
+  return out;
+}

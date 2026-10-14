@@ -1,5 +1,5 @@
 import { FONTS } from './text';
-import { activePage, isLineLike, NO_FX, BLEND_MODES, type BitmapObj, type BlendMode, type BrushSettings, type Doc, type Fx, type Layer, type Obj, type ShapeObj, type TextObj } from './model';
+import { activePage, isLineLike, NO_FX, BLEND_MODES, unitFactor, type BitmapObj, type BlendMode, type BrushSettings, type Doc, type Fx, type Layer, type Obj, type ShapeObj, type TextObj } from './model';
 import { addStopAt } from './gradient';
 import { findObj } from './hit';
 import type { View } from './view';
@@ -350,10 +350,13 @@ export function renderPanels(
         wrap.innerHTML = `<span>${label}</span>`;
         const input = document.createElement('input');
         input.type = 'number';
-        input.value = String(page[key]);
+        // el modelo siempre es px; la unidad del documento sólo formatea el campo
+        const f = unitFactor(doc);
+        input.value = f === 1 ? String(page[key]) : String(Math.round((page[key] / f) * 100) / 100);
+        input.step = f === 1 ? '1' : '0.01';
         input.addEventListener('change', () => {
           const val = Number(input.value);
-          if (input.value.trim() !== '' && Number.isFinite(val) && val > 0) api.editPage({ [key]: Math.round(val) });
+          if (input.value.trim() !== '' && Number.isFinite(val) && val > 0) api.editPage({ [key]: Math.round(val * f) });
         });
         wrap.appendChild(input);
         insp.appendChild(wrap);
@@ -368,11 +371,14 @@ export function renderPanels(
       wrap.innerHTML = `<span>${label}</span>`;
       const input = document.createElement('input');
       input.type = 'number';
-      input.value = String(Math.round(obj[key]));
+      // el modelo siempre es px; la unidad del documento sólo formatea el campo
+      const f = unitFactor(doc);
+      input.value = f === 1 ? String(Math.round(obj[key])) : String(Math.round((obj[key] / f) * 100) / 100);
+      input.step = f === 1 ? '1' : '0.01';
       input.addEventListener('change', () => {
         const val = Number(input.value);
         // campo vacío o no numérico: no mueve el objeto a 0
-        if (input.value.trim() !== '' && Number.isFinite(val)) api.editObj(obj, { [key]: val } as Partial<ShapeObj>);
+        if (input.value.trim() !== '' && Number.isFinite(val)) api.editObj(obj, { [key]: val * f } as Partial<ShapeObj>);
       });
       wrap.appendChild(input);
       insp.appendChild(wrap);

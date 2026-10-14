@@ -1,6 +1,7 @@
 // E2E reales: Chromium contra la app servida por Vite. Verifican el flujo de usuario,
 // no la implementación. La evidencia es lo que la UI muestra (capas, inspector, status).
 import { test, expect, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 const canvas = (page: Page) => page.locator('#canvas');
 const layerCount = (page: Page) => page.locator('#layers-body .row-name').first();
@@ -1468,4 +1469,41 @@ test('redimensionar: la esquina mantiene la proporción por defecto y Ctrl escal
   const h2 = Number(await inspNum(page, 3).inputValue());
   expect(w2).toBeGreaterThan(w);
   expect(Math.abs(w2 / h2 - 2)).toBeGreaterThan(0.2);
+});
+
+test('unidades e impresión: inspector en pulgadas con DPI del documento y PNG exportado con pHYs', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [150, 150], [350, 250]);
+  const wPx = Number(await inspNum(page, 2).inputValue()); // en px, como siempre
+  expect(wPx).toBeGreaterThan(100);
+
+  await page.locator('#settings-btn').click();
+  await page.selectOption('#unit', 'in');
+  await page.fill('#dpi', '100');
+  await page.keyboard.press('Enter');
+
+  // con 100 dpi el inspector muestra pulgadas: w/100 (±1px por el redondeo de la lectura px)
+  await expect
+    .poll(async () => Math.abs(Number(await inspNum(page, 2).inputValue()) * 100 - wPx))
+    .toBeLessThanOrEqual(1);
+
+  // editar en pulgadas debe escribir px en el modelo: 3 in a 100 dpi = 300 px
+  await inspNum(page, 2).fill('3');
+  await inspNum(page, 2).press('Enter');
+  if (await page.locator('#settings-menu').isHidden()) await page.locator('#settings-btn').click();
+  await page.selectOption('#unit', 'px');
+  await expect(inspNum(page, 2)).toHaveValue('300');
+
+  // el PNG exportado lleva el tamaño de impresión (pHYs): 100 dpi → 3937 px/m
+  const dlPromise = page.waitForEvent('download');
+  await page.locator('#menu-file-btn').click();
+  await page.locator('#export-menu [data-export-png]').click();
+  const dl = await dlPromise;
+  expect(dl.suggestedFilename()).toMatch(/\.png$/);
+  const buf = await readFile((await dl.path())!);
+  const i = buf.indexOf('pHYs');
+  expect(i).toBeGreaterThan(0);
+  expect(buf.readUInt32BE(i + 4)).toBe(3937);
+  expect(buf.readUInt32BE(i + 8)).toBe(3937);
+  expect(buf[i + 12]).toBe(1); // especificador de unidad: metro
 });

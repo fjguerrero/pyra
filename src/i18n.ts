@@ -44,7 +44,7 @@ type Msg = {
   status_selection: string; status_objects: string;
   obj_rect: string; obj_ellipse: string; obj_line: string; obj_text: string; default_layer: string; default_page: string;
   settings: string; theme: string; theme_system: string; theme_light: string; theme_dark: string;
-  menu_file: string; node_color: string; frame_color: string;
+  menu_file: string; node_color: string; frame_color: string; units: string; print_dpi: string;
   language: string; zoom: string; bg: string; bg_grid: string; bg_none: string;
   alpha: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
   export_menu: string; export_jpeg: string; export_webp: string; export_quality: string;
@@ -83,6 +83,7 @@ const en: Msg = {
   obj_rect: 'Rectangle', obj_ellipse: 'Ellipse', obj_line: 'Line', obj_text: 'Text', default_layer: 'Layer 1', default_page: 'Page',
   settings: 'Settings', theme: 'Theme', theme_system: 'System', theme_light: 'Light', theme_dark: 'Dark',
   menu_file: 'File', node_color: 'Node color', frame_color: 'Frame color',
+  units: 'Inspector units', print_dpi: 'Print resolution (DPI)',
   language: 'Language', zoom: 'Zoom', bg: 'Background', bg_grid: 'Grid', bg_none: 'Solid',
   alpha: 'Alpha', recent_colors: 'Recent colors', custom_colors: 'Custom colors', add_color: 'Add current color to custom palette', remove_color: 'Remove color',
   export_menu: 'Export', export_jpeg: 'Export JPEG', export_webp: 'Export WebP', export_quality: 'Quality (JPEG/WebP)',
@@ -128,6 +129,7 @@ const es: Partial<Msg> = {
   obj_rect: 'Rectángulo', obj_ellipse: 'Elipse', obj_line: 'Línea', obj_text: 'Texto', default_layer: 'Capa 1', default_page: 'Página',
   settings: 'Configuración', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Claro', theme_dark: 'Oscuro',
   menu_file: 'Archivo', node_color: 'Color de nodos', frame_color: 'Color de marcos',
+  units: 'Unidades del inspector', print_dpi: 'Resolución de impresión (DPI)',
   language: 'Idioma', zoom: 'Zoom', bg: 'Fondo', bg_grid: 'Cuadrícula', bg_none: 'Sólido',
   alpha: 'Alfa', recent_colors: 'Colores recientes', custom_colors: 'Colores personalizados', add_color: 'Añadir el color actual a la paleta personalizada', remove_color: 'Eliminar color',
   export_menu: 'Exportar', export_jpeg: 'Exportar JPEG', export_webp: 'Exportar WebP', export_quality: 'Calidad (JPEG/WebP)',

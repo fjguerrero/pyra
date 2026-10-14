@@ -438,7 +438,25 @@ export interface Doc {
   pages: Page[];
   /** Estilos reutilizables (como los Styles de Fireworks): paquetes de aspecto aplicables a cualquier objeto. */
   styles?: Style[];
+  /** Unidad de visualización del inspector (el modelo interno siempre es px). */
+  unit?: Unit;
+  /** Resolución de impresión en dpi: ancla de la conversión de unidades y del pHYs del PNG exportado. */
+  dpi?: number;
 }
+
+/** Unidades de inspección/impresión. px es la interna; las demás se derivan del dpi del documento. */
+export type Unit = 'px' | 'in' | 'cm' | 'mm';
+
+export const docDpi = (doc: Doc): number => doc.dpi ?? 72;
+
+/** Píxeles por unidad de visualización; 1 para px. */
+export const unitFactor = (doc: Doc): number => {
+  const dpi = docDpi(doc);
+  if (doc.unit === 'in') return dpi;
+  if (doc.unit === 'cm') return dpi / 2.54;
+  if (doc.unit === 'mm') return dpi / 25.4;
+  return 1;
+};
 
 /** Paquete de aspecto: fill/stroke/degradado/efectos. Sin geometría: se aplica a lo que sea. */
 export interface Style {
