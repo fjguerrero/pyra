@@ -77,6 +77,10 @@ resolver los problemas por uno mismo y continuar.
 - [x] F23 Nodos Bézier estilo FreeHand (c3939dc): `polyH` por vértice (esquina vs nodo suave con asa espejada), Alt+clic alterna esquina↔Bézier, asa arrastrable dibujada como FreeHand, snap de nodos y asas (página/objetos/guías, Ctrl libre), hit-test/contorno/SVG siguen la curva (C/L). Alt+clic sigue siendo pan salvo sobre vértices. 4 unit + 1 e2e nuevos.
 - [x] F24 Nodos cúspide estilo FreeHand (55b40e0): `polyH2` = asa del lado entrante; Alt+arrastrar un asa rompe el espejo → pico anguloso con asas independientes (ambas puntas dibujadas, lectura por lado, snap). Undo restaura el espejo; toggle a esquina limpia la cúspide. Doble clic como gesto de toggle. 1 unit SVG + e2e ampliado.
 - [x] F25 Fix selección de color en el inspector (causa raíz: el pointerup sobre controles del panel lo reconstruía y destruía el `<input type=color>` antes/de mitad del diálogo nativo; ahora soltar sobre un campo no reconstruye y con un selector de color enfocado el re-render se pospone) + estilos de trazo cambiables (sólido/discontinuo/punteado/raya-punto sobre `dash` existente, i18n 15 idiomas). 1 e2e nuevo.
+- [x] F26 ciclo de nodo esquina→suave→cúspide con doble clic/Alt+clic + iconos por tipo (cuadrado/círculo/triángulo). → commit 1d3dd3f.
+- [x] F26b nodo activo resaltado en azul conservando el icono de tipo. → commit b414e91.
+- [x] F26c flechas con nodo activo: mueven solo ese nodo (setNode, undo por nudge); sin nodo activo mueven el objeto. → commit 141715b.
+- [x] Fix inspector sin barras de scroll (scrollbar-width:none en #side + filas .field encogibles). → commit 296e6d9.
 
 ## Registro de progreso
 - 00:32 F1–F6 completadas y commiteadas (797bf59). Gate completo verde.
@@ -97,3 +101,4 @@ resolver los problemas por uno mismo y continuar.
 - 12:13 F23 nodos Bézier estilo FreeHand en la herramienta de nodos (c3939dc): esquina↔curva con Alt+clic, asas arrastrables espejadas, snap de nodos/asas, SVG C/L. 275 unit + 60 e2e verdes.
 - 13:48 F24 nodos cúspide (picos angulosos): Alt+arrastrar rompe el espejo con `polyH2`, asas independientes por lado con lectura y snap; doble clic como toggle. 276 unit + 60 e2e verdes.
 - 14:34 F25 fix selección de color (re-render del inspector destruía el input de color) + selector de estilos de trazo (sólido/discontinuo/punteado/raya-punto). 276 unit + 61 e2e verdes.
+- 19:38 F26/F26b/F26c (ciclo de tipo de nodo + iconos, nodo activo azul, flechas por nodo) y fix scroll del inspector. 278 unit + 62 e2e verdes (verificado 2026-10-14). Docs (docs/02, CHANGELOG, WORKLOG) puestos al día con F26.

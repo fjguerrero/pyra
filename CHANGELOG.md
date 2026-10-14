@@ -9,12 +9,16 @@
 - Herramienta de nodos (`A`, subselect): remodela vectores como el puntero de FreeHand. Con un vector seleccionado (trazo/polilínea/línea) muestra sus vértices como cuadrados negros en vez de asas de marco; arrastrar un vértice remodela el objeto (recalcula bbox y re-normaliza puntos) y muestra lectura flotante con ángulo (0–360°) y longitud del segmento, como hacía FreeHand. Un solo Ctrl+Z por arrastre. Botón en barra, icono, i18n es/en y ayuda.
 - Nodos Bézier estilo FreeHand (nodo esquina vs nodo con punto): en polígonos, Alt+clic o doble clic en un vértice alterna esquina ↔ nodo Bézier con asa arrastrable (se genera sobre la tangente media); el asa se espeja al lado opuesto (nodo suave) y se dibuja como FreeHand (línea fina + punto blanco). Arrastrar el asa deforma la curva. Nodos y asas encajan con página, objetos y guías (magnet); Ctrl = libre. Hit-test, contorno y export SVG siguen la curva (`C`/`L` por segmento). Alt+clic sigue haciendo pan salvo sobre vértices en modo nodos. Un Ctrl+Z por edición.
 - Nodos cúspide (picos angulosos de FreeHand): Alt+arrastrar un asa rompe el espejo — se crea la segunda asa (`polyH2`, lado entrante) y desde ahí cada lado se arrastra independiente; se dibujan ambas puntas con lectura de ángulo/longitud por lado y snap. Sin `polyH2` el nodo sigue siendo suave. Undo restaura el espejo; el toggle a esquina limpia la cúspide. La curva asimétrica llega sola a render, hit-test, contorno y SVG vía `polySegs`.
+- Ciclo de tipo de nodo con un solo gesto: doble clic o Alt+clic en un vértice cicla esquina → suave → cúspide → esquina (el segundo gesto crea la segunda asa espejada, antes alcanzable solo con Alt+arrastrar; el tercero vuelve a esquina). Los nodos se distinguen en el lienzo por icono según tipo: cuadrado (esquina), círculo (suave), triángulo (cúspide).
+- Nodo activo reconocible: el último nodo clickeado/alternado/arrastrado con la herramienta A se resalta en azul conservando su icono de tipo; se desactiva solo si su objeto deja de estar seleccionado.
+- Flechas con nodo activo: con la herramienta A y un nodo activo, las flechas del teclado mueven solo ese nodo (con snap y un Ctrl+Z por pulsación); sin nodo activo siguen moviendo el objeto entero, como siempre. Ayuda es/en actualizada.
 
 ### Inspector
 - Selección de color (causa raíz): al soltar el click dentro del inspector, `renderPanels` reconstruía el panel y destruía el `<input type=color>` antes de que abriera su diálogo nativo (y a mitad de selección). Ahora soltar sobre un campo del panel (input/select/textarea, salvo sliders y checkboxes) no lo reconstruye, y mientras un selector de color tiene el foco se pospone el re-render: el diálogo abre, permanece abierto durante la selección y el color se aplica en vivo.
 - Estilos de trazo cambiables: el selector sustituye al antiguo botón único de discontinuo — sólido, discontinuo, punteado y raya-punto sobre el mismo `dash` del objeto, aplicable en cualquier momento desde el inspector. El punteado usa puntas redondas (ya por defecto) para puntos reales en canvas y SVG export. i18n en 15 idiomas.
+- Inspector sin barras de scroll: `scrollbar-width:none` en `#side` (la rueda sigue desplazando) y filas `.field` encogibles (`range` con flex, `number` con `min-width:0`) para que ninguna fila sobresalga del panel de 232px.
 
-Verificación: `tsc --noEmit` limpio, 276 tests unitarios, 61 e2e Playwright.
+Verificación: `tsc --noEmit` limpio, 278 tests unitarios, 62 e2e Playwright.
 
 ## v1.3 — 2026-10-13
 
