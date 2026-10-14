@@ -703,6 +703,44 @@ test('guías manuales: clic derecho crea, clic derecho sobre ella borra', async 
   await expect(page.locator('#inspector-body input[type=number]').nth(0)).toHaveValue('900');
 });
 
+test('guías: dibujar, mover y redimensionar imantan a la guía manual', async ({ page }) => {
+  const box = (await canvas(page).boundingBox())!;
+  // calibrar mundo↔pantalla con un rectángulo de tamaño conocido (la vista 'ajustar' depende del viewport)
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [300, 300]);
+  await page.waitForTimeout(250);
+  const cx = Number(await inspNum(page, 0).inputValue());
+  const cy = Number(await inspNum(page, 1).inputValue());
+  const Z = Number(await inspNum(page, 2).inputValue()) / 200; // unidades de mundo por px de pantalla
+  const OX = 100 - cx / Z, OY = 100 - cy / Z;
+  const at = (wx: number, wy: number): [number, number] => [wx / Z + OX, wy / Z + OY];
+  await page.keyboard.press('Control+z'); // quitar el rectángulo de calibración
+
+  // guía vertical en x≈560 (lejos del centro de página para que no compitan otros imanes)
+  await page.mouse.click(box.x + at(560, 700)[0], box.y + at(560, 700)[1], { button: 'right' });
+  await page.keyboard.press('r');
+  await drag(page, at(610, 450), at(564, 650)); // dibujar: la esquina móvil queda a ~4px del mundo de la guía
+  await page.waitForTimeout(250);
+  const gx = Number(await inspNum(page, 0).inputValue());
+  expect(Math.abs(gx - 560)).toBeLessThanOrEqual(2); // el dibujo ya imantaba
+
+  // MOVER: separar 20px pantalla y arrastrar hacia la guía hasta que el borde izquierdo quede a ~3px
+  const c = at(gx + 25, 550);
+  await drag(page, c, [c[0] - 20, c[1]]);
+  await page.waitForTimeout(250);
+  const x1 = Number(await inspNum(page, 0).inputValue());
+  // arrancar 10px a la derecha del punto anterior: tras el imán la guía puede pasar justo por el centro del objeto y capturar el agarre
+  await drag(page, [c[0] - 10, c[1]], [c[0] - 10 + (gx - x1 - 3 * Z) / Z, c[1]]);
+  await expect.poll(() => inspNum(page, 0).inputValue(), { timeout: 2000 }).toBe(String(gx));
+
+  // REDIMENSIONAR: separar 20px y arrastrar el asa oeste hasta ~3px de pantalla de la guía
+  await drag(page, c, [c[0] + 20, c[1]]);
+  await page.waitForTimeout(250);
+  const xr = Number(await inspNum(page, 0).inputValue());
+  await drag(page, at(xr, 550), at(gx + 3 * Z, 550));
+  await expect.poll(() => inspNum(page, 0).inputValue(), { timeout: 2000 }).toBe(String(gx));
+});
+
 test('i18n: el idioma guardado cambia la UI (es) y hay selector con 15 idiomas en el menú de configuración', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('pyra:lang', 'es'));
   await page.goto('/');

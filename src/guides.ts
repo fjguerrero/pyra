@@ -83,6 +83,37 @@ export function snapBox(
   return out;
 }
 
+/** Imán al redimensionar: solo la(s) borde(s) de la(s) asa(s) arrastrada(s) imantan; el borde fijo no se mueve. */
+export function snapResize(
+  box: Box, // caja ya redimensionada (borde fijo en su sitio)
+  role: string, // HandleRole: 'nw' | 'n' | 'e' | ...
+  others: Box[],
+  page: { width: number; height: number; guides?: { axis: 'v' | 'h'; pos: number }[] },
+  tol: number,
+): Snap {
+  const xTargets: Target[] = [target(0), target(page.width / 2), target(page.width)];
+  const yTargets: Target[] = [target(0), target(page.height / 2), target(page.height)];
+  for (const g of page.guides ?? []) (g.axis === 'v' ? xTargets : yTargets).push(target(g.pos));
+  for (const o of others) {
+    xTargets.push(...anchors(o.x, o.x + o.w).map((v) => target(v, 'obj')));
+    yTargets.push(...anchors(o.y, o.y + o.h).map((v) => target(v, 'obj')));
+  }
+  const out: Snap = { dx: 0, dy: 0, guides: [] };
+  const pull = (v: number, ts: Target[], axis: 'v' | 'h'): void => {
+    let best: Target | null = null;
+    for (const t of ts) if (Math.abs(t.v - v) <= tol && (!best || Math.abs(t.v - v) < Math.abs(best.v - v))) best = t;
+    if (!best) return;
+    if (axis === 'v') out.dx = best.v - v;
+    else out.dy = best.v - v;
+    if (best.kind === 'obj') out.guides.push({ axis, pos: best.v, kind: 'obj' });
+  };
+  if (role.includes('w')) pull(box.x, xTargets, 'v');
+  if (role.includes('e')) pull(box.x + box.w, xTargets, 'v');
+  if (role.includes('n')) pull(box.y, yTargets, 'h');
+  if (role.includes('s')) pull(box.y + box.h, yTargets, 'h');
+  return out;
+}
+
 /** Imán para un punto que se arrastra (esquina al dibujar): bordes/centros de objetos, página y guías. */
 export function snapPoint(
   px: number,
@@ -101,7 +132,7 @@ export function snapPoint(
   const out = { x: px, y: py, guides: [] as Guide[] };
   const near = (v: number, ts: Target[], axis: 'v' | 'h'): void => {
     let best: Target | null = null;
-    for (const t of ts) if (Math.abs(t.v - v) <= tol && (!best || Math.abs(t.v - t.v) < Math.abs(t.v - best.v))) best = t;
+    for (const t of ts) if (Math.abs(t.v - v) <= tol && (!best || Math.abs(t.v - v) < Math.abs(best.v - v))) best = t;
     if (best) {
       if (axis === 'v') out.x = best.v; else out.y = best.v;
       if (best.kind === 'obj') out.guides.push({ axis, pos: best.v, kind: 'obj' });

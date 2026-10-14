@@ -4,7 +4,7 @@ import type { Draft } from './render';
 import { fitAll, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
 import { addLayer, moveLayer, reorderLayer } from './layers';
-import { snapBox, snapPoint, type Guide, type Snap } from './guides';
+import { snapBox, snapPoint, snapResize, type Guide, type Snap } from './guides';
 import { rdpSimplify } from './freehand';
 import { applyTaper, BRUSH_PRESETS, interpolateStamps, PRESET_ORDER, StrokeCapture, type BrushParams, type BrushPreset, type WPt } from './brush-engine';
 import { exportSvg } from './svg-export';
@@ -873,6 +873,15 @@ function magnetCtx(excludeId?: string): { pg: ReturnType<typeof activePage>; box
   const pg = activePage(doc);
   return { pg, boxes: pg.layers.filter((l) => l.visible).flatMap((l) => l.objects).filter((o) => o.id !== excludeId).map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h })) };
 }
+/** Aplica la corrección del imán de resize: solo se mueve el borde de la asa arrastrada; el borde fijo queda en su sitio. */
+function applySnapResize(o: { x: number; y: number; w: number; h: number }, role: string, sn: Snap): void {
+  if (role.includes('w')) { o.x += sn.dx; o.w -= sn.dx; }
+  else if (role.includes('e')) o.w += sn.dx;
+  if (role.includes('n')) { o.y += sn.dy; o.h -= sn.dy; }
+  else if (role.includes('s')) o.h += sn.dy;
+  if (o.w < 1) { if (role.includes('w')) o.x += o.w - 1; o.w = 1; }
+  if (o.h < 1) { if (role.includes('n')) o.y += o.h - 1; o.h = 1; }
+}
 /** Instantánea/restauración de la geometría vectorial (undo de insertar/borrar nodos). */
 const geoSnap = (o: ShapeObj): string => JSON.stringify({ x: o.x, y: o.y, w: o.w, h: o.h, poly: o.poly, polyH: o.polyH, polyH2: o.polyH2, points: o.points });
 const geoRestore = (o: ShapeObj, s: string): void => {
@@ -1346,7 +1355,15 @@ canvas.addEventListener('pointermove', (e) => {
   }
 
   if (drag.mode === 'resize') {
-    applyResize(drag.obj, drag.start, drag.role, wx - drag.grab.x, wy - drag.grab.y, e.ctrlKey || e.metaKey);
+    const free = e.ctrlKey || e.metaKey; // Ctrl/⌘ = escala libre y también sin imán
+    applyResize(drag.obj, drag.start, drag.role, wx - drag.grab.x, wy - drag.grab.y, free);
+    if (!free) {
+      // smart guides: la asa arrastrada imanta a bordes/centros de objetos, página y guías
+      const { pg, boxes } = magnetCtx(drag.obj.id);
+      const sn = snapResize({ x: drag.obj.x, y: drag.obj.y, w: drag.obj.w, h: drag.obj.h }, drag.role, boxes, { width: pg.width, height: pg.height, guides: pg.guides }, 6 / view.zoom);
+      applySnapResize(drag.obj, drag.role, sn);
+      guides = sn.guides.filter((g) => g.kind === 'obj');
+    } else guides = [];
     if (drag.obj.shape === 'text') resizeText(drag.obj, { ...drag.start, size: drag.start.size ?? drag.obj.size } as { x: number; y: number; w: number; h: number; size: number }, drag.role); // escalar la fuente, no estirar glifos
     invalidate();
     return;
@@ -1391,6 +1408,15 @@ canvas.addEventListener('pointermove', (e) => {
     const s = { ...drag.start };
     const target = { x: s.x, y: s.y, w: s.w, h: s.h };
     applyResize(target as Obj, drag.start, drag.role, dx, dy, e.ctrlKey || e.metaKey);
+    if (!(e.ctrlKey || e.metaKey)) {
+      // el bbox común imanta como una sola caja; los demás objetos cuentan como referencia
+      const pg = activePage(doc);
+      const ids = new Set(drag.objs.map((it) => it.obj.id));
+      const others = pg.layers.filter((l) => l.visible).flatMap((l) => l.objects).filter((o) => !ids.has(o.id)).map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h }));
+      const sn = snapResize(target, drag.role, others, { width: pg.width, height: pg.height, guides: pg.guides }, 6 / view.zoom);
+      applySnapResize(target, drag.role, sn);
+      guides = sn.guides.filter((g) => g.kind === 'obj');
+    } else guides = [];
     const sx = target.w / Math.max(1, s.w), sy = target.h / Math.max(1, s.h);
     for (const it of drag.objs) {
       it.obj.x = Math.round(target.x + (it.start.x - s.x) * sx);
