@@ -511,7 +511,7 @@ document.querySelector<HTMLElement>('#toolbar .tool[data-fit]')?.addEventListene
 
 // ---- Importar imagen (M3) / importar .f.png (M6): un solo handler ----
 const importFile = document.getElementById('import-file') as HTMLInputElement;
-document.querySelector<HTMLElement>('#export-menu [data-import]')?.addEventListener('click', () => { closeMenus(); importFile.click(); });
+document.querySelector<HTMLElement>('#toolbar [data-import]')?.addEventListener('click', () => importFile.click());
 importFile.addEventListener('change', () => {
   const file = importFile.files?.[0];
   importFile.value = '';

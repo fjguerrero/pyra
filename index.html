@@ -11,10 +11,8 @@
       <div id="menubar">
         <span id="brand">Pyra</span>
         <div class="mbtn-wrap">
-          <button type="button" id="menu-file-btn" class="mbtn" data-pop="export-menu" data-i18n="menu_file"></button>
+          <button type="button" id="menu-file-btn" class="mbtn" data-pop="export-menu" data-i18n="export_menu"></button>
           <div id="export-menu" class="pop" hidden>
-            <button type="button" data-import data-i18n="import_image"></button>
-            <div class="popsep"></div>
             <button type="button" data-export data-i18n="export_fpng"></button>
             <button type="button" data-export-png data-i18n="export_png"></button>
             <button type="button" data-export-jpeg data-i18n="export_jpeg"></button>
@@ -87,6 +85,7 @@
           <button type="button" class="tool" data-tool="brush" data-icon="brush" aria-pressed="false" data-i18n-title="tool_brush"></button>
           <button type="button" class="tool" data-tool="text" data-icon="text" aria-pressed="false" data-i18n-title="tool_text"></button>
           <div class="tsep"></div>
+          <button type="button" class="tool" data-import data-icon="import" data-i18n-title="import_image"></button>
           <button type="button" class="tool" data-fit data-icon="fit" data-i18n-title="fit_zoom"></button>
         </div>
         <div id="canvas-wrap"><canvas id="canvas"></canvas><div id="cursor-ring" hidden></div></div>
