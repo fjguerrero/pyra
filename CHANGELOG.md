@@ -14,12 +14,16 @@
 - Flechas con nodo activo: con la herramienta A y un nodo activo, las flechas del teclado mueven solo ese nodo (con snap y un Ctrl+Z por pulsación); sin nodo activo siguen moviendo el objeto entero, como siempre. Ayuda es/en actualizada.
 - Insertar/borrar nodos estilo FreeHand: doble clic sobre un tramo (no un vértice) de un polígono o trazo inserta un nodo en el punto más cercano; en tramos curvos la cúbica se parte por de Casteljau y la forma queda idéntica (el nodo nuevo recibe las dos asas del corte y los vecinos solo cambian el asa del lado partido; un nodo suave vecino pasa a cúspide asimétrica con asas colineales, sigue viéndose suave). Con un nodo activo, Supr borra solo ese nodo (mínimo 3 vértices en polígonos, 2 puntos en trazos). Un Ctrl+Z por operación. `setNode` se traslada a `model.ts` compartido con la geometría nueva. Ayuda es/en actualizada.
 
+### Interfaz
+- Barra de menús superior: la barra inferior de estado desaparece y se sustituye por una barra de 34px arriba con la marca (◆ Pyra) y dos menús: **Archivo** (importar imagen + todos los formatos de exportación + calidad) y **Configuración** (idioma, tema, fondo, color de nodos, color de marcos, ayuda). Solo un desplegable abierto a la vez; clic fuera cierra. El texto de estado y los controles de zoom pasan al lado derecho de la barra. Los botones de importar/exportar de la barra lateral se retiran (viven en Archivo); Ajustar se queda en la barra de herramientas. Estilo sobrio tipo Linear: superficies por luminancia, bordes finos, peso medio. i18n es/en con claves nuevas (`menu_file`, `node_color`, `frame_color`).
+- Colores configurables de la interfaz de dibujo: **color de nodos** (vértices de paths) y **color de marcos** (marco de selección, selección múltiple y contorno de grupo) con selectores de color en Configuración. Se persisten en `pyra:ui` (localStorage) y llegan al renderizador vía `Scene.ui` (`nodeColor`/`frameColor`). Por defecto sin cambios (`#111111` nodos, `#4f8cff` marcos); el nodo activo sigue en azul.
+
 ### Inspector
 - Selección de color (causa raíz): al soltar el click dentro del inspector, `renderPanels` reconstruía el panel y destruía el `<input type=color>` antes de que abriera su diálogo nativo (y a mitad de selección). Ahora soltar sobre un campo del panel (input/select/textarea, salvo sliders y checkboxes) no lo reconstruye, y mientras un selector de color tiene el foco se pospone el re-render: el diálogo abre, permanece abierto durante la selección y el color se aplica en vivo.
 - Estilos de trazo cambiables: el selector sustituye al antiguo botón único de discontinuo — sólido, discontinuo, punteado y raya-punto sobre el mismo `dash` del objeto, aplicable en cualquier momento desde el inspector. El punteado usa puntas redondas (ya por defecto) para puntos reales en canvas y SVG export. i18n en 15 idiomas.
 - Inspector sin barras de scroll: `scrollbar-width:none` en `#side` (la rueda sigue desplazando) y filas `.field` encogibles (`range` con flex, `number` con `min-width:0`) para que ninguna fila sobresalga del panel de 232px.
 
-Verificación: `tsc --noEmit` limpio, 286 tests unitarios, 64 e2e Playwright.
+Verificación: `tsc --noEmit` limpio, 290 tests unitarios, 65 e2e Playwright.
 
 ## v1.3 — 2026-10-13
 
