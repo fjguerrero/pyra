@@ -1430,3 +1430,20 @@ test('barra superior: menús (solo uno abierto) y colores de nodos/marcos config
   await expect(page.locator('#node-color')).toHaveValue('#ff0000');
   await expect(page.locator('#frame-color')).toHaveValue('#00ff00');
 });
+
+test('drag & drop de una imagen sobre la ventana importa un bitmap', async ({ page }) => {
+  await page.evaluate(async () => {
+    const c = document.createElement('canvas');
+    c.width = 100;
+    c.height = 100;
+    const g = c.getContext('2d')!;
+    g.fillStyle = 'red';
+    g.fillRect(0, 0, 100, 100);
+    const blob = await (await fetch(c.toDataURL('image/png'))).blob();
+    const dt = new DataTransfer();
+    dt.items.add(new File([blob], 'rojo.png', { type: 'image/png' }));
+    window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+  });
+  await expect(layerCount(page)).toContainText('· 1');
+  await expect.poll(docShape(page)).toBe('bitmap');
+});

@@ -493,32 +493,41 @@ document.querySelector<HTMLElement>('#export-menu [data-import]')?.addEventListe
 importFile.addEventListener('change', () => {
   const file = importFile.files?.[0];
   importFile.value = '';
-  if (!file) return;
-  void (async () => {
-    const restored = await importFpng(file); // ¿PNG con fuente Pyra? → reabrir documento
-    if (restored) {
-      const before = { name: doc.name, pages: doc.pages, activePageId: doc.activePageId };
-      history.run({
-        label: 'importar documento',
-        do: () => {
-          doc.name = restored.name;
-          doc.pages = restored.pages;
-          doc.activePageId = restored.activePageId;
-        },
-        undo: () => {
-          doc.name = before.name;
-          doc.pages = before.pages;
-          doc.activePageId = before.activePageId;
-        },
-      });
-      select(null);
-      await saveDoc(doc);
-      invalidate();
-      return;
-    }
-    importBitmapFile(file);
-  })();
+  if (file) void handleFile(file);
 });
+
+// Drag & drop de imágenes sobre la ventana: misma ruta de importación que el botón
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const f = e.dataTransfer?.files[0];
+  if (f && f.type.startsWith('image/')) void handleFile(f);
+});
+
+async function handleFile(file: File): Promise<void> {
+  const restored = await importFpng(file); // ¿PNG con fuente Pyra? → reabrir documento
+  if (restored) {
+    const before = { name: doc.name, pages: doc.pages, activePageId: doc.activePageId };
+    history.run({
+      label: 'importar documento',
+      do: () => {
+        doc.name = restored.name;
+        doc.pages = restored.pages;
+        doc.activePageId = restored.activePageId;
+      },
+      undo: () => {
+        doc.name = before.name;
+        doc.pages = before.pages;
+        doc.activePageId = before.activePageId;
+      },
+    });
+    select(null);
+    await saveDoc(doc);
+    invalidate();
+    return;
+  }
+  importBitmapFile(file);
+}
 
 function importBitmapFile(file: File): void {
   const reader = new FileReader();

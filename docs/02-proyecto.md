@@ -123,7 +123,9 @@ Verification: clean `tsc --noEmit`, 269 unit tests, 57 Playwright e2e.
 - Color picking fixed (root cause): releasing a click inside the inspector used to rebuild the panel, destroying the `<input type=color>` before its native dialog could open (or mid-selection). Releasing over a panel field (input/select/textarea, except sliders and checkboxes) no longer rebuilds it, and while a color input has focus the re-render is deferred: the dialog opens, stays open during selection and the color applies live.
 - Changeable stroke styles: a selector replaces the old single dashed toggle — solid, dashed, dotted and dash-dot over the object's existing `dash`, changeable at any time from the inspector. Dotted relies on the default round caps for real dots in canvas and SVG export. i18n in 15 languages.
 
-Verification: clean `tsc --noEmit`, 290 unit tests, 65 Playwright e2e.
+- Drag & drop images: dropping an image file anywhere over the window routes through the same import path as the File > Import button (one shared `handleFile`): plain images become centered, undoable bitmaps; a `.f.png` with embedded Pyra source reopens the document. No parallel code path.
+
+Verification: clean `tsc --noEmit`, 290 unit tests, 66 Playwright e2e.
 
 ## Pending
 
