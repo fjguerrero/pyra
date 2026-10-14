@@ -125,7 +125,9 @@ Verification: clean `tsc --noEmit`, 269 unit tests, 57 Playwright e2e.
 
 - Drag & drop images: dropping an image file anywhere over the window routes through the same import path as the File > Import button (one shared `handleFile`): plain images become centered, undoable bitmaps; a `.f.png` with embedded Pyra source reopens the document. No parallel code path.
 
-Verification: clean `tsc --noEmit`, 290 unit tests, 66 Playwright e2e.
+- Aspect-locked resizing: corner handles keep the original aspect ratio by default (the cursor is projected onto the anchor→corner diagonal, FreeHand/Figma style); holding Ctrl/⌘ while dragging a corner scales freely. Edge handles stay single-axis. Help text updated (es/en).
+
+Verification: clean `tsc --noEmit`, 293 unit tests, 67 Playwright e2e.
 
 ## Pending
 

@@ -18,13 +18,14 @@
 - Barra de menús superior: la barra inferior de estado desaparece y se sustituye por una barra de 34px arriba con la marca (◆ Pyra) y dos menús: **Archivo** (importar imagen + todos los formatos de exportación + calidad) y **Configuración** (idioma, tema, fondo, color de nodos, color de marcos, ayuda). Solo un desplegable abierto a la vez; clic fuera cierra. El texto de estado y los controles de zoom pasan al lado derecho de la barra. Los botones de importar/exportar de la barra lateral se retiran (viven en Archivo); Ajustar se queda en la barra de herramientas. Estilo sobrio tipo Linear: superficies por luminancia, bordes finos, peso medio. i18n es/en con claves nuevas (`menu_file`, `node_color`, `frame_color`).
 - Colores configurables de la interfaz de dibujo: **color de nodos** (vértices de paths) y **color de marcos** (marco de selección, selección múltiple y contorno de grupo) con selectores de color en Configuración. Se persisten en `pyra:ui` (localStorage) y llegan al renderizador vía `Scene.ui` (`nodeColor`/`frameColor`). Por defecto sin cambios (`#111111` nodos, `#4f8cff` marcos); el nodo activo sigue en azul.
 - Drag & drop de imágenes: al soltar un archivo de imagen sobre la ventana se importa por la misma ruta que el botón Importar (bitmap centrado y undoable; si el PNG lleva fuente Pyra embebida, reabre el documento). Un único `handleFile` compartido, sin código paralelo.
+- Proporción al redimensionar: las asas de esquina mantienen la proporción original por defecto (el cursor se proyecta sobre la diagonal ancla→esquina, estilo FreeHand/Figma); mantener Ctrl/⌘ mientras se arrastra una esquina libera la escala. Las asas de lado siguen escalando en un solo eje. Ayuda actualizada (es/en).
 
 ### Inspector
 - Selección de color (causa raíz): al soltar el click dentro del inspector, `renderPanels` reconstruía el panel y destruía el `<input type=color>` antes de que abriera su diálogo nativo (y a mitad de selección). Ahora soltar sobre un campo del panel (input/select/textarea, salvo sliders y checkboxes) no lo reconstruye, y mientras un selector de color tiene el foco se pospone el re-render: el diálogo abre, permanece abierto durante la selección y el color se aplica en vivo.
 - Estilos de trazo cambiables: el selector sustituye al antiguo botón único de discontinuo — sólido, discontinuo, punteado y raya-punto sobre el mismo `dash` del objeto, aplicable en cualquier momento desde el inspector. El punteado usa puntas redondas (ya por defecto) para puntos reales en canvas y SVG export. i18n en 15 idiomas.
 - Inspector sin barras de scroll: `scrollbar-width:none` en `#side` (la rueda sigue desplazando) y filas `.field` encogibles (`range` con flex, `number` con `min-width:0`) para que ninguna fila sobresalga del panel de 232px.
 
-Verificación: `tsc --noEmit` limpio, 290 tests unitarios, 66 e2e Playwright.
+Verificación: `tsc --noEmit` limpio, 293 tests unitarios, 67 e2e Playwright.
 
 ## v1.3 — 2026-10-13
 

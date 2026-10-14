@@ -1314,7 +1314,7 @@ canvas.addEventListener('pointermove', (e) => {
   }
 
   if (drag.mode === 'resize') {
-    applyResize(drag.obj, drag.start, drag.role, wx - drag.grab.x, wy - drag.grab.y);
+    applyResize(drag.obj, drag.start, drag.role, wx - drag.grab.x, wy - drag.grab.y, e.ctrlKey || e.metaKey);
     if (drag.obj.shape === 'text') resizeText(drag.obj, { ...drag.start, size: drag.start.size ?? drag.obj.size } as { x: number; y: number; w: number; h: number; size: number }, drag.role); // escalar la fuente, no estirar glifos
     invalidate();
     return;
@@ -1358,7 +1358,7 @@ canvas.addEventListener('pointermove', (e) => {
     const dx = wx - drag.grab.x, dy = wy - drag.grab.y;
     const s = { ...drag.start };
     const target = { x: s.x, y: s.y, w: s.w, h: s.h };
-    applyResize(target as Obj, drag.start, drag.role, dx, dy);
+    applyResize(target as Obj, drag.start, drag.role, dx, dy, e.ctrlKey || e.metaKey);
     const sx = target.w / Math.max(1, s.w), sy = target.h / Math.max(1, s.h);
     for (const it of drag.objs) {
       it.obj.x = Math.round(target.x + (it.start.x - s.x) * sx);

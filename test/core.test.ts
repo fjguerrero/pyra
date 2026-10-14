@@ -308,6 +308,30 @@ describe('redimensionado: el asa arrastrada se mueve, la opuesta queda quieta', 
     applyResize(o, START, 'se', 0, 0);
     expect(o).toMatchObject({ x: 40, y: 30, w: 160, h: 120 });
   });
+
+  it('asa de esquina: mantiene la proporción por defecto', () => {
+    const o = rect(40, 30, 160, 120);
+    applyResize(o, START, 'se', 100, 100); // wRaw=260, hRaw=220 → proyección s=1.7
+    expect(o.x).toBe(40);
+    expect(o.y).toBe(30);
+    expect(o.w).toBeCloseTo(272, 6);
+    expect(o.h).toBeCloseTo(204, 6);
+  });
+
+  it('asa de esquina: la esquina ancla opuesta no se mueve y la proporción se conserva', () => {
+    const o = rect(40, 30, 160, 120);
+    applyResize(o, START, 'nw', -60, -45);
+    expect(o.x + o.w).toBeCloseTo(200, 9); // borde derecho (ancla)
+    expect(o.y + o.h).toBeCloseTo(150, 9); // borde inferior (ancla)
+    expect(o.w / o.h).toBeCloseTo(160 / 120, 6);
+    expect(o.w).toBeGreaterThan(160);
+  });
+
+  it('asa de esquina con free=true: escala libre como antes', () => {
+    const o = rect(40, 30, 160, 120);
+    applyResize(o, START, 'se', 50, 0, true);
+    expect(o).toMatchObject({ x: 40, y: 30, w: 210, h: 120 });
+  });
 });
 
 // ================= ASAS =================

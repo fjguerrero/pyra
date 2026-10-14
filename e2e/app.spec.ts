@@ -1447,3 +1447,25 @@ test('drag & drop de una imagen sobre la ventana importa un bitmap', async ({ pa
   await expect(layerCount(page)).toContainText('· 1');
   await expect.poll(docShape(page)).toBe('bitmap');
 });
+
+test('redimensionar: la esquina mantiene la proporción por defecto y Ctrl escala libre', async ({ page }) => {
+  const box = (await canvas(page).boundingBox())!;
+  const at = (x: number, y: number): [number, number] => [box.x + x, box.y + y];
+  await page.keyboard.press('r');
+  await drag(page, at(150, 150), at(350, 250)); // rect 200×100 en pantalla, queda seleccionado
+  // arrastrar la esquina se sin teclas: la proporción 2:1 se conserva (el cursor
+  // se proyecta sobre la diagonal; en pantalla la esquina acaba en 470,310)
+  await drag(page, at(350, 250), at(450, 350));
+  const w = Number(await inspNum(page, 2).inputValue());
+  const h = Number(await inspNum(page, 3).inputValue());
+  expect(w).toBeGreaterThan(200);
+  expect(Math.abs(w / h - 2)).toBeLessThan(0.1);
+  // con Ctrl mantenido: escala libre (la proporción cambia)
+  await page.keyboard.down('Control');
+  await drag(page, at(470, 310), at(570, 410));
+  await page.keyboard.up('Control');
+  const w2 = Number(await inspNum(page, 2).inputValue());
+  const h2 = Number(await inspNum(page, 3).inputValue());
+  expect(w2).toBeGreaterThan(w);
+  expect(Math.abs(w2 / h2 - 2)).toBeGreaterThan(0.2);
+});

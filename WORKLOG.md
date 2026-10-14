@@ -83,6 +83,7 @@ resolver los problemas por uno mismo y continuar.
 - [x] F27 insertar/borrar nodos estilo FreeHand: doble clic en un tramo lo parte exacto (de Casteljau, `splitSeg`/`polyInsertOnSeg` en model.ts) sin cambiar la forma; Supr borra solo ese nodo; `setNode` a model.ts. → commit 5ef63c1.
 - [x] F28 barra de menús superior (Archivo/Configuración, uno abierto a la vez, estado+zoom a la derecha) sustituyendo la barra inferior; colores configurables de nodos y marcos (`pyra:ui`, `Scene.ui`). → commit 7bf4110.
 - [x] F29 drag & drop de imágenes sobre la ventana → misma ruta de importación que el botón (`handleFile` único compartido). → commit 9fa73b0.
+- [x] F30 proporción al redimensionar: esquinas mantienen proporción por defecto (proyección sobre la diagonal en `applyResize`), Ctrl/⌘ escala libre. → commit f4dfb5a.
 - [x] Fix inspector sin barras de scroll (scrollbar-width:none en #side + filas .field encogibles). → commit 296e6d9.
 
 ## Registro de progreso
@@ -108,3 +109,4 @@ resolver los problemas por uno mismo y continuar.
 - 21:41 F27 insertar/borrar nodos estilo FreeHand (doble clic parte el tramo exacto por de Casteljau; Supr borra solo el nodo activo; setNode a model.ts). 286 unit + 64 e2e verdes. Docs al día con F27.
 - 22:14 F28 barra de menús superior (Archivo/Configuración) sustituyendo la barra inferior + colores configurables de nodos y marcos (pyra:ui). Verificado visualmente en :5199. 290 unit + 65 e2e verdes. Docs al día con F28.
 - 22:29 F29 drag & drop de imágenes: soltar sobre la ventana usa el mismo handleFile que el botón Importar. 290 unit + 66 e2e verdes. Docs al día con F29.
+- 22:55 F30 proporción al redimensionar: applyResize bloquea aspecto en esquinas por defecto (proyección del cursor sobre la diagonal ancla→esquina), Ctrl/⌘ la libera; asas de lado sin cambios. 293 unit + 67 e2e verdes. Docs al día con F30.

@@ -144,6 +144,7 @@ export function applyResize(
   role: HandleRole,
   dxw: number,
   dyw: number,
+  free = false,
 ): void {
   let { x, y, w, h } = start;
   if (role.includes('w')) {
@@ -163,6 +164,18 @@ export function applyResize(
   if (h < 1) {
     if (role.includes('n')) y = start.y + start.h - 1;
     h = 1;
+  }
+  // Asas de esquina: por defecto se mantiene la proporción original (el cursor se
+  // proyecta sobre la diagonal ancla→esquina); con Ctrl/⌘ (free) la escala es libre.
+  if (!free && role.length === 2) {
+    const s = Math.max(
+      1 / Math.max(start.w, start.h),
+      (w * start.w + h * start.h) / (start.w * start.w + start.h * start.h),
+    );
+    w = start.w * s;
+    h = start.h * s;
+    if (role.includes('w')) x = start.x + start.w - w;
+    if (role.includes('n')) y = start.y + start.h - h;
   }
   obj.x = x;
   obj.y = y;
