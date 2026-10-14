@@ -1486,6 +1486,7 @@ test('unidades e impresión: inspector en pulgadas con DPI del documento y PNG e
   await expect
     .poll(async () => Math.abs(Number(await inspNum(page, 2).inputValue()) * 100 - wPx))
     .toBeLessThanOrEqual(1);
+  await expect(page.locator('#inspector-body .field span.unit').first()).toHaveText('in');
 
   // editar en pulgadas debe escribir px en el modelo: 3 in a 100 dpi = 300 px
   await inspNum(page, 2).fill('3');

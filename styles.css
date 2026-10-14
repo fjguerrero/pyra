@@ -138,6 +138,7 @@ input[type="range"] { accent-color: var(--accent); }
 
 .field { display: flex; align-items: center; gap: 6px; }
 .field span { color: var(--dim); min-width: 52px; }
+.field span.unit { min-width: 0; font-size: 11px; }
 .field textarea { width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
 .field input[type="number"] {
   width: 72px; min-width: 0; background: var(--panel-2); color: var(--text);

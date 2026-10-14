@@ -61,6 +61,12 @@ const $ = (id: string): HTMLElement => document.getElementById(id)!;
 const esc = (s: string): string =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 
+// etiqueta de unidad en los campos de medida: el modelo siempre es px; sólo
+// x/y/w/h y el tamaño de página se formatean con la unidad del documento (F31)
+const unitTag = (wrap: HTMLElement, unit: string): void => {
+  wrap.insertAdjacentHTML('beforeend', `<span class="unit">${unit}</span>`);
+};
+
 function btn(cls: string, label: string, title: string, on: boolean, onClick: () => void, iconName?: string): HTMLElement {
   const b = document.createElement('button');
   b.type = 'button';
@@ -359,6 +365,7 @@ export function renderPanels(
           if (input.value.trim() !== '' && Number.isFinite(val) && val > 0) api.editPage({ [key]: Math.round(val * f) });
         });
         wrap.appendChild(input);
+        unitTag(wrap, doc.unit ?? 'px');
         insp.appendChild(wrap);
       };
       num('width', t('page_width'));
@@ -381,6 +388,7 @@ export function renderPanels(
         if (input.value.trim() !== '' && Number.isFinite(val)) api.editObj(obj, { [key]: val * f } as Partial<ShapeObj>);
       });
       wrap.appendChild(input);
+      unitTag(wrap, doc.unit ?? 'px');
       insp.appendChild(wrap);
     };
     num('x', 'X');
@@ -402,6 +410,7 @@ export function renderPanels(
         if (Number.isFinite(v) && v >= 0) api.editObj(obj, { rx: v > 0 ? v : undefined } as Partial<ShapeObj>);
       });
       wrap.appendChild(rx);
+      unitTag(wrap, 'px');
       insp.appendChild(wrap);
     }
 
@@ -426,6 +435,7 @@ export function renderPanels(
         input.addEventListener('change', applyCrop);
         cropInputs[key] = input;
         wrap.appendChild(input);
+        unitTag(wrap, 'px');
         insp.appendChild(wrap);
       }
       insp.appendChild(btn('', t('remove_crop'), t('show_full_image'), false, () => api.editObj(obj, { crop: null })));
@@ -481,6 +491,7 @@ export function renderPanels(
         if (Number.isFinite(v) && v >= 1) api.editObj(obj, { size: v });
       });
       sizeWrap.appendChild(size);
+      unitTag(sizeWrap, 'px');
       insp.appendChild(sizeWrap);
 
       colorField(t('color'), obj.fill, (v) => api.editObj(obj, { fill: v }));
@@ -501,6 +512,7 @@ export function renderPanels(
         sw.value = String(obj.strokeWidth);
         sw.addEventListener('change', () => api.editObj(obj, { strokeWidth: Math.max(0, Number(sw.value)) } as Partial<ShapeObj>));
         swWrap.appendChild(sw);
+        unitTag(swWrap, 'px');
         insp.appendChild(swWrap);
         // estilos de trazo (cambiables en cualquier momento): patrones dash predefinidos
         const dashWrap = document.createElement('label');
@@ -649,6 +661,7 @@ export function renderPanels(
         if (Number.isFinite(v)) onSet(v);
       });
       wrap.appendChild(input);
+      unitTag(wrap, 'px');
       insp.appendChild(wrap);
     };
     numField(t('blur'), fx.blur, (v) => editFx({ blur: Math.max(0, v) }));
