@@ -1277,8 +1277,8 @@ test('herramienta de nodos (A): arrastrar un vértice remodela el vector', async
   await expect.poll(docH(page), { timeout: 5000 }).toBeLessThanOrEqual(2);
 });
 
-/** polyH/polyH2 (asas Bézier) persistido del primer objeto del documento. */
-function docPolyH(page: Page, field: 'polyH' | 'polyH2' = 'polyH'): () => Promise<unknown[] | null> {
+/** poly/polyH/polyH2 persistido del primer objeto del documento. */
+function docPolyH(page: Page, field: 'poly' | 'polyH' | 'polyH2' = 'polyH'): () => Promise<unknown[] | null> {
   return () =>
     page.evaluate((f) =>
       new Promise<unknown[] | null>((resolve) => {
@@ -1362,4 +1362,47 @@ test('herramienta de nodos (A): las flechas mueven solo el nodo activo, no el ob
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z'); // un undo por nudge
   await expect.poll(field('h'), { timeout: 5000 }).toBeLessThanOrEqual(2);
+});
+
+test('insertar nodo en tramo (A): doble clic sobre un tramo añade un vértice; Supr borra solo ese nodo', async ({ page }) => {
+  const box = (await canvas(page).boundingBox())!;
+  const at = (x: number, y: number): [number, number] => [box.x + x, box.y + y];
+  const polyArr = docPolyH(page, 'poly');
+  await page.keyboard.press('p');
+  await page.keyboard.down('Shift'); // vértices rectos
+  for (const [x, y] of [[150, 150], [350, 150], [350, 350], [150, 350]]) { const [X, Y] = at(x, y); await page.mouse.click(X, Y); }
+  await page.keyboard.up('Shift');
+  { const [X, Y] = at(150, 150); await page.mouse.click(X, Y); } // cerrar
+  await expect.poll(() => polyArr().then((p) => p?.length ?? 0), { timeout: 5000 }).toBe(4);
+  await page.keyboard.press('a');
+  { const [X, Y] = at(250, 150); await page.mouse.dblclick(X, Y); } // punto medio del tramo superior
+  await expect.poll(() => polyArr().then((p) => p?.length ?? 0), { timeout: 5000 }).toBe(5);
+  await expect.poll(() => polyArr().then((p) => (p?.[1] as { x: number; y: number })?.x), { timeout: 5000 }).toBeCloseTo(0.5, 2);
+  await page.keyboard.press('Delete'); // el nodo insertado está activo: Supr borra solo ese nodo, no el objeto
+  await expect.poll(() => polyArr().then((p) => p?.length ?? 0), { timeout: 5000 }).toBe(4);
+});
+
+test('insertar punto en trazo (A): doble clic sobre el trazo añade un punto y Supr lo quita', async ({ page }) => {
+  const box = (await canvas(page).boundingBox())!;
+  const nPts = () =>
+    page.evaluate(() =>
+      new Promise<number>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve((req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.points as unknown[])?.length ?? 0);
+          req.onerror = () => resolve(0);
+        };
+        open.onerror = () => resolve(0);
+      }),
+    );
+  await page.keyboard.press('n');
+  await drag(page, [150, 250], [450, 250]); // trazo horizontal a mano alzada
+  await expect.poll(nPts, { timeout: 5000 }).toBeGreaterThan(2);
+  const n0 = await nPts();
+  await page.keyboard.press('a');
+  await page.mouse.dblclick(box.x + 300, box.y + 250); // sobre el trazo
+  await expect.poll(nPts, { timeout: 5000 }).toBe(n0 + 1);
+  await page.keyboard.press('Delete'); // nodo activo = el insertado
+  await expect.poll(nPts, { timeout: 5000 }).toBe(n0);
 });

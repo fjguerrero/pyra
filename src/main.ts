@@ -1,4 +1,4 @@
-import { activePage, isLineLike, lineEnds, newDoc, polyPoints, uid, type BitmapObj, type BrushSettings, type Doc, type LineFrom, type Obj, type ShapeKind, type ShapeObj, type Style, type TextObj } from './model';
+import { activePage, isLineLike, lineEnds, newDoc, polyDeleteVertex, polyInsertOnSeg, polyNearestSeg, polyPoints, setNode, strokeDeletePoint, strokeInsertPoint, strokeNearestPoint, uid, type BitmapObj, type BrushSettings, type Doc, type LineFrom, type Obj, type ShapeKind, type ShapeObj, type Style, type TextObj } from './model';
 import { History, type Command } from './history';
 import type { Draft } from './render';
 import { fitAll, screenToWorld, type View } from './view';
@@ -805,37 +805,13 @@ function magnetCtx(excludeId?: string): { pg: ReturnType<typeof activePage>; box
   const pg = activePage(doc);
   return { pg, boxes: pg.layers.filter((l) => l.visible).flatMap((l) => l.objects).filter((o) => o.id !== excludeId).map((o) => ({ x: o.x, y: o.y, w: o.w, h: o.h })) };
 }
-/** Mover el nodo i: recalcula el bbox y re-normaliza (mismo formato que al crear). */
-function setNode(o: Obj, i: number, p: { x: number; y: number }): void {
-  if (o.shape === 'stroke' && o.points) {
-    const pts = o.points.map((q) => ({ x: o.x + q.x * o.w, y: o.y + q.y * o.h, pr: q.p }));
-    pts[i] = { x: p.x, y: p.y, pr: pts[i].pr };
-    const half = (o.strokeWidth * Math.max(0.05, ...pts.map((q) => q.pr))) / 2;
-    const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
-    const x0 = Math.round(Math.min(...xs) - half), y0 = Math.round(Math.min(...ys) - half);
-    const w = Math.max(1, Math.round(Math.max(...xs) + half - x0)), h = Math.max(1, Math.round(Math.max(...ys) + half - y0));
-    Object.assign(o, { x: x0, y: y0, w, h });
-    o.points = pts.map((q) => ({ x: (q.x - x0) / w, y: (q.y - y0) / h, p: q.pr }));
-  } else if (o.shape === 'polygon' && o.poly) {
-    const pts = o.poly.map((q) => ({ x: o.x + q.x * o.w, y: o.y + q.y * o.h }));
-    const Hw = o.polyH?.map((hh) => (hh ? { x: hh.x * o.w, y: hh.y * o.h } : null)); // asas en mundo, se re-normalizan con el nuevo bbox
-    pts[i] = { x: p.x, y: p.y };
-    const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
-    const x0 = Math.round(Math.min(...xs)), y0 = Math.round(Math.min(...ys));
-    const w = Math.max(1, Math.round(Math.max(...xs) - x0)), h = Math.max(1, Math.round(Math.max(...ys) - y0));
-    Object.assign(o, { x: x0, y: y0, w, h });
-    o.poly = pts.map((q) => ({ x: (q.x - x0) / w, y: (q.y - y0) / h }));
-    if (Hw) o.polyH = Hw.map((hh) => (hh ? { x: hh.x / w, y: hh.y / h } : null));
-  } else if (o.shape === 'line') {
-    const e = lineEnds(o);
-    let a = { x: e.x1, y: e.y1 }, b = { x: e.x2, y: e.y2 };
-    if (i === 0) a = p;
-    else b = p;
-    const x = Math.round(Math.min(a.x, b.x)), y = Math.round(Math.min(a.y, b.y));
-    const w = Math.max(1, Math.round(Math.abs(b.x - a.x))), h = Math.max(1, Math.round(Math.abs(b.y - a.y)));
-    Object.assign(o, { x, y, w, h, lineFrom: (`${a.y < b.y ? 'n' : 's'}${a.x < b.x ? 'w' : 'e'}`) as LineFrom });
-  }
-}
+/** Instantánea/restauración de la geometría vectorial (undo de insertar/borrar nodos). */
+const geoSnap = (o: ShapeObj): string => JSON.stringify({ x: o.x, y: o.y, w: o.w, h: o.h, poly: o.poly, polyH: o.polyH, polyH2: o.polyH2, points: o.points });
+const geoRestore = (o: ShapeObj, s: string): void => {
+  const v = JSON.parse(s) as Record<string, unknown>;
+  for (const k of ['poly', 'polyH', 'polyH2', 'points']) if (!(k in v)) delete (o as unknown as Record<string, unknown>)[k];
+  Object.assign(o, v);
+};
 /** Lectura estilo FreeHand: ángulo (0–360°, antihorario desde el este) y longitud del segmento del nodo arrastrado. */
 function nodeReadout(o: Obj, i: number): { x: number; y: number; text: string } | null {
   const pts = nodePoints(o);
@@ -1104,14 +1080,35 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 
 // Doble clic sobre un vértice en modo nodos = toggle esquina↔Bézier (gesto FreeHand;
-// Alt+clic también, pero fuera de un vértice Alt es pan)
+// Alt+clic también, pero fuera de un vértice Alt es pan). Doble clic sobre un tramo
+// (no un vértice) = insertar un nodo partiendo la curva sin cambiar la forma (FreeHand).
 canvas.addEventListener('dblclick', (e) => {
   if (tool !== 'subselect') return;
   const sel = findObj(activePage(doc), selectedId);
-  if (!sel || sel.shape !== 'polygon') return;
-  const { px, py } = localXY(e);
+  if (!sel) return;
+  const { px, py, wx, wy } = localXY(e);
   const vi = nodeHit(px, py, nodePoints(sel));
-  if (vi >= 0) toggleVertex(sel as ShapeObj, vi);
+  if (vi >= 0) {
+    if (sel.shape === 'polygon') toggleVertex(sel as ShapeObj, vi);
+    return;
+  }
+  if (sel.shape !== 'polygon' && sel.shape !== 'stroke') return;
+  const s = sel as ShapeObj;
+  const before = geoSnap(s);
+  let ni = -1;
+  if (s.shape === 'polygon' && s.poly) {
+    const hit = polyNearestSeg(s, { x: wx, y: wy }, 8 / view.zoom);
+    if (hit) ni = polyInsertOnSeg(s, hit.i, hit.t);
+  } else if (s.points) {
+    const hit = strokeNearestPoint(s, { x: wx, y: wy }, 8 / view.zoom);
+    if (hit) ni = strokeInsertPoint(s, hit.i, hit.t);
+  }
+  if (ni < 0) return;
+  const after = geoSnap(s);
+  history.record({ label: 'insertar nodo', do: () => geoRestore(s, after), undo: () => geoRestore(s, before) });
+  activeNode = { id: s.id, i: ni };
+  persist();
+  invalidate();
 });
 
 // ---- Anillo de cursor: previsualización del tamaño real de pinceles y goma ----
@@ -2004,6 +2001,23 @@ window.addEventListener('keydown', (e) => {
       invalidate();
     }
   } else if (e.key === 'Delete' || e.key === 'Backspace') {
+    // Con la herramienta de nodos y un nodo activo: Supr borra SOLO ese nodo (FreeHand), no el objeto
+    if (tool === 'subselect' && activeNode && activeNode.id === selectedId && selectedIds.length === 1) {
+      const o = findObj(activePage(doc), activeNode.id);
+      if (o && (o.shape === 'polygon' || o.shape === 'stroke')) {
+        const s = o as ShapeObj;
+        const before = geoSnap(s);
+        const ok = s.shape === 'polygon' ? polyDeleteVertex(s, activeNode.i) : strokeDeletePoint(s, activeNode.i);
+        if (ok) {
+          const after = geoSnap(s);
+          history.record({ label: 'eliminar nodo', do: () => geoRestore(s, after), undo: () => geoRestore(s, before) });
+          activeNode = null;
+          persist();
+          invalidate();
+        }
+        return;
+      }
+    }
     const page = activePage(doc);
     const removed: { layerIndex: number; index: number; obj: Obj }[] = [];
     page.layers.forEach((l, li) => {

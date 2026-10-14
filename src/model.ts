@@ -200,6 +200,168 @@ export function polyOutline(o: PolyBezier, samples = 12): WPt[] {
   return out;
 }
 
+/** Segmento de mundo de un polígono (salida de polySegs). */
+export type Seg = { a: WPt; b: WPt; c1?: WPt; c2?: WPt };
+
+/** Punto de un segmento en el parámetro t (0..1). */
+export const segPoint = (s: Seg, t: number): WPt => {
+  if (!s.c1 || !s.c2) return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t };
+  const u = 1 - t;
+  return {
+    x: u ** 3 * s.a.x + 3 * u * u * t * s.c1.x + 3 * u * t * t * s.c2.x + t ** 3 * s.b.x,
+    y: u ** 3 * s.a.y + 3 * u * u * t * s.c1.y + 3 * u * t * t * s.c2.y + t ** 3 * s.b.y,
+  };
+};
+
+/** Parte un segmento en t (de Casteljau): al insertar un nodo la curva queda idéntica. */
+export function splitSeg(s: Seg, t: number): [Seg, Seg] {
+  const lerp = (p: WPt, q: WPt): WPt => ({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t });
+  if (!s.c1 || !s.c2) { const m = lerp(s.a, s.b); return [{ a: s.a, b: m }, { a: m, b: s.b }]; }
+  const A = lerp(s.a, s.c1), B = lerp(s.c1, s.c2), C = lerp(s.c2, s.b);
+  const D = lerp(A, B), E = lerp(B, C), M = lerp(D, E);
+  return [{ a: s.a, b: M, c1: A, c2: D }, { a: M, b: s.b, c1: E, c2: C }];
+}
+
+/** Punto más cercano al contorno del polígono (mundo): segmento i y parámetro t; null si pasa de tol. */
+export function polyNearestSeg(o: PolyBezier, p: WPt, tol: number): { i: number; t: number } | null {
+  let best: { i: number; t: number; d: number } | null = null;
+  polySegs(o).forEach((s, i) => {
+    // ponytail: 16 muestras por tramo curvo bastan para el hit-test; subir si se nota impreciso
+    const steps = s.c1 && s.c2 ? 16 : 1;
+    let prev = segPoint(s, 0);
+    for (let k = 1; k <= steps; k++) {
+      const q = segPoint(s, k / steps);
+      const dx = q.x - prev.x, dy = q.y - prev.y, L2 = dx * dx + dy * dy || 1;
+      const u = Math.max(0, Math.min(1, ((p.x - prev.x) * dx + (p.y - prev.y) * dy) / L2));
+      const d = Math.hypot(p.x - (prev.x + dx * u), p.y - (prev.y + dy * u));
+      if (d <= tol && (!best || d < best.d)) best = { i, t: (k - 1 + u) / steps, d };
+      prev = q;
+    }
+  });
+  return best;
+}
+
+type NH = ({ x: number; y: number } | null);
+const padArr = <T,>(a: T[] | undefined, n: number, d: T): T[] => Array.from({ length: n }, (_, i) => a?.[i] ?? d);
+
+/** Vértices y asas del polígono en coords de mundo, con longitudes parejas. */
+const polyToWorld = (o: PolyBezier): { v: WPt[]; H: NH[]; H2: NH[] } => {
+  const v = polyPoints(o);
+  const sc = (a: NH[] | undefined): NH[] => padArr(a ?? [], v.length, null).map((h) => (h ? { x: h.x * o.w, y: h.y * o.h } : null));
+  return { v, H: sc(o.polyH), H2: sc(o.polyH2) };
+};
+
+/** Reconstruye el bbox desde los vértices de mundo y re-normaliza puntos y asas (formato de creación). */
+function polyReflow(o: ShapeObj, v: WPt[], H: NH[], H2: NH[]): void {
+  const xs = v.map((q) => q.x), ys = v.map((q) => q.y);
+  const x = Math.round(Math.min(...xs)), y = Math.round(Math.min(...ys));
+  const w = Math.max(1, Math.round(Math.max(...xs) - x)), h = Math.max(1, Math.round(Math.max(...ys) - y));
+  Object.assign(o, { x, y, w, h });
+  o.poly = v.map((q) => ({ x: (q.x - x) / w, y: (q.y - y) / h }));
+  if (H.some(Boolean)) o.polyH = H.map((hh) => (hh ? { x: hh.x / w, y: hh.y / h } : null)); else delete o.polyH;
+  if (H2.some(Boolean)) o.polyH2 = H2.map((hh) => (hh ? { x: hh.x / w, y: hh.y / h } : null)); else delete o.polyH2;
+}
+
+/** Inserta un nodo en el segmento i en t, partiendo la curva (de Casteljau) sin cambiar la forma. Devuelve el índice nuevo. */
+export function polyInsertOnSeg(o: ShapeObj, i: number, t: number): number {
+  const { v, H, H2 } = polyToWorld(o);
+  const segs = polySegs(o);
+  const [s1, s2] = splitSeg(segs[i], t);
+  const m = s1.b, ni = i + 1; // cerrado: el último tramo termina en v[0] → el nodo nuevo va al final
+  const curved = !!(segs[i].c1 && segs[i].c2);
+  const n = v.length, bOrig = (i + 1) % n;
+  const hOutA = H[i], hInA = H2[i], hOutB = H[bOrig], hInB = H2[bOrig]; // asas originales, antes del splice
+  v.splice(ni, 0, m); H.splice(ni, 0, null); H2.splice(ni, 0, null);
+  if (curved) {
+    // Forma exacta (como los editores vectoriales): el nodo nuevo recibe las dos asas del
+    // corte y los vecinos SOLO cambian el lado del tramo partido; su saliente no se toca.
+    // Un nodo suave vecino pasa a cúspide asimétrica (asas colineales: sigue viéndose suave).
+    if (hOutA) {
+      H[i] = { x: s1.c1!.x - v[i].x, y: s1.c1!.y - v[i].y }; // saliente = A
+      if (!hInA) H2[i] = { x: -hOutA.x, y: -hOutA.y }; // conservamos el entrante original (era espejo)
+    }
+    H[ni] = { x: s2.c1!.x - m.x, y: s2.c1!.y - m.y }; // saliente = E
+    H2[ni] = { x: s1.c2!.x - m.x, y: s1.c2!.y - m.y }; // entrante = D
+    if (Math.abs(H2[ni]!.x + H[ni]!.x) < 1e-9 && Math.abs(H2[ni]!.y + H[ni]!.y) < 1e-9) H2[ni] = null; // exacto en t=0.5: sigue siendo espejo
+    const b = bOrig === 0 ? 0 : i + 2; // el vértice destino tras el splice
+    if (hOutB || hInB) H2[b] = { x: s2.c2!.x - v[b].x, y: s2.c2!.y - v[b].y }; // entrante = C; el saliente no se toca
+  }
+  polyReflow(o, v, H, H2);
+  return ni;
+}
+
+/** Borra el vértice i con sus asas; false si bajaría de 3 (el mínimo de un polígono). */
+export function polyDeleteVertex(o: ShapeObj, i: number): boolean {
+  const { v, H, H2 } = polyToWorld(o);
+  if (v.length <= 3) return false;
+  v.splice(i, 1); H.splice(i, 1); H2.splice(i, 1);
+  polyReflow(o, v, H, H2);
+  return true;
+}
+
+/** Reconstruye el bbox del trazo desde sus puntos de mundo (media anchura incluida) y re-normaliza. */
+function strokeReflow(o: ShapeObj, pts: { x: number; y: number; pr: number }[]): void {
+  const half = (o.strokeWidth * Math.max(0.05, ...pts.map((q) => q.pr))) / 2;
+  const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
+  const x0 = Math.round(Math.min(...xs) - half), y0 = Math.round(Math.min(...ys) - half);
+  const w = Math.max(1, Math.round(Math.max(...xs) + half - x0)), h = Math.max(1, Math.round(Math.max(...ys) + half - y0));
+  Object.assign(o, { x: x0, y: y0, w, h });
+  o.points = pts.map((q) => ({ x: (q.x - x0) / w, y: (q.y - y0) / h, p: q.pr }));
+}
+
+/** Punto más cercano a la polilínea del trazo (mundo): índice del punto previo y parámetro t; null si pasa de tol. */
+export function strokeNearestPoint(o: ShapeObj, p: WPt, tol: number): { i: number; t: number } | null {
+  const pts = (o.points ?? []).map((q) => ({ x: o.x + q.x * o.w, y: o.y + q.y * o.h }));
+  let best: { i: number; t: number; d: number } | null = null;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2));
+    const d = Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
+    if (d <= tol && (!best || d < best.d)) best = { i, t, d };
+  }
+  return best;
+}
+
+/** Inserta un punto en el tramo i del trazo en t (presión interpolada). Devuelve el índice nuevo. */
+export function strokeInsertPoint(o: ShapeObj, i: number, t: number): number {
+  const pts = (o.points ?? []).map((q) => ({ x: o.x + q.x * o.w, y: o.y + q.y * o.h, pr: q.p }));
+  const a = pts[i], b = pts[i + 1];
+  pts.splice(i + 1, 0, { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, pr: a.pr + (b.pr - a.pr) * t });
+  strokeReflow(o, pts);
+  return i + 1;
+}
+
+/** Borra el punto i del trazo; false si bajaría de 2. */
+export function strokeDeletePoint(o: ShapeObj, i: number): boolean {
+  const pts = (o.points ?? []).map((q) => ({ x: o.x + q.x * o.w, y: o.y + q.y * o.h, pr: q.p }));
+  if (pts.length <= 2) return false;
+  pts.splice(i, 1);
+  strokeReflow(o, pts);
+  return true;
+}
+
+/** Mover el nodo i: recalcula el bbox y re-normaliza (mismo formato que al crear). */
+export function setNode(o: Obj, i: number, p: { x: number; y: number }): void {
+  if (o.shape === 'stroke' && o.points) {
+    const pts = o.points.map((q) => ({ x: o.x + q.x * o.w, y: o.y + q.y * o.h, pr: q.p }));
+    pts[i] = { x: p.x, y: p.y, pr: pts[i].pr };
+    strokeReflow(o, pts);
+  } else if (o.shape === 'polygon' && o.poly) {
+    const { v, H, H2 } = polyToWorld(o);
+    v[i] = { x: p.x, y: p.y };
+    polyReflow(o, v, H, H2);
+  } else if (o.shape === 'line') {
+    const e = lineEnds(o);
+    let a = { x: e.x1, y: e.y1 }, b = { x: e.x2, y: e.y2 };
+    if (i === 0) a = p;
+    else b = p;
+    const x = Math.round(Math.min(a.x, b.x)), y = Math.round(Math.min(a.y, b.y));
+    const w = Math.max(1, Math.round(Math.abs(b.x - a.x))), h = Math.max(1, Math.round(Math.abs(b.y - a.y)));
+    Object.assign(o, { x, y, w, h, lineFrom: (`${a.y < b.y ? 'n' : 's'}${a.x < b.x ? 'w' : 'e'}`) as LineFrom });
+  }
+}
+
 /** Hull convexo (Andrew's monotone chain): la unión aproximada de varias formas. */
 export function convexHull(pts: { x: number; y: number }[]): { x: number; y: number }[] {
   const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
