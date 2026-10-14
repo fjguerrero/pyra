@@ -600,12 +600,17 @@ test('color con alfa: el inspector emite #rrggbbaa y aparece en recientes', asyn
   const alpha = page.locator('label').filter({ hasText: 'Fill' }).getByRole('spinbutton');
   await alpha.fill('0.5');
   await alpha.dispatchEvent('change');
-  await expect(page.locator('#inspector-body .swatch').first()).toHaveAttribute('title', /80$/);
-  // el color con alfa sobrevive a un re-render del inspector
-  await page.keyboard.press('Escape');
+  // las paletas viven en el popup que abre el selector de color
+  await page.locator('label').filter({ hasText: 'Fill' }).locator('input[type=color]').click();
+  await expect(page.locator('.color-pop .swatch').first()).toHaveAttribute('title', /80$/);
+  // el color con alfa sobrevive a un re-render del inspector: clic en zona vacía
+  // (cierra el popup y pasa el foco al canvas, si no los atajos no llegan a la app)
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + 50, box.y + 50);
   await page.keyboard.press('r');
   await drag(page, [300, 100], [420, 180]);
-  await expect(page.locator('#inspector-body .swatch').first()).toHaveAttribute('title', /80$/);
+  await page.locator('label').filter({ hasText: 'Fill' }).locator('input[type=color]').click();
+  await expect(page.locator('.color-pop .swatch').first()).toHaveAttribute('title', /80$/);
 });
 
 /** ¿Hay píxeles del color del trazo cerca de un punto del lienzo? */

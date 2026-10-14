@@ -130,6 +130,7 @@ function colorField(label: string, value: string, onSet: (v: string) => void): v
     const hex = Number.isFinite(a) && a < 1
       ? picker.value + Math.round(a * 255).toString(16).padStart(2, '0')
       : picker.value;
+    cur = hex;
     onSet(hex);
     addRecent(loadSwatches(), hex);
   };
@@ -137,14 +138,58 @@ function colorField(label: string, value: string, onSet: (v: string) => void): v
   alpha.addEventListener('change', emit);
   wrap.append(picker, alpha);
   insp.appendChild(wrap);
-  swatchPalette(insp, base, (c) => {
-    picker.value = c.slice(0, 7);
-    alpha.value = c.length === 9 ? String(Math.round((parseInt(c.slice(7, 9), 16) / 255) * 100) / 100) : '1';
-    onSet(c);
-  });
+  // recientes/personalizados dentro de un popup anclado al selector de color
+  let cur = base;
+  picker.addEventListener('click', () =>
+    openColorPop(picker, () => cur, (c) => {
+      picker.value = c.slice(0, 7);
+      alpha.value = c.length === 9 ? String(Math.round((parseInt(c.slice(7, 9), 16) / 255) * 100) / 100) : '1';
+      onSet(c);
+    }),
+  );
 }
 
-function swatchPalette(insp: HTMLElement, current: string, pick: (color: string) => void): void {
+// ---- Popup de paletas: se abre al pulsar el selector de color (el diálogo del SO no admite contenido propio) ----
+let colorPop: HTMLElement | null = null;
+let colorPopOff: (() => void) | null = null;
+const closeColorPop = (): void => {
+  colorPop?.remove();
+  colorPop = null;
+  colorPopOff?.();
+  colorPopOff = null;
+};
+
+function openColorPop(anchor: HTMLElement, getColor: () => string, pick: (c: string) => void): void {
+  closeColorPop();
+  const pop = document.createElement('div');
+  pop.className = 'color-pop';
+  const refresh = (): void => {
+    pop.replaceChildren();
+    swatchPalette(pop, getColor(), (c) => { pick(c); closeColorPop(); }, refresh);
+  };
+  refresh();
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  let left = r.right + 8;
+  if (left + pop.offsetWidth > innerWidth - 8) left = Math.max(8, r.left - pop.offsetWidth - 8);
+  pop.style.left = `${left}px`;
+  pop.style.top = `${Math.max(8, Math.min(r.top, innerHeight - pop.offsetHeight - 8))}px`;
+  const outside = (e: PointerEvent): void => {
+    if (!(e.target as HTMLElement).closest('.color-pop')) closeColorPop();
+  };
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') closeColorPop();
+  };
+  document.addEventListener('pointerdown', outside, true);
+  window.addEventListener('keydown', onKey, true);
+  colorPopOff = () => {
+    document.removeEventListener('pointerdown', outside, true);
+    window.removeEventListener('keydown', onKey, true);
+  };
+  colorPop = pop;
+}
+
+function swatchPalette(insp: HTMLElement, current: string, pick: (color: string) => void, refresh: () => void): void {
   const store: SwatchStore = loadSwatches();
   const section = (title: string, list: SwatchStore['recent']) => {
     if (!list.length) return;
@@ -173,12 +218,12 @@ function swatchPalette(insp: HTMLElement, current: string, pick: (color: string)
         sw.classList.remove('drop-after');
         const id = row.dataset.dragId || e.dataTransfer?.getData('text/plain');
         if (id) moveSwatch(store, id, s.id, true);
-        renderNow();
+        refresh();
       });
       row.appendChild(sw);
       const del = btn('danger', '×', t('remove_color'), false, () => {
         removeSwatch(store, s.id);
-        renderNow();
+        refresh();
       }, 'close');
       row.appendChild(del);
     }
@@ -188,7 +233,7 @@ function swatchPalette(insp: HTMLElement, current: string, pick: (color: string)
   section(t('custom_colors'), store.custom);
   insp.appendChild(btn('', t('add_color'), t('add_color'), false, () => {
     addCustom(store, current);
-    renderNow();
+    refresh();
   }, 'plus'));
 }
 
@@ -285,8 +330,6 @@ function brushPreview(params: BrushParams, color: string): void {
   $('inspector-body').appendChild(c);
 }
 
-let renderNow: () => void = () => {};
-
 // slider + campo numérico: siempre editable a mano
 function sliderField(label: string, value: number, min: number, max: number, step: number, onSet: (v: number) => void): void {
   const insp = $('inspector-body');
@@ -331,8 +374,6 @@ export function renderPanels(
 ): void {
   const page = activePage(doc);
   const obj = findObj(page, selectedId);
-
-  renderNow = () => renderPanels(doc, selectedId, selectedLayerId, selectedIds, view, api, brushPanel);
 
   // ---- Property Inspector contextual: pincel → documento → objeto (como Fireworks) ----
   const insp = $('inspector-body');
