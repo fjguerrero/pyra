@@ -116,11 +116,12 @@ Verification: clean `tsc --noEmit`, 269 unit tests, 57 Playwright e2e.
 - Node-type cycle in one gesture: double-click or Alt+click on a vertex cycles corner → smooth → cusp → corner (the second gesture creates the mirrored second handle, previously only reachable via Alt+drag; the third returns to corner). Nodes are type-coded on canvas: square (corner), circle (smooth), triangle (cusp).
 - Recognizable active node: the last node clicked/toggled/dragged with the node tool is highlighted in blue keeping its type icon; it deactivates only when its object leaves the selection.
 - Arrow keys with an active node: with the node tool and an active node, arrow keys move only that node (snapping, one Ctrl+Z per keypress); without an active node they still move the whole object. es/en help updated.
+- FreeHand-style node insert/delete: double-clicking a segment (not a vertex) of a polygon or stroke inserts a node at the nearest point; curved segments are split exactly via de Casteljau (`splitSeg`/`polyInsertOnSeg` in `model.ts`) — the shape is untouched, the new node gets both split handles and neighbors only change the handle on the split side (a neighboring smooth node becomes an asymmetric cusp with collinear handles, still visually smooth). With an active node, Delete removes just that node (minimum 3 vertices in polygons, 2 points in strokes). One Ctrl+Z per operation. `setNode` moved to `model.ts`, shared with the new geometry. es/en help updated.
 
 - Color picking fixed (root cause): releasing a click inside the inspector used to rebuild the panel, destroying the `<input type=color>` before its native dialog could open (or mid-selection). Releasing over a panel field (input/select/textarea, except sliders and checkboxes) no longer rebuilds it, and while a color input has focus the re-render is deferred: the dialog opens, stays open during selection and the color applies live.
 - Changeable stroke styles: a selector replaces the old single dashed toggle — solid, dashed, dotted and dash-dot over the object's existing `dash`, changeable at any time from the inspector. Dotted relies on the default round caps for real dots in canvas and SVG export. i18n in 15 languages.
 
-Verification: clean `tsc --noEmit`, 278 unit tests, 62 Playwright e2e.
+Verification: clean `tsc --noEmit`, 286 unit tests, 64 Playwright e2e.
 
 ## Pending
 

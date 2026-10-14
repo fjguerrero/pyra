@@ -80,6 +80,7 @@ resolver los problemas por uno mismo y continuar.
 - [x] F26 ciclo de nodo esquina→suave→cúspide con doble clic/Alt+clic + iconos por tipo (cuadrado/círculo/triángulo). → commit 1d3dd3f.
 - [x] F26b nodo activo resaltado en azul conservando el icono de tipo. → commit b414e91.
 - [x] F26c flechas con nodo activo: mueven solo ese nodo (setNode, undo por nudge); sin nodo activo mueven el objeto. → commit 141715b.
+- [x] F27 insertar/borrar nodos estilo FreeHand: doble clic en un tramo lo parte exacto (de Casteljau, `splitSeg`/`polyInsertOnSeg` en model.ts) sin cambiar la forma; Supr con nodo activo borra solo ese nodo; `setNode` a model.ts. → commit 5ef63c1.
 - [x] Fix inspector sin barras de scroll (scrollbar-width:none en #side + filas .field encogibles). → commit 296e6d9.
 
 ## Registro de progreso
@@ -102,3 +103,4 @@ resolver los problemas por uno mismo y continuar.
 - 13:48 F24 nodos cúspide (picos angulosos): Alt+arrastrar rompe el espejo con `polyH2`, asas independientes por lado con lectura y snap; doble clic como toggle. 276 unit + 60 e2e verdes.
 - 14:34 F25 fix selección de color (re-render del inspector destruía el input de color) + selector de estilos de trazo (sólido/discontinuo/punteado/raya-punto). 276 unit + 61 e2e verdes.
 - 19:38 F26/F26b/F26c (ciclo de tipo de nodo + iconos, nodo activo azul, flechas por nodo) y fix scroll del inspector. 278 unit + 62 e2e verdes (verificado 2026-10-14). Docs (docs/02, CHANGELOG, WORKLOG) puestos al día con F26.
+- 21:41 F27 insertar/borrar nodos estilo FreeHand (doble clic parte el tramo exacto por de Casteljau; Supr borra solo el nodo activo; setNode a model.ts). 286 unit + 64 e2e verdes. Docs al día con F27.
