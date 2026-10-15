@@ -979,6 +979,8 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
 
+  if (e.button === 2) return; // clic derecho: solo abre el menú contextual (contextmenu)
+
   if (tool === 'eyedropper') {
     const c = sampleColorAt(px, py);
     if (c) {
@@ -1490,29 +1492,139 @@ canvas.addEventListener('pointermove', (e) => {
   }
 });
 
+// ---- Menú contextual (clic derecho): z-order, agrupar, eliminar y guías ----
+let ctxMenu: HTMLElement | null = null;
+let ctxOff: (() => void) | null = null;
+const closeCtxMenu = (): void => {
+  ctxMenu?.remove();
+  ctxMenu = null;
+  ctxOff?.();
+  ctxOff = null;
+};
+
+function openCtxMenu(x: number, y: number, items: { label: string; act: string; on: boolean; run: () => void }[]): void {
+  closeCtxMenu();
+  const pop = document.createElement('div');
+  pop.className = 'ctx-menu';
+  for (const it of items) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ctx-item';
+    b.textContent = it.label;
+    b.dataset.act = it.act; // e2e: los textos cambian con el idioma, el act no
+    if (it.on) b.addEventListener('click', () => { closeCtxMenu(); it.run(); });
+    else b.disabled = true;
+    pop.appendChild(b);
+  }
+  document.body.appendChild(pop);
+  pop.style.left = `${Math.min(x, innerWidth - pop.offsetWidth - 8)}px`;
+  pop.style.top = `${Math.min(y, innerHeight - pop.offsetHeight - 8)}px`;
+  const outside = (e: PointerEvent): void => {
+    if (!(e.target as HTMLElement).closest('.ctx-menu')) closeCtxMenu();
+  };
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') closeCtxMenu();
+  };
+  document.addEventListener('pointerdown', outside, true);
+  window.addEventListener('keydown', onKey, true);
+  ctxOff = () => {
+    document.removeEventListener('pointerdown', outside, true);
+    window.removeEventListener('keydown', onKey, true);
+  };
+  ctxMenu = pop;
+}
+
+/** Añade una guía manual (undoable): la usa el menú contextual. */
+function addGuide(axis: 'v' | 'h', pos: number): void {
+  const page = activePage(doc);
+  const g = { axis, pos: Math.round(pos) };
+  history.run({
+    label: 'crear guía',
+    do: () => (page.guides ??= []).push(g),
+    undo: () => { const j = (page.guides ?? []).indexOf(g); if (j >= 0) page.guides!.splice(j, 1); },
+  });
+  persist();
+  invalidate();
+}
+
+/** Agrupa/desagrupa la selección: lo usan Ctrl+G/Ctrl+Shift+G y el menú contextual. */
+function doGroup(ungroup: boolean): void {
+  const objs = selectedObjs();
+  if (objs.length < 2) return;
+  history.run(groupCmd(objs, ungroup ? undefined : uid()));
+  if (ungroup) selectedIds = [selectedId ?? ''].filter(Boolean);
+  persist();
+  invalidate();
+}
+
+/** Borra los objetos seleccionados (Supr y el menú contextual comparten esto). */
+function deleteSelection(): void {
+  const page = activePage(doc);
+  const removed: { layerIndex: number; index: number; obj: Obj }[] = [];
+  page.layers.forEach((l, li) => {
+    l.objects.forEach((o, oi) => {
+      if (selectedIds.includes(o.id)) removed.push({ layerIndex: li, index: oi, obj: o });
+    });
+  });
+  if (!removed.length) return;
+  history.run({
+    label: 'eliminar',
+    do: () => {
+      for (const r of removed) {
+        const i = page.layers[r.layerIndex].objects.indexOf(r.obj);
+        if (i >= 0) page.layers[r.layerIndex].objects.splice(i, 1);
+      }
+    },
+    undo: () => {
+      for (const r of [...removed].reverse()) page.layers[r.layerIndex].objects.splice(r.index, 0, r.obj);
+    },
+  });
+  select(null);
+  persist();
+  invalidate();
+}
+
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   const page = activePage(doc);
   const { wx, wy } = localXY(e);
   const gi = (page.guides ?? []).findIndex((g) => Math.abs((g.axis === 'v' ? wx : wy) - g.pos) <= 5 / view.zoom);
   if (gi >= 0) {
-    const [g] = page.guides!.splice(gi, 1);
-    history.record({
-      label: 'eliminar guía',
-      do: () => { const j = (page.guides ?? []).indexOf(g); if (j >= 0) page.guides!.splice(j, 1); },
-      undo: () => (page.guides ??= []).splice(gi, 0, g),
-    });
-  } else {
-    const axis: 'v' | 'h' = Math.abs(wx - page.width / 2) < Math.abs(wy - page.height / 2) ? 'v' : 'h';
-    const g = { axis, pos: Math.round(axis === 'v' ? wx : wy) };
-    history.run({
-      label: 'crear guía',
-      do: () => (page.guides ??= []).push(g),
-      undo: () => { const j = (page.guides ?? []).indexOf(g); if (j >= 0) page.guides!.splice(j, 1); },
-    });
+    const g = page.guides![gi];
+    openCtxMenu(e.clientX, e.clientY, [
+      { label: t('ctx_guide_del'), act: 'guide-del', on: true, run: () => {
+        history.run({
+          label: 'eliminar guía',
+          do: () => { const j = (page.guides ?? []).indexOf(g); if (j >= 0) page.guides!.splice(j, 1); },
+          undo: () => (page.guides ??= []).splice(gi, 0, g),
+        });
+        persist();
+        invalidate();
+      } },
+      { label: t('ctx_guide_v'), act: 'guide-v', on: true, run: () => addGuide('v', wx) },
+      { label: t('ctx_guide_h'), act: 'guide-h', on: true, run: () => addGuide('h', wy) },
+    ]);
+    return;
   }
-  persist();
-  invalidate();
+  // clic derecho sobre un objeto: lo selecciona (y su grupo) antes de abrir el menú, como Fireworks
+  const hit = hitTest(page, wx, wy, 4 / view.zoom, selectedIds);
+  if (hit && !selectedIds.includes(hit.id)) {
+    select(hit.id);
+    invalidate();
+  }
+  const objs = selectedObjs();
+  const has = objs.length > 0;
+  openCtxMenu(e.clientX, e.clientY, [
+    { label: t('order_front'), act: 'front', on: has, run: () => panelApi.order('front') },
+    { label: t('order_up'), act: 'up', on: has, run: () => panelApi.order('up') },
+    { label: t('order_down'), act: 'down', on: has, run: () => panelApi.order('down') },
+    { label: t('order_back'), act: 'back', on: has, run: () => panelApi.order('back') },
+    { label: t('ctx_group'), act: 'group', on: objs.length >= 2, run: () => doGroup(false) },
+    { label: t('ctx_ungroup'), act: 'ungroup', on: objs.some((o) => o.group), run: () => doGroup(true) },
+    { label: t('ctx_delete'), act: 'delete', on: has, run: () => deleteSelection() },
+    { label: t('ctx_guide_v'), act: 'guide-v', on: true, run: () => addGuide('v', wx) },
+    { label: t('ctx_guide_h'), act: 'guide-h', on: true, run: () => addGuide('h', wy) },
+  ]);
 });
 
 canvas.addEventListener('pointerup', (e) => {
@@ -2106,6 +2218,22 @@ const panelApi = {
       invalidate();
     }
   },
+  renamePage(pageId: string, name: string): void {
+    const p = doc.pages.find((x) => x.id === pageId);
+    if (!p) return;
+    const before = p.name;
+    history.run({ label: 'renombrar página', do: () => { p.name = name; }, undo: () => { p.name = before; } });
+    persist();
+    invalidate();
+  },
+  renameStyle(styleId: string, name: string): void {
+    const s = (doc.styles ?? []).find((x) => x.id === styleId);
+    if (!s) return;
+    const before = s.name;
+    history.run({ label: 'renombrar style', do: () => { s.name = name; }, undo: () => { s.name = before; } });
+    persist();
+    invalidate();
+  },
 };
 
 // ---- Zoom: control en la barra de estado (número editable + slider al pulsar el icono) ----
@@ -2232,29 +2360,7 @@ window.addEventListener('keydown', (e) => {
         return;
       }
     }
-    const page = activePage(doc);
-    const removed: { layerIndex: number; index: number; obj: Obj }[] = [];
-    page.layers.forEach((l, li) => {
-      l.objects.forEach((o, oi) => {
-        if (selectedIds.includes(o.id)) removed.push({ layerIndex: li, index: oi, obj: o });
-      });
-    });
-    if (!removed.length) return;
-    history.run({
-      label: 'eliminar',
-      do: () => {
-        for (const r of removed) {
-          const i = page.layers[r.layerIndex].objects.indexOf(r.obj);
-          if (i >= 0) page.layers[r.layerIndex].objects.splice(i, 1);
-        }
-      },
-      undo: () => {
-        for (const r of [...removed].reverse()) page.layers[r.layerIndex].objects.splice(r.index, 0, r.obj);
-      },
-    });
-    select(null);
-    persist();
-    invalidate();
+    deleteSelection();
   } else if (e.code === 'Digit0' && e.shiftKey) {
     // Zoom a la selección (estándar de diseño): encaja el bbox con margen
     const objs = selectedObjs();
@@ -2362,13 +2468,7 @@ window.addEventListener('keydown', (e) => {
     void saveDoc(doc);
   } else if (mod && (e.key === 'g' || e.key === 'G')) {
     e.preventDefault();
-    const objs = selectedObjs();
-    if (objs.length < 2) return;
-    const ungroup = e.shiftKey;
-    history.run(groupCmd(objs, ungroup ? undefined : uid()));
-    if (ungroup) selectedIds = [selectedId ?? ''].filter(Boolean);
-    persist();
-    invalidate();
+    doGroup(e.shiftKey);
   } else if (mod && e.shiftKey && (e.key === 'h' || e.key === 'H' || e.key === 'v' || e.key === 'V')) {
     e.preventDefault();
     const objs = selectedObjs();

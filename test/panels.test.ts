@@ -37,6 +37,8 @@ function fixture(): { doc: Doc; view: View; api: PanelApi; calls: string[] } {
     saveStyle: vi.fn((o) => calls.push(`saveStyle:${o.name}`)),
     applyStyle: vi.fn((id) => calls.push(`applyStyle:${id}`)),
     removeStyle: vi.fn((id) => calls.push(`removeStyle:${id}`)),
+    renamePage: vi.fn((id, n) => calls.push(`renamePage:${id}:${n}`)),
+    renameStyle: vi.fn((id, n) => calls.push(`renameStyle:${id}:${n}`)),
   };
   return { doc, view, api, calls };
 }
@@ -258,6 +260,45 @@ describe('Páginas: listar, cambiar, crear y borrar', () => {
     mount(f.doc, null, null, [], f.view, f.api);
     clickByAttr('#pages-body', 'data-act', 'addpage');
     expect(f.api.addPage).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Rename inline: doble clic sobre el texto lo convierte en input', () => {
+  const dbl = (el: Element): void => {
+    el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  };
+  const key = (el: Element, k: string): void => {
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+  };
+
+  it('capa: Enter confirma con editLayer({name})', () => {
+    const f = fixture();
+    const layer = activePage(f.doc).layers[0];
+    mount(f.doc, null, null, [], f.view, f.api);
+    dbl(document.querySelector('#layers-body .row-name')!);
+    const input = document.querySelector('#layers-body input.row-rename') as HTMLInputElement;
+    expect(input.value).toBe(layer.name); // arranca con el nombre actual, sin diálogo
+    input.value = 'Fondo';
+    key(input, 'Enter');
+    expect(f.api.editLayer).toHaveBeenCalledWith(layer.id, { name: 'Fondo' });
+  });
+
+  it('página: Esc cancela sin invocar renamePage; Enter sí confirma', () => {
+    const f = fixture();
+    const page = activePage(f.doc);
+    mount(f.doc, null, null, [], f.view, f.api);
+    const pname = document.querySelector('#pages-body .row-name')!;
+    dbl(pname);
+    let input = document.querySelector('#pages-body input.row-rename') as HTMLInputElement;
+    input.value = 'Basura';
+    key(input, 'Escape');
+    expect(f.api.renamePage).not.toHaveBeenCalled();
+    expect(document.querySelector('#pages-body .row-name')!.textContent).toBe(page.name);
+    dbl(document.querySelector('#pages-body .row-name')!);
+    input = document.querySelector('#pages-body input.row-rename') as HTMLInputElement;
+    input.value = 'Home';
+    key(input, 'Enter');
+    expect(f.api.renamePage).toHaveBeenCalledWith(page.id, 'Home');
   });
 });
 

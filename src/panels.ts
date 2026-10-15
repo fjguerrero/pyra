@@ -56,9 +56,41 @@ export interface PanelApi {
   saveStyle(obj: Obj): void;
   applyStyle(styleId: string): void;
   removeStyle(styleId: string): void;
+  renamePage(pageId: string, name: string): void;
+  renameStyle(styleId: string, name: string): void;
 }
 
 const $ = (id: string): HTMLElement => document.getElementById(id)!;
+
+/** Rename en el sitio (Fireworks): el doble clic convierte la etiqueta en un input inline.
+ * Enter/blur confirman (la edición reconstruye el panel); Esc cancela restaurando el texto. */
+function inlineRename(target: HTMLElement, current: string, commit: (v: string) => void): void {
+  const input = document.createElement('input');
+  input.className = 'row-rename';
+  input.value = current;
+  // el input vive dentro de una fila con click propio (seleccionar capa/página, aplicar style)
+  input.addEventListener('click', (e) => e.stopPropagation());
+  input.addEventListener('dblclick', (e) => e.stopPropagation());
+  let done = false;
+  const finish = (ok: boolean): void => {
+    if (done) return;
+    done = true;
+    const v = input.value.trim();
+    if (ok && v && v !== current) commit(v); // la edición reconstruye el panel
+    else {
+      target.textContent = current; // sin commit no hay rebuild: devolvemos la etiqueta en su sitio
+      input.replaceWith(target);
+    }
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') finish(true);
+    else if (e.key === 'Escape') finish(false);
+  });
+  input.addEventListener('blur', () => finish(true));
+  target.replaceWith(input);
+  input.focus();
+  input.select();
+}
 
 const esc = (s: string): string =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
@@ -771,6 +803,8 @@ export function renderPanels(
       const name = document.createElement('span');
       name.className = 'row-name';
       name.textContent = s.name;
+      name.title = t('rename_hint');
+      name.addEventListener('dblclick', () => inlineRename(name, s.name, (v) => api.renameStyle(s.id, v)));
       row.append(swatch, name);
       row.addEventListener('click', () => api.applyStyle(s.id));
       const ds = btn('danger', '', t('delete_style'), false, () => api.removeStyle(s.id), 'close');
@@ -907,10 +941,7 @@ export function renderPanels(
     name.className = 'row-name';
     name.textContent = `${l.name} · ${l.objects.length}`;
     name.title = t('rename_hint');
-    name.addEventListener('dblclick', () => {
-      const v = window.prompt(t('layer_name'), l.name);
-      if (v && v.trim()) api.editLayer(l.id, { name: v.trim() });
-    });
+    name.addEventListener('dblclick', () => inlineRename(name, l.name, (v) => api.editLayer(l.id, { name: v })));
     row.appendChild(name);
 
     for (const [act, ic, title, fn] of [
@@ -937,7 +968,12 @@ export function renderPanels(
   for (const p of doc.pages) {
     const row = document.createElement('div');
     row.className = 'row' + (p.id === page.id ? ' active' : '');
-    row.textContent = p.name;
+    const pname = document.createElement('span');
+    pname.className = 'row-name';
+    pname.textContent = p.name;
+    pname.title = t('rename_hint');
+    pname.addEventListener('dblclick', () => inlineRename(pname, p.name, (v) => api.renamePage(p.id, v)));
+    row.appendChild(pname);
     row.addEventListener('click', () => api.selectPage(p.id));
     if (doc.pages.length > 1) {
       const dp = btn('danger', '', t('delete_page'), false, () => api.removePage(p.id), 'close');

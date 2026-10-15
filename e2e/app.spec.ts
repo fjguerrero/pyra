@@ -757,14 +757,15 @@ test('pincel personalizado: una punta SVG se estampa a lo largo del trazo', asyn
     .toBeGreaterThan(200);
 });
 
-test('guías manuales: clic derecho crea, clic derecho sobre ella borra', async ({ page }) => {
+test('menú contextual: clic derecho abre menú y el menú crea/borra la guía', async ({ page }) => {
   const box = await canvas(page).boundingBox();
   await page.mouse.click(box!.x + 300, box!.y + 200, { button: 'right' });
-  await page.mouse.click(box!.x + 300, box!.y + 200, { button: 'right' }); // borrar
-  // tamaño de página desde el inspector sin selección
-  await page.locator('#inspector-body input[type=number]').nth(0).fill('900');
-  await page.locator('#inspector-body input[type=number]').nth(0).dispatchEvent('change');
-  await expect(page.locator('#inspector-body input[type=number]').nth(0)).toHaveValue('900');
+  await expect(page.locator('.ctx-menu [data-act="guide-v"]')).toBeVisible();
+  await page.click('.ctx-menu [data-act="guide-v"]');
+  await expect.poll(guideCount(page), { timeout: 5000 }).toBe(1);
+  await page.mouse.click(box!.x + 300, box!.y + 200, { button: 'right' });
+  await page.click('.ctx-menu [data-act="guide-del"]');
+  await expect.poll(guideCount(page), { timeout: 5000 }).toBe(0);
 });
 
 test('guías: dibujar, mover y redimensionar imantan a la guía manual', async ({ page }) => {
@@ -782,6 +783,7 @@ test('guías: dibujar, mover y redimensionar imantan a la guía manual', async (
 
   // guía vertical en x≈560 (lejos del centro de página para que no compitan otros imanes)
   await page.mouse.click(box.x + at(560, 700)[0], box.y + at(560, 700)[1], { button: 'right' });
+  await page.click('.ctx-menu [data-act="guide-v"]');
   await page.keyboard.press('r');
   await drag(page, at(610, 450), at(564, 650)); // dibujar: la esquina móvil queda a ~4px del mundo de la guía
   await page.waitForTimeout(250);
@@ -1158,6 +1160,25 @@ test('export de assets: un PNG por objeto seleccionado', async ({ page }) => {
   expect(names.filter((n) => n.endsWith('.png')).length).toBe(2);
 });
 
+/** Objetos (x, group) de la página activa en el documento persistido, en orden z. */
+function docObjs(page: Page): () => Promise<{ x: number; group?: string }[]> {
+  return () =>
+    page.evaluate(() =>
+      new Promise<{ x: number; group?: string }[]>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => {
+            const p = req.result?.pages?.[0];
+            resolve(p ? p.layers.flatMap((l: { objects: { x: number; group?: string }[] }) => l.objects) : []);
+          };
+          req.onerror = () => resolve([]);
+        };
+        open.onerror = () => resolve([]);
+      }),
+    );
+}
+
 /** Nº de guías manuales de la página activa en el documento persistido. */
 function guideCount(page: Page): () => Promise<number> {
   return () =>
@@ -1177,16 +1198,74 @@ function guideCount(page: Page): () => Promise<number> {
 test('guías: crear, eliminar y deshacer ambas', async ({ page }) => {
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.click(box.x + 150, box.y + 150, { button: 'right' });
+  await page.click('.ctx-menu [data-act="guide-v"]');
   await expect.poll(guideCount(page), { timeout: 5000 }).toBe(1);
   await page.keyboard.press('Control+z');
   await expect.poll(guideCount(page), { timeout: 5000 }).toBe(0);
-  // crear otra y eliminarla por clic derecho encima
+  // crear otra y eliminarla por el menú sobre la guía
   await page.mouse.click(box.x + 150, box.y + 150, { button: 'right' });
+  await page.click('.ctx-menu [data-act="guide-v"]');
   await expect.poll(guideCount(page), { timeout: 5000 }).toBe(1);
   await page.mouse.click(box.x + 150, box.y + 150, { button: 'right' });
+  await page.click('.ctx-menu [data-act="guide-del"]');
   await expect.poll(guideCount(page), { timeout: 5000 }).toBe(0);
   await page.keyboard.press('Control+z');
   await expect.poll(guideCount(page), { timeout: 5000 }).toBe(1);
+});
+
+test('rename inline: doble clic sobre capa y página las renombra en el sitio', async ({ page }) => {
+  const lname = page.locator('#layers-body .row-name').first();
+  await lname.dblclick();
+  await page.locator('#layers-body input.row-rename').fill('Fondo');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#layers-body .row-name').first()).toContainText('Fondo');
+
+  const pname = page.locator('#pages-body .row-name').first();
+  await pname.dblclick();
+  await page.locator('#pages-body input.row-rename').fill('Home');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#pages-body .row-name').first()).toHaveText('Home');
+
+  // Esc cancela sin cambiar nada
+  await page.locator('#pages-body .row-name').first().dblclick();
+  await page.locator('#pages-body input.row-rename').fill('Basura');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#pages-body .row-name').first()).toHaveText('Home');
+});
+
+test('menú contextual: clic derecho selecciona, trae al frente y agrupa', async ({ page }) => {
+  const box = (await canvas(page).boundingBox())!;
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [200, 200]); // A (abajo en z)
+  await page.keyboard.press('r');
+  await drag(page, [120, 120], [220, 220]); // B (encima)
+  // la esquina de A que B no tapa: el clic derecho la selecciona
+  await page.mouse.click(box.x + 105, box.y + 105, { button: 'right' });
+  await page.click('.ctx-menu [data-act="front"]');
+  await expect.poll(docObjs(page), { timeout: 5000 }).toEqual(
+    expect.arrayContaining([expect.objectContaining({ x: expect.any(Number) })]),
+  );
+  let objs = await docObjs(page)();
+  expect(objs[0].x).toBeGreaterThan(objs[1].x); // A (x menor) pasó al final = al frente
+
+  // marquee sobre ambos + agrupar por el menú
+  await drag(page, [80, 80], [240, 240]);
+  await page.mouse.click(box.x + 105, box.y + 105, { button: 'right' });
+  await page.click('.ctx-menu [data-act="group"]');
+  await expect.poll(docObjs(page), { timeout: 5000 }).toEqual(
+    expect.arrayContaining([expect.objectContaining({ group: expect.any(String) })]),
+  );
+  objs = await docObjs(page)();
+  expect(objs[0].group).toBeTruthy();
+  expect(objs[0].group).toBe(objs[1].group);
+
+  // desagrupar por el menú
+  await page.mouse.click(box.x + 105, box.y + 105, { button: 'right' });
+  await page.click('.ctx-menu [data-act="ungroup"]');
+  await expect.poll(docObjs(page), { timeout: 5000 }).toEqual([
+    expect.objectContaining({ group: undefined }),
+    expect.objectContaining({ group: undefined }),
+  ]);
 });
 
 test('mover con Shift: eje único (no libre)', async ({ page }) => {
