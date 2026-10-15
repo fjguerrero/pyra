@@ -1,7 +1,7 @@
 import { activePage, docDpi, isLineLike, lineEnds, newDoc, polyDeleteVertex, polyInsertOnSeg, polyNearestSeg, polyPoints, setNode, strokeDeletePoint, strokeInsertPoint, strokeNearestPoint, uid, type BitmapObj, type BrushSettings, type Doc, type LineFrom, type Obj, type ShapeKind, type ShapeObj, type Style, type TextObj, type Unit } from './model';
 import { History, type Command } from './history';
 import type { Draft } from './render';
-import { fitAll, screenToWorld, type View } from './view';
+import { fitAll, fitRect, screenToWorld, type View } from './view';
 import { applyResize, findObj, hitHandle, hitTest, handles, type HandleRole } from './hit';
 import { addLayer, moveLayer, reorderLayer } from './layers';
 import { snapBox, snapPoint, snapResize, type Guide, type Snap } from './guides';
@@ -2250,12 +2250,7 @@ window.addEventListener('keydown', (e) => {
     const objs = selectedObjs();
     if (objs.length) {
       const b = bbox(objs);
-      const cw = canvas.clientWidth;
-      const ch = canvas.clientHeight;
-      const z = Math.max(0.02, Math.min(8, Math.min((cw - 120) / Math.max(1, b.w), (ch - 120) / Math.max(1, b.h))));
-      view.zoom = z;
-      view.panX = (cw - b.w * z) / 2 - b.x * z;
-      view.panY = (ch - b.h * z) / 2 - b.y * z;
+      fitRect(view, { x: b.x, y: b.y, width: b.w, height: b.h }, canvas.clientWidth, canvas.clientHeight, 60, 8);
       invalidate();
     }
   } else if (e.key === '0') {
