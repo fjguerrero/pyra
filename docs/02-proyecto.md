@@ -131,6 +131,21 @@ Verification: clean `tsc --noEmit`, 269 unit tests, 57 Playwright e2e.
 
 Verification: clean `tsc --noEmit`, 297 unit tests, 68 Playwright e2e.
 
+## Status v1.5 (2026-10-15)
+
+- Custom fonts: the font-family field is free text with a `datalist` of built-in and session-loaded families, plus a file loader for `.woff2/.woff/.ttf/.otf` via `FontFace` (session-only; `ponytail:` note for future binary persistence). `normalizeFontFamily` builds a valid CSS stack (quotes names with spaces, keeps identifiers and generic keywords bare).
+- Left toolbar redesign (Linear/Raycast-style): 34px buttons, 8px radius, 20px icons, subtle hover, active state with accent tint + left indicator bar, visible focus outline. Icon pass: subselect, serif-T text, quill pen, eraser, polygon, import.
+- Multi-node selection: Shift+click toggles nodes inside the active object (Inkscape-style `nodeSel`); selected nodes drag together (magnet propagated), arrow keys move the set, Delete removes the block, and the Align tools align node-to-node in node mode (dedicated panel hint). Render highlights the whole set (`nodes.activeList`).
+- Order panel improved: unambiguous icons (stacked squares = to front/back, arrow+bar = one step; separate arrows for layer movement), separators between align/order/flip groups, buttons disabled without a selection, shortcuts in tooltips and labels. `[`/`]` move one step in z-order and `Home`/`End` go to the extremes (previously jumped straight); with a drawing tool active, `[`/`]` adjust its size instead. Dead z-order branch in keydown removed.
+- Undo/redo buttons in the top bar: always visible, disabled when the stack is empty (`History` exposes `canUndo`/`canRedo` and an `onChange` notifier); tooltips with shortcuts in 15 languages; keyboard and buttons share one `undoAction`/`redoAction` path.
+- New shortcuts: `Ctrl+A` select all (visible unlocked layers, groups expanded), `+`/`-` keyboard zoom, `Ctrl+S` save now (bypasses the autosave debounce), `Ctrl+PageUp/PageDown` switch pages (reuses the panel's `selectPage`). Help updated (es/en), including the previously undocumented `Shift+0` fit-to-selection.
+- Zoom popup presets (Fit / 50% / 100% / 200%); fixed the popup being covered by the canvas (missing z-index).
+- Alt+click a layer's eye isolates it (`soloLayer`, one history step; Alt+click again restores all). Eye tooltip mentions it (15 languages).
+- `fitRect` in `view.ts` frames any world rect; `fitAll` and the Shift+0 selection zoom now share it.
+- Cursor coordinates (world units) shown in the status bar; cleared on pointer leave. `statusText` takes an optional cursor.
+
+Verification: clean `tsc --noEmit`, 312 unit tests, 76 Playwright e2e.
+
 ## Pending
 
 - Technical debt:
