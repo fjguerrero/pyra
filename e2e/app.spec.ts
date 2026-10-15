@@ -137,6 +137,13 @@ test('zoom con + y -: el porcentaje del zoom sube y baja', async ({ page }) => {
   await expect.poll(async () => Number(await zoomNum.inputValue())).toBe(base);
 });
 
+test('preset 100% en el popup de zoom', async ({ page }) => {
+  await page.keyboard.press('0'); // fit: cualquier cosa != 100 en este lienzo
+  await page.click('#zoom-btn');
+  await page.click('#zoom-presets [data-zoom="1"]');
+  await expect(page.locator('#zoom-num')).toHaveValue('100');
+});
+
 test('importar una imagen crea un bitmap seleccionable y movible', async ({ page }) => {
   // PNG 100×100 rojo generado en el propio navegador
   const dataUrl = await page.evaluate(() => {

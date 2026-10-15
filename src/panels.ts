@@ -38,6 +38,7 @@ export type BrushPanelArg = {
 export interface PanelApi {
   editObj(obj: Obj, patch: Partial<ShapeObj> | Partial<BitmapObj> | Partial<TextObj> | { fx: Fx }): void;
   editLayer(layerId: string, patch: { visible?: boolean; locked?: boolean; opacity?: number; name?: string }): void;
+  soloLayer(layerId: string): void;
   selectLayer(layerId: string | null): void;
   addLayer(): void;
   removeLayer(layerId: string): void;
@@ -68,7 +69,7 @@ const unitTag = (wrap: HTMLElement, unit: string): void => {
   wrap.insertAdjacentHTML('beforeend', `<span class="unit">${unit}</span>`);
 };
 
-function btn(cls: string, label: string, title: string, on: boolean, onClick: () => void, iconName?: string): HTMLElement {
+function btn(cls: string, label: string, title: string, on: boolean, onClick: (e: MouseEvent) => void, iconName?: string): HTMLElement {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'iconbtn' + (cls ? ' ' + cls : '') + (on ? ' on' : '');
@@ -78,7 +79,7 @@ function btn(cls: string, label: string, title: string, on: boolean, onClick: ()
   b.setAttribute('aria-pressed', String(on));
   b.addEventListener('click', (e) => {
     e.stopPropagation();
-    onClick();
+    onClick(e);
   });
   return b;
 }
@@ -892,7 +893,10 @@ export function renderPanels(
       dragId = null;
     });
 
-    const vb = btn('', '', l.visible ? t('hide_layer') : t('show_layer'), l.visible, () => api.editLayer(l.id, { visible: !l.visible }), l.visible ? 'eye' : 'eyeOff');
+    const vb = btn('', '', (l.visible ? t('hide_layer') : t('show_layer')) + ' · ' + t('solo_hint'), l.visible, (e) => {
+      if (e.altKey) api.soloLayer(l.id); // Alt+clic: aislar esta capa
+      else api.editLayer(l.id, { visible: !l.visible });
+    }, l.visible ? 'eye' : 'eyeOff');
     vb.dataset.act = 'visible';
     row.appendChild(vb);
     const lb2 = btn('', '', l.locked ? t('unlock_layer') : t('lock_layer'), l.locked, () => api.editLayer(l.id, { locked: !l.locked }), l.locked ? 'lock' : 'unlock');

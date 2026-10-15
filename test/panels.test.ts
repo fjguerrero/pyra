@@ -20,6 +20,7 @@ function fixture(): { doc: Doc; view: View; api: PanelApi; calls: string[] } {
   const api: PanelApi = {
     editObj: vi.fn((o, p) => calls.push(`editObj:${o.name}:${JSON.stringify(p)}`)),
     editLayer: vi.fn((_id, p) => calls.push(`editLayer:${JSON.stringify(Object.keys(p))}`)),
+    soloLayer: vi.fn((id) => calls.push(`soloLayer:${id}`)),
     selectLayer: vi.fn((_id) => calls.push('selectLayer')),
     addLayer: vi.fn(() => calls.push('addLayer')),
     removeLayer: vi.fn(() => calls.push('removeLayer')),
@@ -149,6 +150,16 @@ describe('Capas: cada fila expone visibilidad, bloqueo, orden y borrado', () => 
     mount(f.doc, null, null, [], f.view, f.api);
     clickByAttr('#layers-body', 'data-act', 'visible');
     expect(f.api.editLayer).toHaveBeenLastCalledWith(layer.id, { visible: true });
+  });
+
+  it('Alt+clic en el ojo aísla la capa (soloLayer); sin Alt sigue alternando', () => {
+    const f = fixture();
+    const layer = activePage(f.doc).layers[0];
+    mount(f.doc, null, null, [], f.view, f.api);
+    const eye = document.querySelector<HTMLElement>('#layers-body [data-act="visible"]')!;
+    eye.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }));
+    expect(f.api.soloLayer).toHaveBeenCalledWith(layer.id);
+    expect(f.api.editLayer).not.toHaveBeenCalled();
   });
 
   it('el botón de bloqueo alterna locked', () => {

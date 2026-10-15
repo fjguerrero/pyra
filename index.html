@@ -74,7 +74,15 @@
         <div id="zoom-ctl">
           <button type="button" id="zoom-btn" data-icon="zoom" data-i18n-title="zoom"></button>
           <input type="number" id="zoom-num" min="5" max="1000" step="5" title="Zoom" />
-          <div id="zoom-pop" hidden><input type="range" id="zoom-range" min="5" max="400" step="1" /></div>
+          <div id="zoom-pop" hidden>
+            <input type="range" id="zoom-range" min="5" max="400" step="1" />
+            <div id="zoom-presets">
+              <button type="button" data-zoom="fit" data-i18n="fit_zoom"></button>
+              <button type="button" data-zoom="0.5">50%</button>
+              <button type="button" data-zoom="1">100%</button>
+              <button type="button" data-zoom="2">200%</button>
+            </div>
+          </div>
         </div>
       </div>
       <div id="main">

@@ -1796,6 +1796,22 @@ const panelApi = {
     persist();
     invalidate();
   },
+  soloLayer(layerId: string): void {
+    const page = activePage(doc);
+    const target = page.layers.find((l) => l.id === layerId);
+    if (!target) return;
+    const before = page.layers.map((l) => l.visible);
+    // si ya estaba aislada, Alt+clic vuelve a mostrarlas todas
+    const soloAlready = target.visible && page.layers.every((l) => (l.id === layerId ? l.visible : !l.visible));
+    const after = page.layers.map((l) => (soloAlready ? true : l.id === layerId));
+    history.run({
+      label: 'aislar capa',
+      do: () => page.layers.forEach((l, i) => { l.visible = after[i]; }),
+      undo: () => page.layers.forEach((l, i) => { l.visible = before[i]; }),
+    });
+    persist();
+    invalidate();
+  },
   selectLayer(layerId: string | null): void {
     selectedLayerId = layerId;
     if (layerId) select(null);
@@ -2115,6 +2131,16 @@ zoomNum.addEventListener('change', () => {
   if (Number.isFinite(v) && v > 0) setZoom(v / 100);
 });
 zoomRange.addEventListener('input', () => setZoom(Number(zoomRange.value) / 100));
+// presets rápidos: ajustar página y tamaños típicos
+zoomPop.querySelectorAll<HTMLButtonElement>('[data-zoom]').forEach((b) =>
+  b.addEventListener('click', () => {
+    const v = b.dataset.zoom!;
+    if (v === 'fit') fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
+    else setZoom(Number(v));
+    invalidate();
+    zoomPop.hidden = true;
+  }),
+);
 
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
