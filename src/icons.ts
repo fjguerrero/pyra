@@ -6,8 +6,8 @@ const P: Record<string, string> = {
   subselect: 'M5 3l14 8-6 2-2 6z', // flecha blanca: edición de nodos, como Fireworks
   rect: 'M4 5h16v14H4z',
   ellipse: 'M12 5a8 7 0 1 0 0 14a8 7 0 1 0 0-14',
-  line: 'M5 19L19 5',
-  brush: 'M4 20c2-1 2-3 4-3M9 17l9-9 3 3-9 9zM14 6l3 3',
+  line: 'M6.3 17.7L17.7 6.3|M4.4 15.8h3.8v3.8h-3.8zM15.8 4.4h3.8v3.8h-3.8z', // segmento con extremos
+  brush: 'M18 6C12 8 8 12 6 18|M15.4 6a2.6 2.6 0 1 0 5.2 0a2.6 2.6 0 1 0-5.2 0', // trazo + punta redonda
   brushRound: 'M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8',
   brushSquare: 'M8 8h8v8H8z',
   pen: 'M12 3l4.5 6.5L12 21 7.5 9.5zM12 11v3',
