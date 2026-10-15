@@ -366,28 +366,24 @@ langSel.addEventListener('change', () => {
 
 
 
-// ---- Theme: oscuro / claro / como el sistema (persistido en pyra:theme) ----
-type Theme = 'system' | 'light' | 'dark';
-const themeSel = document.getElementById('theme') as HTMLSelectElement;
+// ---- Theme: sistema + paletas (persistido en pyra:theme; oscuro = sin atributo) ----
+type Theme = 'system' | 'light' | 'dark' | 'sepia' | 'midnight' | 'contrast';
+const themeBtns = [...document.querySelectorAll<HTMLButtonElement>('#theme button')];
 const mediaDark = window.matchMedia('(prefers-color-scheme: dark)');
 function currentTheme(): Theme {
   const v = localStorage.getItem('pyra:theme');
-  return v === 'light' || v === 'dark' ? v : 'system';
+  return themeBtns.some((b) => b.dataset.val === v) ? (v as Theme) : 'system';
 }
 function applyTheme(): void {
   const th = currentTheme();
-  const dark = th === 'dark' || (th === 'system' && mediaDark.matches);
-  if (dark) document.documentElement.removeAttribute('data-theme');
-  else document.documentElement.setAttribute('data-theme', 'light');
-  themeSel.value = th;
-  themeSel.options[0].textContent = t('theme_system');
-  themeSel.options[1].textContent = t('theme_light');
-  themeSel.options[2].textContent = t('theme_dark');
+  if (th === 'dark' || (th === 'system' && mediaDark.matches)) document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', th === 'system' ? 'light' : th);
+  themeBtns.forEach((b) => b.classList.toggle('on', b.dataset.val === th));
 }
-themeSel.addEventListener('change', () => {
-  localStorage.setItem('pyra:theme', themeSel.value);
+themeBtns.forEach((b) => b.addEventListener('click', () => {
+  localStorage.setItem('pyra:theme', b.dataset.val!);
   applyTheme();
-});
+}));
 mediaDark.addEventListener('change', () => {
   if (currentTheme() === 'system') applyTheme();
 });

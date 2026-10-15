@@ -763,14 +763,16 @@ test('theme: menú de configuración en la barra superior con claro/oscuro/siste
   await page.locator('#settings-btn').click();
   const menu = page.locator('#settings-menu');
   await expect(menu).toBeVisible();
-  await expect(menu.locator('#theme option')).toHaveCount(3);
-  await page.locator('#theme').selectOption('light');
+  await expect(menu.locator('#theme button')).toHaveCount(6);
+  await page.locator('#theme button[data-val="light"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   // persiste tras recargar
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.locator('#settings-btn').click();
-  await page.locator('#theme').selectOption('dark');
+  await page.locator('#theme button[data-val="midnight"]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'midnight');
+  await page.locator('#theme button[data-val="dark"]').click();
   await expect(page.locator('html')).not.toHaveAttribute('data-theme');
   // clic fuera cierra el menú
   await page.locator('#canvas').click();

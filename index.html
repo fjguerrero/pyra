@@ -29,11 +29,14 @@
             <label data-i18n="language"></label>
             <select id="lang"></select>
             <label data-i18n="theme"></label>
-            <select id="theme">
-              <option value="system"></option>
-              <option value="light"></option>
-              <option value="dark"></option>
-            </select>
+            <div id="theme" class="themes">
+              <button type="button" data-val="system"><i class="prev prev-system"></i><span data-i18n="theme_system"></span></button>
+              <button type="button" data-val="light"><i class="prev prev-light"></i><span data-i18n="theme_light"></span></button>
+              <button type="button" data-val="dark"><i class="prev prev-dark"></i><span data-i18n="theme_dark"></span></button>
+              <button type="button" data-val="sepia"><i class="prev prev-sepia"></i><span data-i18n="theme_sepia"></span></button>
+              <button type="button" data-val="midnight"><i class="prev prev-midnight"></i><span data-i18n="theme_midnight"></span></button>
+              <button type="button" data-val="contrast"><i class="prev prev-contrast"></i><span data-i18n="theme_contrast"></span></button>
+            </div>
             <label data-i18n="bg"></label>
             <div class="bg-row">
               <input type="color" id="bg-color" />

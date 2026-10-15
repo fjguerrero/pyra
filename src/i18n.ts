@@ -43,7 +43,7 @@ type Msg = {
   order_front: string; order_up: string; order_down: string; order_back: string;
   status_selection: string; status_objects: string;
   obj_rect: string; obj_ellipse: string; obj_line: string; obj_text: string; default_layer: string; default_page: string;
-  settings: string; theme: string; theme_system: string; theme_light: string; theme_dark: string;
+  settings: string; theme: string; theme_system: string; theme_light: string; theme_dark: string; theme_sepia: string; theme_midnight: string; theme_contrast: string;
   node_color: string; frame_color: string; units: string; print_dpi: string;
   language: string; zoom: string; bg: string; bg_grid: string; bg_none: string;
   alpha: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
@@ -81,7 +81,7 @@ const en: Msg = {
   dist_h: 'Distribute horizontally', dist_v: 'Distribute vertically', align_hint_multi: 'Distribute spreads the gaps evenly', align_hint_single: 'With 1 object aligns to the page; with 2+, to the group',
   status_selection: 'selection', status_objects: 'objects',
   obj_rect: 'Rectangle', obj_ellipse: 'Ellipse', obj_line: 'Line', obj_text: 'Text', default_layer: 'Layer 1', default_page: 'Page',
-  settings: 'Settings', theme: 'Theme', theme_system: 'System', theme_light: 'Light', theme_dark: 'Dark',
+  settings: 'Settings', theme: 'Theme', theme_system: 'System', theme_light: 'Light', theme_dark: 'Dark', theme_sepia: 'Sepia', theme_midnight: 'Midnight', theme_contrast: 'Contrast',
   node_color: 'Node color', frame_color: 'Frame color',
   units: 'Inspector units', print_dpi: 'Print resolution (DPI)',
   language: 'Language', zoom: 'Zoom', bg: 'Background', bg_grid: 'Grid', bg_none: 'Solid',
@@ -96,7 +96,7 @@ const en: Msg = {
 <h4>Fills, styles & effects</h4><p>Solid color with alpha, linear and radial gradients with multiple color stops (Add stop in the inspector), reusable Styles (save from an object, apply to another), live effects: shadow, glow, blur, bevel, per-object opacity, and 16 blend modes (Multiply, Screen, Overlay…) that composite the object over what is already painted on the page. Polygon objects keep stroke and fill independent (color, width, dashed, no-fill).</p>
 <h4>Text</h4><p>Double-click to edit; system font picker; bold/italic; bbox re-measured.</p>
 <h4>Files</h4><p>Import images (PNG/JPEG/WebP/GIF/SVG). <code>.f.png</code> export/import keeps the full editable document. Export flat PNG, JPEG, WebP (quality configurable) or one PNG per selected object. Autosaves to your browser (IndexedDB).</p>
-<h4>View & settings</h4><p>Scroll to zoom, middle-drag or Space to pan, <code>0</code> fit page, <code>Shift+0</code> zoom to selection. Settings (bottom-left): language (15), theme (light/dark/system), workspace background color and grid.</p>`,
+<h4>View & settings</h4><p>Scroll to zoom, middle-drag or Space to pan, <code>0</code> fit page, <code>Shift+0</code> zoom to selection. Settings: language (15), theme (system, light, dark, sepia, midnight, high-contrast), workspace background color and grid.</p>`,
   brush_round: 'Round tip', brush_square: 'Square tip', brush_tip: 'Custom tip (SVG or image)', brush_tip_none: 'Remove custom tip',
 };
 
@@ -127,7 +127,7 @@ const es: Partial<Msg> = {
   dist_h: 'Distribuir horizontalmente', dist_v: 'Distribuir verticalmente', align_hint_multi: 'Distribuir reparte el hueco por igual', align_hint_single: 'Con 1 objeto se alinea a la página; con 2+, al grupo',
   status_selection: 'selección', status_objects: 'objetos',
   obj_rect: 'Rectángulo', obj_ellipse: 'Elipse', obj_line: 'Línea', obj_text: 'Texto', default_layer: 'Capa 1', default_page: 'Página',
-  settings: 'Configuración', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Claro', theme_dark: 'Oscuro',
+  settings: 'Configuración', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Claro', theme_dark: 'Oscuro', theme_sepia: 'Sepia', theme_midnight: 'Medianoche', theme_contrast: 'Contraste',
   node_color: 'Color de nodos', frame_color: 'Color de marcos',
   units: 'Unidades del inspector', print_dpi: 'Resolución de impresión (DPI)',
   language: 'Idioma', zoom: 'Zoom', bg: 'Fondo', bg_grid: 'Cuadrícula', bg_none: 'Sólido',
@@ -142,7 +142,7 @@ const es: Partial<Msg> = {
 <h4>Rellenos, estilos y efectos</h4><p>Color sólido con alfa, degradados lineales y radiales con paradas de color (Añadir parada en el inspector), Styles reutilizables (guardar desde un objeto, aplicar a otro), efectos en vivo: sombra, glow, blur, bisel, opacidad por objeto, y 16 modos de mezcla (Multiplicar, Trama, Superponer…) que componen el objeto sobre lo ya pintado en la página. Los polígonos mantienen borde y relleno independientes (color, grosor, discontinuo, sin relleno).</p>
 <h4>Texto</h4><p>Doble clic para editar; selector de fuentes del sistema; negrita/cursiva; el bbox se re-mide.</p>
 <h4>Archivos</h4><p>Importa imágenes (PNG/JPEG/WebP/GIF/SVG). Exportar/importar <code>.f.png</code> conserva el documento editable completo. Exporta PNG plano, JPEG, WebP (calidad configurable) o un PNG por objeto seleccionado. Autoguardado en el navegador (IndexedDB).</p>
-<h4>Vista y ajustes</h4><p>Rueda para zoom, arrastre con rueda/Space para mover, <code>0</code> ajustar a página, <code>Shift+0</code> zoom a la selección. Ajustes (abajo a la izquierda): idioma (15), tema (claro/oscuro/sistema), color de fondo del área de trabajo y cuadrícula.</p>`,
+<h4>Vista y ajustes</h4><p>Rueda para zoom, arrastre con rueda/Space para mover, <code>0</code> ajustar a página, <code>Shift+0</code> zoom a la selección. Ajustes: idioma (15), tema (sistema, claro, oscuro, sepia, medianoche, contraste alto), color de fondo del área de trabajo y cuadrícula.</p>`,
   brush_round: 'Punta redonda', brush_square: 'Punta cuadrada', brush_tip: 'Punta personalizada (SVG o imagen)', brush_tip_none: 'Quitar punta personalizada',
 };
 
@@ -168,7 +168,7 @@ const zh: Partial<Msg> = {
   align_left: '左对齐', align_hcenter: '水平居中', align_right: '右对齐', align_top: '顶部对齐', align_vcenter: '垂直居中', align_bottom: '底部对齐',
   dist_h: '水平分布', dist_v: '垂直分布', align_hint_multi: '分布会平均分配间距', align_hint_single: '1 个对象时对齐页面；2 个以上时对齐所选组',
   status_selection: '选中', status_objects: '个对象',
-  settings: '设置', theme: '主题', theme_system: '跟随系统', theme_light: '浅色', theme_dark: '深色',
+  settings: '设置', theme: '主题', theme_system: '跟随系统', theme_light: '浅色', theme_dark: '深色', theme_sepia: '棕褐', theme_midnight: '午夜', theme_contrast: '高对比',
 };
 
 const hi: Partial<Msg> = {
@@ -193,7 +193,7 @@ const hi: Partial<Msg> = {
   align_left: 'बाएँ संरेखित करें', align_hcenter: 'क्षैतिज केंद्रित करें', align_right: 'दाएँ संरेखित करें', align_top: 'ऊपर संरेखित करें', align_vcenter: 'ऊर्ध्वाधर केंद्रित करें', align_bottom: 'नीचे संरेखित करें',
   dist_h: 'क्षैतिज वितरित करें', dist_v: 'ऊर्ध्वाधर वितरित करें', align_hint_multi: 'वितरण अंतराल समान बाँटता है', align_hint_single: '1 ऑब्जेक्ट पर पृष्ठ के साथ; 2+ पर समूह के साथ',
   status_selection: 'चयन', status_objects: 'ऑब्जेक्ट',
-  settings: 'सेटिंग्स', theme: 'थीम', theme_system: 'सिस्टम', theme_light: 'हल्का', theme_dark: 'गहरा',
+  settings: 'सेटिंग्स', theme: 'थीम', theme_system: 'सिस्टम', theme_light: 'हल्का', theme_dark: 'गहरा', theme_sepia: 'सीपिया', theme_midnight: 'मिडनाइट', theme_contrast: 'कंट्रास्ट',
 };
 
 const ar: Partial<Msg> = {
@@ -218,7 +218,7 @@ const ar: Partial<Msg> = {
   align_left: 'محاذاة لليسار', align_hcenter: 'توسيط أفقي', align_right: 'محاذاة لليمين', align_top: 'محاذاة للأعلى', align_vcenter: 'توسيط عمودي', align_bottom: 'محاذاة للأسفل',
   dist_h: 'توزيع أفقي', dist_v: 'توزيع عمودي', align_hint_multi: 'التوزيع يوزع المسافات بالتساوي', align_hint_single: 'مع كائن واحد يحاذي الصفحة؛ مع كائنين أو أكثر يحاذي المجموعة',
   status_selection: 'تحديد', status_objects: 'كائنات',
-  settings: 'الإعدادات', theme: 'السمة', theme_system: 'النظام', theme_light: 'فاتح', theme_dark: 'داكن',
+  settings: 'الإعدادات', theme: 'السمة', theme_system: 'النظام', theme_light: 'فاتح', theme_dark: 'داكن', theme_sepia: 'سيبياء', theme_midnight: 'منتصف الليل', theme_contrast: 'تباين',
 };
 
 const pt: Partial<Msg> = {
@@ -243,7 +243,7 @@ const pt: Partial<Msg> = {
   align_left: 'Alinhar à esquerda', align_hcenter: 'Centralizar horizontalmente', align_right: 'Alinhar à direita', align_top: 'Alinhar ao topo', align_vcenter: 'Centralizar verticalmente', align_bottom: 'Alinhar à base',
   dist_h: 'Distribuir horizontalmente', dist_v: 'Distribuir verticalmente', align_hint_multi: 'Distribuir divide os espaços por igual', align_hint_single: 'Com 1 objeto alinha à página; com 2+, ao grupo',
   status_selection: 'seleção', status_objects: 'objetos',
-  settings: 'Configurações', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Claro', theme_dark: 'Escuro',
+  settings: 'Configurações', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Claro', theme_dark: 'Escuro', theme_sepia: 'Sépia', theme_midnight: 'Meia-noite', theme_contrast: 'Contraste',
 };
 
 const ru: Partial<Msg> = {
@@ -268,7 +268,7 @@ const ru: Partial<Msg> = {
   align_left: 'Выровнять по левому краю', align_hcenter: 'Центрировать по горизонтали', align_right: 'Выровнять по правому краю', align_top: 'Выровнять по верхнему краю', align_vcenter: 'Центрировать по вертикали', align_bottom: 'Выровнять по нижнему краю',
   dist_h: 'Распределить по горизонтали', dist_v: 'Распределить по вертикали', align_hint_multi: 'Распределение делит промежутки поровну', align_hint_single: 'С 1 объектом выравнивает по странице; с 2+ — по группе',
   status_selection: 'выделение', status_objects: 'объектов',
-  settings: 'Настройки', theme: 'Тема', theme_system: 'Системная', theme_light: 'Светлая', theme_dark: 'Тёмная',
+  settings: 'Настройки', theme: 'Тема', theme_system: 'Системная', theme_light: 'Светлая', theme_dark: 'Тёмная', theme_sepia: 'Сепия', theme_midnight: 'Полночь', theme_contrast: 'Контраст',
 };
 
 const ja: Partial<Msg> = {
@@ -293,7 +293,7 @@ const ja: Partial<Msg> = {
   align_left: '左揃え', align_hcenter: '水平中央揃え', align_right: '右揃え', align_top: '上揃え', align_vcenter: '垂直中央揃え', align_bottom: '下揃え',
   dist_h: '水平分布', dist_v: '垂直分布', align_hint_multi: '分布は間隔を均等に配置します', align_hint_single: '1 個ならページに整列、2 個以上なら選択グループに整列',
   status_selection: '選択', status_objects: 'オブジェクト',
-  settings: '設定', theme: 'テーマ', theme_system: 'システム', theme_light: 'ライト', theme_dark: 'ダーク',
+  settings: '設定', theme: 'テーマ', theme_system: 'システム', theme_light: 'ライト', theme_dark: 'ダーク', theme_sepia: 'セピア', theme_midnight: 'ミッドナイド', theme_contrast: 'コントラスト',
 };
 
 const fr: Partial<Msg> = {
@@ -318,7 +318,7 @@ const fr: Partial<Msg> = {
   align_left: 'Aligner à gauche', align_hcenter: 'Centrer horizontalement', align_right: 'Aligner à droite', align_top: 'Aligner en haut', align_vcenter: 'Centrer verticalement', align_bottom: 'Aligner en bas',
   dist_h: 'Répartir horizontalement', dist_v: 'Répartir verticalement', align_hint_multi: 'Répartir répartit les espaces également', align_hint_single: 'Avec 1 objet, aligne sur la page ; avec 2+, sur le groupe',
   status_selection: 'sélection', status_objects: 'objets',
-  settings: 'Paramètres', theme: 'Thème', theme_system: 'Système', theme_light: 'Clair', theme_dark: 'Sombre',
+  settings: 'Paramètres', theme: 'Thème', theme_system: 'Système', theme_light: 'Clair', theme_dark: 'Sombre', theme_sepia: 'Sépia', theme_midnight: 'Minuit', theme_contrast: 'Contraste',
 };
 
 const de: Partial<Msg> = {
@@ -343,7 +343,7 @@ const de: Partial<Msg> = {
   align_left: 'Links ausrichten', align_hcenter: 'Horizontal zentrieren', align_right: 'Rechts ausrichten', align_top: 'Oben ausrichten', align_vcenter: 'Vertikal zentrieren', align_bottom: 'Unten ausrichten',
   dist_h: 'Horizontal verteilen', dist_v: 'Vertikal verteilen', align_hint_multi: 'Verteilen teilt die Abstände gleichmäßig auf', align_hint_single: 'Mit 1 Objekt an der Seite; mit 2+ an der Gruppe ausrichten',
   status_selection: 'Auswahl', status_objects: 'Objekte',
-  settings: 'Einstellungen', theme: 'Design', theme_system: 'System', theme_light: 'Hell', theme_dark: 'Dunkel',
+  settings: 'Einstellungen', theme: 'Design', theme_system: 'System', theme_light: 'Hell', theme_dark: 'Dunkel', theme_sepia: 'Sepia', theme_midnight: 'Mitternacht', theme_contrast: 'Kontrast',
 };
 
 const ko: Partial<Msg> = {
@@ -368,7 +368,7 @@ const ko: Partial<Msg> = {
   align_left: '왼쪽 정렬', align_hcenter: '가로 가운데 정렬', align_right: '오른쪽 정렬', align_top: '위쪽 정렬', align_vcenter: '세로 가운데 정렬', align_bottom: '아래쪽 정렬',
   dist_h: '가로 분산', dist_v: '세로 분산', align_hint_multi: '분산은 간격을 균등하게 배치합니다', align_hint_single: '1개면 페이지에, 2개 이상이면 선택 그룹에 정렬',
   status_selection: '선택', status_objects: '개체',
-  settings: '설정', theme: '테마', theme_system: '시스템', theme_light: '라이트', theme_dark: '다크',
+  settings: '설정', theme: '테마', theme_system: '시스템', theme_light: '라이트', theme_dark: '다크', theme_sepia: '세피아', theme_midnight: '자정', theme_contrast: '고대비',
 };
 
 const it: Partial<Msg> = {
@@ -393,7 +393,7 @@ const it: Partial<Msg> = {
   align_left: 'Allinea a sinistra', align_hcenter: 'Centra orizzontalmente', align_right: 'Allinea a destra', align_top: 'Allinea in alto', align_vcenter: 'Centra verticalmente', align_bottom: 'Allinea in basso',
   dist_h: 'Distribuisci orizzontalmente', dist_v: 'Distribuisci verticalmente', align_hint_multi: 'Distribuisci ripartisce gli spazi in modo uniforme', align_hint_single: 'Con 1 oggetto allinea alla pagina; con 2+, al gruppo',
   status_selection: 'selezione', status_objects: 'oggetti',
-  settings: 'Impostazioni', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Chiaro', theme_dark: 'Scuro',
+  settings: 'Impostazioni', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Chiaro', theme_dark: 'Scuro', theme_sepia: 'Seppia', theme_midnight: 'Mezzanotte', theme_contrast: 'Contrasto',
 };
 
 const tr: Partial<Msg> = {
@@ -418,7 +418,7 @@ const tr: Partial<Msg> = {
   align_left: 'Sola hizala', align_hcenter: 'Yatay ortala', align_right: 'Sağa hizala', align_top: 'Üste hizala', align_vcenter: 'Dikey ortala', align_bottom: 'Alta hizala',
   dist_h: 'Yatay dağıt', dist_v: 'Dikey dağıt', align_hint_multi: 'Dağıt, aralıkları eşit paylaştırır', align_hint_single: '1 nesnede sayfaya hizalar; 2+ nesnede gruba hizalar',
   status_selection: 'seçim', status_objects: 'nesne',
-  settings: 'Ayarlar', theme: 'Tema', theme_system: 'Sistem', theme_light: 'Açık', theme_dark: 'Koyu',
+  settings: 'Ayarlar', theme: 'Tema', theme_system: 'Sistem', theme_light: 'Açık', theme_dark: 'Koyu', theme_sepia: 'Sepya', theme_midnight: 'Gece Yarısı', theme_contrast: 'Kontrast',
 };
 
 const vi: Partial<Msg> = {
@@ -443,7 +443,7 @@ const vi: Partial<Msg> = {
   align_left: 'Căn trái', align_hcenter: 'Canh giữa ngang', align_right: 'Căn phải', align_top: 'Căn trên', align_vcenter: 'Canh giữa dọc', align_bottom: 'Căn dưới',
   dist_h: 'Phân bố ngang', dist_v: 'Phân bố dọc', align_hint_multi: 'Phân bố chia đều khoảng trống', align_hint_single: 'Với 1 đối tượng canh theo trang; với 2+, canh theo nhóm',
   status_selection: 'đã chọn', status_objects: 'đối tượng',
-  settings: 'Cài đặt', theme: 'Chủ đề', theme_system: 'Hệ thống', theme_light: 'Sáng', theme_dark: 'Tối',
+  settings: 'Cài đặt', theme: 'Chủ đề', theme_system: 'Hệ thống', theme_light: 'Sáng', theme_dark: 'Tối', theme_sepia: 'Sepia', theme_midnight: 'Nửa đêm', theme_contrast: 'Tương phản',
 };
 
 const nl: Partial<Msg> = {
@@ -468,7 +468,7 @@ const nl: Partial<Msg> = {
   align_left: 'Links uitlijnen', align_hcenter: 'Horizontaal centreren', align_right: 'Rechts uitlijnen', align_top: 'Boven uitlijnen', align_vcenter: 'Verticaal centreren', align_bottom: 'Onder uitlijnen',
   dist_h: 'Horizontaal verdelen', dist_v: 'Verticaal verdelen', align_hint_multi: 'Verdelen verdeelt de ruimtes gelijk', align_hint_single: 'Met 1 object uitlijnen op de pagina; met 2+ op de groep',
   status_selection: 'selectie', status_objects: 'objecten',
-  settings: 'Instellingen', theme: 'Thema', theme_system: 'Systeem', theme_light: 'Licht', theme_dark: 'Donker',
+  settings: 'Instellingen', theme: 'Thema', theme_system: 'Systeem', theme_light: 'Licht', theme_dark: 'Donker', theme_sepia: 'Sepia', theme_midnight: 'Middernacht', theme_contrast: 'Contrast',
 };
 
 const LOCALES: Record<Lang, Partial<Msg>> = { en, es, zh, hi, ar, pt, ru, ja, fr, de, ko, it, tr, vi, nl };
