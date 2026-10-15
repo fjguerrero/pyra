@@ -1,4 +1,4 @@
-import { FONTS } from './text';
+import { FONTS, customFonts, loadFontFile, normalizeFontFamily } from './text';
 import { activePage, isLineLike, NO_FX, BLEND_MODES, unitFactor, type BitmapObj, type BlendMode, type BrushSettings, type Doc, type Fx, type Layer, type Obj, type ShapeObj, type TextObj } from './model';
 import { addStopAt } from './gradient';
 import { findObj } from './hit';
@@ -80,6 +80,22 @@ function btn(cls: string, label: string, title: string, on: boolean, onClick: ()
     onClick();
   });
   return b;
+}
+
+let fontListEl: HTMLDataListElement | null = null;
+function ensureFontDatalist(): void {
+  if (!fontListEl) {
+    fontListEl = document.createElement('datalist');
+    fontListEl.id = 'pyra-fontlist';
+    document.body.appendChild(fontListEl);
+  }
+  fontListEl.textContent = '';
+  for (const f of [...FONTS, ...customFonts.map((css) => ({ label: css, css }))]) {
+    const opt = document.createElement('option');
+    opt.value = f.css;
+    opt.label = f.label;
+    fontListEl.appendChild(opt);
+  }
 }
 
 const ALIGN_BUTTONS: [AlignKind, string, 'align_left' | 'align_hcenter' | 'align_right' | 'align_top' | 'align_vcenter' | 'align_bottom' | 'dist_h' | 'dist_v'][] = [
@@ -494,19 +510,37 @@ export function renderPanels(
       const fontWrap = document.createElement('label');
       fontWrap.className = 'field';
       fontWrap.innerHTML = `<span>${t('font')}</span>`;
-      const fontSel = document.createElement('select');
-      fontSel.dataset.act = 'font';
-      for (const f of FONTS) {
-        const opt = document.createElement('option');
-        opt.value = f.css;
-        opt.textContent = f.label;
-        opt.style.fontFamily = f.css; // previsualizar cada fuente en la lista
-        fontSel.appendChild(opt);
-      }
-      fontSel.value = obj.font;
-      fontSel.addEventListener('change', () => api.editObj(obj, { font: fontSel.value } as Partial<TextObj>));
-      fontWrap.appendChild(fontSel);
+      // texto libre con datalist: permite cualquier familia del sistema además de las sugeridas
+      ensureFontDatalist();
+      const fontIn = document.createElement('input');
+      fontIn.type = 'text';
+      fontIn.dataset.act = 'font';
+      fontIn.setAttribute('list', 'pyra-fontlist');
+      fontIn.placeholder = t('font_placeholder');
+      fontIn.value = obj.font;
+      fontIn.style.fontFamily = obj.font; // previsualizar la fuente en el propio campo
+      fontIn.addEventListener('change', () => {
+        const v = normalizeFontFamily(fontIn.value);
+        if (v) api.editObj(obj, { font: v } as Partial<TextObj>);
+      });
+      fontWrap.appendChild(fontIn);
       insp.appendChild(fontWrap);
+      const fontFile = document.createElement('input');
+      fontFile.type = 'file';
+      fontFile.accept = '.woff2,.woff,.ttf,.otf';
+      fontFile.hidden = true;
+      fontFile.addEventListener('change', async () => {
+        const f = fontFile.files?.[0];
+        if (!f) return;
+        try {
+          api.editObj(obj, { font: await loadFontFile(f) } as Partial<TextObj>);
+        } catch {
+          /* archivo no válido: no pasa nada */
+        }
+      });
+      const loadBtn = btn('', t('font_load'), t('font_load_hint'), false, () => fontFile.click());
+      loadBtn.dataset.act = 'fontfile';
+      insp.append(fontFile, loadBtn);
 
       const styleRow = document.createElement('div');
       styleRow.className = 'field';

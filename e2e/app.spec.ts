@@ -18,6 +18,8 @@ async function openApp(page: Page): Promise<void> {
   });
   await page.goto('/');
   await expect(canvas(page)).toBeVisible();
+  // el canvas es HTML estático: esperamos a que main.ts haya arrancado (filas de capas reales)
+  await expect(page.locator('#layers-body .row-name').first()).toBeVisible();
   await page.keyboard.press('0'); // vista determinista: ajustar a la página
 }
 
@@ -147,26 +149,28 @@ test('texto: crear con la herramienta T y editar con doble clic', async ({ page 
   // el inspector de un texto: contenido, tamaño y color
   await expect(page.locator('#inspector-body textarea')).toHaveValue('Text');
   await expect(page.locator('#inspector-body')).toContainText('Size');
-  // fuente: el selector cambia la fuente del objeto
-  const fontSel = page.locator('#inspector-body select[data-act="font"]');
-  await expect(fontSel.locator('option')).toHaveCount(14);
-  await fontSel.selectOption({ index: 9 }); // Courier New
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          new Promise<string>((resolve) => {
-            const open = indexedDB.open('pyra');
-            open.onsuccess = () => {
-              const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
-              req.onsuccess = () => resolve(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.font ?? '');
-              req.onerror = () => resolve('');
-            };
-            open.onerror = () => resolve('');
-          }),
-      ),
-    )
-    .toContain('Courier New');
+  // fuente: campo libre con sugerencias; acepta familias del sistema y personalizadas
+  const fontIn = page.locator('#inspector-body input[data-act="font"]');
+  await expect(page.locator('#pyra-fontlist option')).toHaveCount(14);
+  const docFont = () =>
+    page.evaluate(
+      () =>
+        new Promise<string>((resolve) => {
+          const open = indexedDB.open('pyra');
+          open.onsuccess = () => {
+            const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+            req.onsuccess = () => resolve(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.font ?? '');
+            req.onerror = () => resolve('');
+          };
+          open.onerror = () => resolve('');
+        }),
+    );
+  await fontIn.fill('Courier New');
+  await fontIn.press('Enter');
+  await expect.poll(docFont).toContain('Courier New');
+  await fontIn.fill('Mi Fuente Loca');
+  await fontIn.press('Enter');
+  await expect.poll(docFont).toContain("'Mi Fuente Loca'");
 
   page.once('dialog', (d) => void d.accept('Hola Pyra'));
   await page.locator('#canvas').dblclick({ position: { x: 210, y: 160 } });

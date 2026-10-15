@@ -29,7 +29,7 @@ type Msg = {
   delete_page: string; new_page: string; create_page: string; page: string; layer: string;
   page_width: string; page_height: string; width: string; height: string; corner_radius: string;
   saturation: string; brightness: string; crop_x: string; crop_y: string; crop_w: string; crop_h: string; remove_crop: string; show_full_image: string;
-  text: string; size: string; font: string; bold: string; italic: string; color: string; stroke_color: string; fill: string; rotation: string;
+  text: string; size: string; font: string; font_placeholder: string; font_load: string; font_load_hint: string; bold: string; italic: string; color: string; stroke_color: string; fill: string; rotation: string;
   remove_gradient: string; add_gradient: string; gradient_hint: string; gradient_from: string; gradient_to: string; gradient_radial: string; gradient_linear: string; gradient_add_stop: string; gradient_stop_pos: string; gradient_stop_del: string; angle: string;
   live_effects: string; blur: string; remove_shadow: string; add_shadow: string; shadow_hint: string;
   blend_mode: string; obj_opacity: string; bm_normal: string; bm_multiply: string; bm_screen: string; bm_overlay: string; bm_darken: string; bm_lighten: string;
@@ -67,7 +67,7 @@ const en: Msg = {
   delete_page: 'Delete page', new_page: '+ New page', create_page: 'Create page', page: 'Page', layer: 'Layer',
   page_width: 'Page width', page_height: 'Page height', width: 'Width', height: 'Height', corner_radius: 'Corner radius',
   saturation: 'Saturation', brightness: 'Brightness', crop_x: 'Crop X', crop_y: 'Crop Y', crop_w: 'Crop width', crop_h: 'Crop height', remove_crop: 'Remove crop', show_full_image: 'Show the full image',
-  text: 'Text', size: 'Size', font: 'Font', bold: 'Bold', italic: 'Italic', color: 'Color', stroke_color: 'Stroke color', fill: 'Fill', rotation: 'Rotation',
+  text: 'Text', size: 'Size', font: 'Font', font_placeholder: 'Any family, or a list…', font_load: 'Load font file…', font_load_hint: 'Use a .woff2/.woff/.ttf/.otf from your computer this session', bold: 'Bold', italic: 'Italic', color: 'Color', stroke_color: 'Stroke color', fill: 'Fill', rotation: 'Rotation',
   remove_gradient: 'Remove gradient', add_gradient: 'Add gradient', gradient_hint: 'Linear gradient fill', gradient_from: 'Gradient from', gradient_to: 'Gradient to', gradient_radial: 'Radial', gradient_linear: 'Linear', angle: 'Angle',
   gradient_add_stop: 'Add stop', gradient_stop_pos: 'Stop %', gradient_stop_del: 'Remove stop',
   live_effects: 'Live effects', blur: 'Blur', remove_shadow: 'Remove shadow', add_shadow: 'Add shadow', shadow_hint: 'Live drop shadow',
@@ -94,7 +94,7 @@ const en: Msg = {
 <h4>Smart guides & snapping</h4><p>Guides appear only against real references (other objects, page rules, manual guides). Snaps to them; hold <code>Ctrl</code> while dragging to move freely. Right-click the canvas creates a manual guide; right-click on it deletes it; drag it to move.</p>
 <h4>Layers & pages</h4><p>Layers panel: visibility, lock, opacity, drag to reorder/nest, z-order buttons. Pages panel: multiple pages per document. Panels are collapsible and reorderable.</p>
 <h4>Fills, styles & effects</h4><p>Solid color with alpha, linear and radial gradients with multiple color stops (Add stop in the inspector), reusable Styles (save from an object, apply to another), live effects: shadow, glow, blur, bevel, per-object opacity, and 16 blend modes (Multiply, Screen, Overlay…) that composite the object over what is already painted on the page. Polygon objects keep stroke and fill independent (color, width, dashed, no-fill).</p>
-<h4>Text</h4><p>Double-click to edit; system font picker; bold/italic; bbox re-measured.</p>
+<h4>Text</h4><p>Double-click to edit; free-text font field (any system family, with a suggestions list) and a font-file loader (.woff2/.woff/.ttf/.otf, available this session); bold/italic; bbox re-measured.</p>
 <h4>Files</h4><p>Import images (PNG/JPEG/WebP/GIF/SVG). <code>.f.png</code> export/import keeps the full editable document. Export flat PNG, JPEG, WebP (quality configurable) or one PNG per selected object. Autosaves to your browser (IndexedDB).</p>
 <h4>View & settings</h4><p>Scroll to zoom, middle-drag or Space to pan, <code>0</code> fit page, <code>Shift+0</code> zoom to selection. Settings: language (15), theme (system, light, dark, sepia, midnight, high-contrast), workspace background color and grid.</p>`,
   brush_round: 'Round tip', brush_square: 'Square tip', brush_tip: 'Custom tip (SVG or image)', brush_tip_none: 'Remove custom tip',
@@ -113,7 +113,7 @@ const es: Partial<Msg> = {
   delete_page: 'Eliminar página', new_page: '＋ Nueva página', create_page: 'Crear página', page: 'Página', layer: 'Capa',
   page_width: 'Ancho página', page_height: 'Alto página', width: 'Ancho', height: 'Alto', corner_radius: 'Radio de esquina',
   saturation: 'Saturación', brightness: 'Brillo', crop_x: 'Recorte X', crop_y: 'Recorte Y', crop_w: 'Recorte ancho', crop_h: 'Recorte alto', remove_crop: 'Quitar recorte', show_full_image: 'Mostrar la imagen completa',
-  text: 'Texto', size: 'Tamaño', font: 'Fuente', bold: 'Negrita', italic: 'Cursiva', color: 'Color', stroke_color: 'Color trazo', fill: 'Relleno', rotation: 'Rotación',
+  text: 'Texto', size: 'Tamaño', font: 'Fuente', font_placeholder: 'Cualquier familia, o una lista…', font_load: 'Cargar archivo de fuente…', font_load_hint: 'Usa un .woff2/.woff/.ttf/.otf de tu equipo esta sesión', bold: 'Negrita', italic: 'Cursiva', color: 'Color', stroke_color: 'Color trazo', fill: 'Relleno', rotation: 'Rotación',
   remove_gradient: 'Quitar degradado', add_gradient: 'Añadir degradado', gradient_hint: 'Relleno con degradado lineal', gradient_from: 'Degradado desde', gradient_to: 'Degradado hasta', gradient_radial: 'Radial', gradient_linear: 'Lineal', angle: 'Ángulo',
   gradient_add_stop: 'Añadir parada', gradient_stop_pos: 'Parada %', gradient_stop_del: 'Quitar parada',
   live_effects: 'Efectos en vivo', blur: 'Desenfoque', remove_shadow: 'Quitar sombra', add_shadow: 'Añadir sombra', shadow_hint: 'Sombra paralela en vivo',
@@ -140,7 +140,7 @@ const es: Partial<Msg> = {
 <h4>Guías inteligentes y snap</h4><p>Las guías aparecen solo ante referencias reales (otros objetos, reglas de página, guías manuales) y atraen el snap; mantén <code>Ctrl</code> durante el arrastre para moverte libre. Clic derecho en el lienzo crea una guía manual; clic derecho sobre ella la borra; arrástrala para moverla.</p>
 <h4>Capas y páginas</h4><p>Panel de capas: visibilidad, bloqueo, opacidad, drag para reordenar/anidar, botones de orden. Panel de páginas: varias páginas por documento. Los paneles se colapsan y reordenan.</p>
 <h4>Rellenos, estilos y efectos</h4><p>Color sólido con alfa, degradados lineales y radiales con paradas de color (Añadir parada en el inspector), Styles reutilizables (guardar desde un objeto, aplicar a otro), efectos en vivo: sombra, glow, blur, bisel, opacidad por objeto, y 16 modos de mezcla (Multiplicar, Trama, Superponer…) que componen el objeto sobre lo ya pintado en la página. Los polígonos mantienen borde y relleno independientes (color, grosor, discontinuo, sin relleno).</p>
-<h4>Texto</h4><p>Doble clic para editar; selector de fuentes del sistema; negrita/cursiva; el bbox se re-mide.</p>
+<h4>Texto</h4><p>Doble clic para editar; campo libre de fuente (cualquier familia del sistema, con lista de sugerencias) y carga de archivos de fuente (.woff2/.woff/.ttf/.otf, disponibles esta sesión); negrita/cursiva; el bbox se re-mide.</p>
 <h4>Archivos</h4><p>Importa imágenes (PNG/JPEG/WebP/GIF/SVG). Exportar/importar <code>.f.png</code> conserva el documento editable completo. Exporta PNG plano, JPEG, WebP (calidad configurable) o un PNG por objeto seleccionado. Autoguardado en el navegador (IndexedDB).</p>
 <h4>Vista y ajustes</h4><p>Rueda para zoom, arrastre con rueda/Space para mover, <code>0</code> ajustar a página, <code>Shift+0</code> zoom a la selección. Ajustes: idioma (15), tema (sistema, claro, oscuro, sepia, medianoche, contraste alto), color de fondo del área de trabajo y cuadrícula.</p>`,
   brush_round: 'Punta redonda', brush_square: 'Punta cuadrada', brush_tip: 'Punta personalizada (SVG o imagen)', brush_tip_none: 'Quitar punta personalizada',
