@@ -155,6 +155,17 @@ Verification: clean `tsc --noEmit`, 312 unit tests, 76 Playwright e2e.
 
 Verification: clean `tsc --noEmit`, 314 unit tests, 78 Playwright e2e.
 
+## Status v1.7 (2026-10-15)
+
+- Icon legibility pass: node editing is now the hollow arrow (Fireworks/Illustrator subselect pointer) and selection the filled arrow; `line` is a segment with endpoint squares, `brush` a stroke with a round tip. `icon()` accepts an optional filled subpath after a `|` separator.
+- Left toolbar buttons restyled: hover with subtle border/panel background, active = solid accent pill with halo, `:focus-visible` outline.
+- Rich color picker modeled on the Fireworks Color Mixer / Flash 8 picker: SV field + hue slider + alpha slider + preview + HEX (8 digits with alpha) in one popup; the separate alpha field/label is gone — alpha lives inside the picker. Recent colors and Favorites (renamed from "custom") are embedded in the same popup; favorites support add/remove and drag-reorder, recents record on commit. Swatches and previews paint over a JS checkerboard (`paintChecker`) so transparency reads correctly. `src/color.ts` holds hex↔RGBA↔HSV conversions (+ unit tests).
+- Gradient stop colors use the same rich picker: stops now carry alpha (`#rrggbbaa`), matching Flash's RGBA gradient ramp. Linear/radial gradients, multi-stop, styles, effects and blend modes were already supported by the model/renderer.
+- One history entry per committed value: closing the popup blurred the focused HEX input, which fired a second `change` and a duplicate `editar` entry (undo then appeared to do nothing). `openColorPop` now dedupes commits per value; live drags of SV/hue/alpha/stop colors only apply on release (commit), not per pointermove.
+- e2e: stable helpers `swatchOf`/`setColor` (no native `input[type=color]` left); color, eyedropper, alpha/recent, gradient-stop and multi-object undo tests migrated to the mixer.
+
+Verification: clean `tsc --noEmit`, 317 unit tests, 78 Playwright e2e.
+
 ## Pending
 
 - Technical debt:
