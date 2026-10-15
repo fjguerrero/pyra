@@ -2330,6 +2330,12 @@ window.addEventListener('keydown', (e) => {
       persist();
       invalidate();
     }
+  } else if (mod && (e.key === 'PageUp' || e.key === 'PageDown')) {
+    e.preventDefault();
+    // Ctrl+RePág/AvPág: página anterior/siguiente (reusa el cambio de página del panel)
+    const i = doc.pages.findIndex((p) => p.id === doc.activePageId);
+    const j = Math.max(0, Math.min(doc.pages.length - 1, i + (e.key === 'PageDown' ? 1 : -1)));
+    if (j !== i) panelApi.selectPage(doc.pages[j].id);
   } else if (mod && (e.key === 'a' || e.key === 'A')) {
     e.preventDefault();
     // Ctrl+A: todo lo de las capas visibles y no bloqueadas (los grupos se expanden como siempre)

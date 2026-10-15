@@ -144,6 +144,21 @@ test('preset 100% en el popup de zoom', async ({ page }) => {
   await expect(page.locator('#zoom-num')).toHaveValue('100');
 });
 
+test('Ctrl+PageUp/PageDown cambian de página', async ({ page }) => {
+  const activeIdx = () =>
+    page.evaluate(
+      () => [...document.querySelectorAll('#pages-body .row')].findIndex((r) => r.classList.contains('active')),
+    );
+  await page.click('[data-act="addpage"]'); // 2 páginas; la nueva queda activa
+  await expect.poll(activeIdx).toBe(1);
+  await page.keyboard.press('Control+PageUp');
+  await expect.poll(activeIdx).toBe(0);
+  await page.keyboard.press('Control+PageDown');
+  await expect.poll(activeIdx).toBe(1);
+  await page.keyboard.press('Control+PageDown'); // tope: se queda en la última
+  await expect.poll(activeIdx).toBe(1);
+});
+
 test('importar una imagen crea un bitmap seleccionable y movible', async ({ page }) => {
   // PNG 100×100 rojo generado en el propio navegador
   const dataUrl = await page.evaluate(() => {
