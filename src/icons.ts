@@ -2,8 +2,8 @@
 // ponytail: paths mínimos a mano; si hiciera falta un set completo, lucide.
 
 const P: Record<string, string> = {
-  cursor: 'M5 3l14 8-6 2-2 6z',
-  subselect: 'M7 17C7 9 17 15 17 7M5.5 15.5h3v3h-3zM15.5 5.5h3v3h-3z',
+  cursor: 'M5 3l14 8-6 2-2 6z|M5 3l14 8-6 2-2 6z', // flecha negra (rellena tras |)
+  subselect: 'M5 3l14 8-6 2-2 6z', // flecha blanca: edición de nodos, como Fireworks
   rect: 'M4 5h16v14H4z',
   ellipse: 'M12 5a8 7 0 1 0 0 14a8 7 0 1 0 0-14',
   line: 'M5 19L19 5',
@@ -59,9 +59,12 @@ export function hasIcon(name: string): boolean {
 
 export function icon(name: string, size = 16): string {
   const d = P[name] || P.settings;
+  const [stroke, fill] = d.split('|'); // tras |, subpaths rellenos (nodos de ancla)
   return (
     `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" ` +
     `stroke="currentColor" stroke-width="1.7" stroke-linecap="round" ` +
-    `stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`
+    `stroke-linejoin="round" aria-hidden="true"><path d="${stroke}"/>` +
+    (fill ? `<path d="${fill}" fill="currentColor" stroke="none"/>` : '') +
+    `</svg>`
   );
 }
