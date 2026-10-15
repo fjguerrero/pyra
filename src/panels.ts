@@ -8,6 +8,7 @@ import { flattenLayers } from './layers';
 import type { AlignKind } from './align';
 import { icon, hasIcon } from './icons';
 import { addCustom, addRecent, loadSwatches, moveSwatch, removeSwatch, type SwatchStore } from './swatches';
+import { hexToRgba, hsvToRgb, rgbToHsv, rgbaToHex } from './color';
 import { demoStroke, strokeOutline, type BrushParams } from './brush-engine';
 
 /** Ajustes de la herramienta activa en el inspector (pincel, lápiz, polilápiz, goma, pluma). */
@@ -143,63 +144,32 @@ const ALIGN_BUTTONS: [AlignKind, string, 'align_left' | 'align_hcenter' | 'align
   ['vdist', 'vdist', 'dist_v'],
 ];
 
-// ---- Colores: selector con alfa + paletas (recientes / personalizados) ----
-function hexToRgba(hex: string): { r: number; g: number; b: number; a: number } {
-  const h = hex.replace('#', '');
-  const f = (s: string) => parseInt(s, 16);
-  if (h.length === 8) return { r: f(h.slice(0, 2)), g: f(h.slice(2, 4)), b: f(h.slice(4, 6)), a: f(h.slice(6, 8)) / 255 };
-  const s = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-  return { r: f(s.slice(0, 2)), g: f(s.slice(2, 4)), b: f(s.slice(4, 6)), a: 1 };
-}
-
+// ---- Colores: mezclador estilo Fireworks (campo HSV + tono + alfa + hex) con recientes/favoritos ----
 function colorField(label: string, value: string, onSet: (v: string) => void): void {
   const insp = $('inspector-body');
   const wrap = document.createElement('label');
   wrap.className = 'field color-field';
   wrap.innerHTML = `<span>${label}</span>`;
-  const rgba = hexToRgba(value || '#000000');
-  const base = `#${[rgba.r, rgba.g, rgba.b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-
-  const picker = document.createElement('input');
-  picker.type = 'color';
-  picker.value = base;
-
-  const alphaLabel = document.createElement('span');
-  alphaLabel.textContent = 'α';
-  wrap.appendChild(alphaLabel);
-  const alpha = document.createElement('input');
-  alpha.type = 'number';
-  alpha.min = '0';
-  alpha.max = '1';
-  alpha.step = '0.05';
-  alpha.value = String(Math.round(rgba.a * 100) / 100);
-  alpha.title = t('alpha');
-
-  const emit = (): void => {
-    const a = Math.max(0, Math.min(1, Number(alpha.value)));
-    const hex = Number.isFinite(a) && a < 1
-      ? picker.value + Math.round(a * 255).toString(16).padStart(2, '0')
-      : picker.value;
-    cur = hex;
-    onSet(hex);
-    addRecent(loadSwatches(), hex);
+  const sw = document.createElement('button');
+  sw.type = 'button';
+  sw.className = 'swatch-btn';
+  const paint = (c: string): void => {
+    paintChecker(sw, c);
+    sw.dataset.color = c;
   };
-  picker.addEventListener('input', emit);
-  alpha.addEventListener('change', emit);
-  wrap.append(picker, alpha);
-  insp.appendChild(wrap);
-  // recientes/personalizados dentro de un popup anclado al selector de color
-  let cur = base;
-  picker.addEventListener('click', () =>
-    openColorPop(picker, () => cur, (c) => {
-      picker.value = c.slice(0, 7);
-      alpha.value = c.length === 9 ? String(Math.round((parseInt(c.slice(7, 9), 16) / 255) * 100) / 100) : '1';
+  paint(value || '#000000');
+  sw.addEventListener('click', () =>
+    openColorPop(sw, sw.dataset.color || '#000000', (c, commit) => {
+      paint(c);
       onSet(c);
+      if (commit) addRecent(loadSwatches(), c); // commit = al soltar sliders o elegir muestra
     }),
   );
+  wrap.appendChild(sw);
+  insp.appendChild(wrap);
 }
 
-// ---- Popup de paletas: se abre al pulsar el selector de color (el diálogo del SO no admite contenido propio) ----
+// ---- Popup: mezclador HSV + tono + alfa + hex, y debajo las paletas (recientes / favoritos) ----
 let colorPop: HTMLElement | null = null;
 let colorPopOff: (() => void) | null = null;
 const closeColorPop = (): void => {
@@ -209,14 +179,119 @@ const closeColorPop = (): void => {
   colorPopOff = null;
 };
 
-function openColorPop(anchor: HTMLElement, getColor: () => string, pick: (c: string) => void): void {
+const CHECKER = 'conic-gradient(rgb(128 128 128 / 0.55) 0 25%, rgb(128 128 128 / 0.15) 0 50%, rgb(128 128 128 / 0.55) 0 75%, rgb(128 128 128 / 0.15) 0)';
+
+/** Muestra un color sobre tablero de transparencia: el color va como capa superior, así el tablero solo asoma si hay alfa. */
+const paintChecker = (el: HTMLElement, color: string): void => {
+  el.style.backgroundImage = `linear-gradient(${color}, ${color}),${CHECKER}`;
+  el.style.backgroundSize = 'cover, 8px 8px';
+};
+
+function openColorPop(anchor: HTMLElement, initial: string, pick: (c: string, commit: boolean) => void): void {
   closeColorPop();
   const pop = document.createElement('div');
   pop.className = 'color-pop';
-  const refresh = (): void => {
-    pop.replaceChildren();
-    swatchPalette(pop, getColor(), (c) => { pick(c); closeColorPop(); }, refresh);
+  // estado del mezclador: HSV + alfa (como el mezclador de color de Fireworks)
+  const rgba0 = hexToRgba(initial || '#000000');
+  const hsv0 = rgbToHsv(rgba0.r, rgba0.g, rgba0.b);
+  let h = hsv0.h, s = hsv0.s, v = hsv0.v, a = rgba0.a;
+  const cur = (): string => rgbaToHex({ ...hsvToRgb(h, s, v), a });
+
+  const loadState = (c: string): void => {
+    const rg = hexToRgba(c);
+    const hh = rgbToHsv(rg.r, rg.g, rg.b);
+    h = hh.h; s = hh.s; v = hh.v; a = rg.a;
+    hue.value = String(Math.round(h));
+    al.value = String(Math.round(a * 255));
   };
+
+  const sv = document.createElement('div');
+  sv.className = 'cp-sv';
+  const knob = document.createElement('span');
+  knob.className = 'cp-knob';
+  sv.appendChild(knob);
+  const hue = document.createElement('input');
+  hue.type = 'range'; hue.min = '0'; hue.max = '360'; hue.step = '1';
+  hue.className = 'cp-hue'; hue.title = t('color_hue');
+  const al = document.createElement('input');
+  al.type = 'range'; al.min = '0'; al.max = '255'; al.step = '1';
+  al.className = 'cp-alpha'; al.title = t('alpha');
+  const prev = document.createElement('span');
+  prev.className = 'cp-preview';
+  const hexIn = document.createElement('input');
+  hexIn.className = 'cp-hex'; hexIn.spellcheck = false; hexIn.title = 'HEX';
+  const row = document.createElement('div');
+  row.className = 'cp-row';
+  row.append(prev, hexIn);
+  const box = document.createElement('div');
+  box.className = 'cp-mixer';
+  box.append(sv, hue, al, row);
+  const pal = document.createElement('div'); // paletas aparte: el refresh no borra el mezclador
+  pop.append(box, pal);
+
+  const render = (): void => {
+    const { r, g, b } = hsvToRgb(h, s, v);
+    const { r: hr, g: hg, b: hb } = hsvToRgb(h, 1, 1);
+    sv.style.background = `linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,rgb(${hr} ${hg} ${hb}))`;
+    knob.style.left = `${s * 100}%`;
+    knob.style.top = `${(1 - v) * 100}%`;
+    al.style.backgroundImage = `linear-gradient(to right, rgb(${r} ${g} ${b} / 0), rgb(${r} ${g} ${b})),${CHECKER}`;
+    al.style.backgroundSize = 'auto, 8px 8px';
+    prev.style.background = 'none';
+    paintChecker(prev, cur());
+    hexIn.value = cur().toUpperCase();
+  };
+
+  const dragSv = (e: PointerEvent): void => {
+    const r = sv.getBoundingClientRect();
+    s = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    v = Math.max(0, Math.min(1, 1 - (e.clientY - r.top) / r.height));
+    render();
+    pick(cur(), false);
+  };
+  sv.addEventListener('pointerdown', (e) => {
+    sv.setPointerCapture(e.pointerId);
+    dragSv(e);
+  });
+  sv.addEventListener('pointermove', (e) => {
+    if (e.buttons) dragSv(e);
+  });
+  sv.addEventListener('pointerup', () => pick(cur(), true));
+  hue.value = String(Math.round(h));
+  al.value = String(Math.round(a * 255));
+  hue.addEventListener('input', () => {
+    h = Number(hue.value);
+    render();
+    pick(cur(), false);
+  });
+  hue.addEventListener('change', () => pick(cur(), true));
+  al.addEventListener('input', () => {
+    a = Number(al.value) / 255;
+    render();
+    pick(cur(), false);
+  });
+  al.addEventListener('change', () => pick(cur(), true));
+  hexIn.addEventListener('change', () => {
+    const raw = hexIn.value.trim();
+    if (!/^#?(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw)) {
+      render();
+      return;
+    }
+    loadState(raw);
+    render();
+    pick(cur(), true);
+  });
+
+  const refresh = (): void => {
+    pal.replaceChildren();
+    // elegir una muestra carga en el mezclador (para poder afinar el alfa) y aplica al objeto
+    swatchPalette(pal, cur(), (c) => {
+      loadState(c);
+      render();
+      pick(c, true);
+    }, refresh);
+  };
+  render();
   refresh();
   document.body.appendChild(pop);
   const r = anchor.getBoundingClientRect();
@@ -250,7 +325,7 @@ function swatchPalette(insp: HTMLElement, current: string, pick: (color: string)
       const sw = document.createElement('button');
       sw.type = 'button';
       sw.className = 'swatch';
-      sw.style.background = s.color;
+      paintChecker(sw, s.color);
       sw.title = s.color;
       sw.draggable = true;
       sw.addEventListener('click', () => pick(s.color));

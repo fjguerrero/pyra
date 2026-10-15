@@ -49,6 +49,19 @@ async function drag(page: Page, from: [number, number], to: [number, number]): P
   await page.mouse.up();
 }
 
+/** Botón-muestra del mezclador en el inspector (su data-color refleja el color actual). */
+function swatchOf(page: Page, label: string) {
+  return page.locator('label').filter({ hasText: label }).locator('.swatch-btn').first();
+}
+
+/** Fija un color vía el mezclador: abre el popup, escribe HEX y confirma. */
+async function setColor(page: Page, label: string, hex: string): Promise<void> {
+  await swatchOf(page, label).click();
+  const hexIn = page.locator('.color-pop .cp-hex');
+  await hexIn.fill(hex);
+  await hexIn.dispatchEvent('change');
+}
+
 test.beforeEach(async ({ page }) => {
   await openApp(page);
 });
@@ -280,17 +293,16 @@ test('estilos: guardar desde un objeto y aplicar a otro', async ({ page }) => {
   await page.keyboard.press('Escape');
   const box = await canvas(page).boundingBox();
   await page.mouse.click(box!.x + 100, box!.y + 90); // centro del primer rect
-  const colorInput = page.locator('#inspector-body input[type=color]').first();
-  await colorInput.fill('#ff0000');
+  await setColor(page, 'Fill', '#ff0000');
   await page.locator('#inspector-body button', { hasText: 'Save style' }).click();
   await expect(page.locator('#inspector-body')).toContainText('Estilo 1');
   // seleccionar el segundo y aplicar el estilo
   await page.mouse.click(box!.x + 240, box!.y + 90);
   await page.locator('#inspector-body .row', { hasText: 'Estilo 1' }).first().dispatchEvent('click');
-  await expect(page.locator('#inspector-body input[type=color]').first()).toHaveValue('#ff0000');
+  await expect(swatchOf(page, 'Fill')).toHaveAttribute('data-color', '#ff0000');
   // undo deshace la aplicación del estilo
   await page.keyboard.press('Control+z');
-  await expect(page.locator('#inspector-body input[type=color]').first()).not.toHaveValue('#ff0000');
+  await expect(swatchOf(page, 'Fill')).not.toHaveAttribute('data-color', '#ff0000');
 });
 
 test('selección por marco: arrastrar en vacío selecciona lo que intersecta', async ({ page }) => {
@@ -399,8 +411,7 @@ test('rect/óvalo con borde: el inspector ofrece color de trazo, grosor y sin re
   await expect(page.locator('#inspector-body', { hasText: 'Stroke width' })).toBeVisible();
   // poner un borde: el rect se queda sin relleno y solo con contorno
   await page.locator('#inspector-body button', { hasText: 'No fill' }).click();
-  const strokeInput = page.locator('#inspector-body input[type=color]').last();
-  await strokeInput.evaluate((el: HTMLElement) => el.click());
+  await swatchOf(page, 'Stroke color').evaluate((el: HTMLElement) => el.click());
   await expect(page.locator('#inspector-body button', { hasText: 'No fill' })).toHaveAttribute('aria-pressed', 'true');
 });
 
@@ -495,10 +506,10 @@ test('radio de esquina: el inspector aplica rx al rect y queda en el documento',
   ).toBe(12);
 });
 
-test('inspector: color y estilo de trazo se aplican; el selector de color no se destruye a mitad de selección', async ({ page }) => {
+test('inspector: color y estilo de trazo se aplican; el mezclador sobrevive al re-render del inspector', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);
-  await expect(page.locator('#inspector-body input[type=color]').first()).toBeVisible(); // objeto creado y seleccionado
+  await expect(swatchOf(page, 'Fill')).toBeVisible(); // objeto creado y seleccionado
   const docField = (field: string) =>
     page.evaluate((f) =>
       new Promise<unknown>((resolve) => {
@@ -511,17 +522,16 @@ test('inspector: color y estilo de trazo se aplican; el selector de color no se 
         open.onerror = () => resolve(null);
       }), field);
 
-  // el <input type=color> debe seguir en el DOM tras su evento input (antes el
-  // panel lo recreaba y el diálogo nativo de color se cerraba sin aplicar)
-  const survived = await page.evaluate(async () => {
-    const el = document.querySelector('#inspector-body input[type=color]') as HTMLInputElement;
-    el.focus();
-    el.value = '#ff0000';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
+  // el mezclador vive en document.body: debe seguir visible tras aplicar el color
+  // (el inspector se re-renderiza; antes el panel recreaba el input y se perdía el cambio)
+  await swatchOf(page, 'Fill').click();
+  const hexIn = page.locator('.color-pop .cp-hex');
+  await hexIn.fill('#ff0000');
+  await hexIn.dispatchEvent('change');
+  await page.evaluate(async () => {
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-    return el.isConnected;
   });
-  expect(survived).toBe(true);
+  await expect(page.locator('.color-pop .cp-hex')).toBeVisible();
   await expect.poll(() => docField('fill')).toBe('#ff0000');
 
   // estilos de trazo cambiables: sólido → discontinuo → sólido
@@ -620,12 +630,7 @@ test('degradado radial: el inspector ofrece alternar lineal/radial', async ({ pa
 test('cuentagotas: coge un color de la pantalla y lo usa la siguiente forma', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);
-  const fillInput = page.locator('label').filter({ hasText: 'Fill' }).locator('input[type=color]').first();
-  await fillInput.evaluate((el: HTMLInputElement) => {
-    el.value = '#ff0000';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  await setColor(page, 'Fill', '#ff0000');
   await page.keyboard.press('Escape');
   // el cuentagotas lee píxeles: hay que esperar al repintado rojo
   await expect.poll(async () => page.evaluate(() => {
@@ -639,7 +644,7 @@ test('cuentagotas: coge un color de la pantalla y lo usa la siguiente forma', as
   await page.keyboard.press('Escape');
   await page.keyboard.press('r');
   await drag(page, [300, 100], [400, 160]);
-  await expect(page.locator('label').filter({ hasText: 'Fill' }).locator('input[type=color]').first()).toHaveValue('#ff0000');
+  await expect(swatchOf(page, 'Fill')).toHaveAttribute('data-color', '#ff0000');
 });
 
 test('exportar SVG: vector real (formas y trazos como paths)', async ({ page }) => {
@@ -657,23 +662,19 @@ test('exportar SVG: vector real (formas y trazos como paths)', async ({ page }) 
   expect(body).toContain('fill-rule="nonzero"'); // la cinta del pincel, alfa uniforme
 });
 
-test('color con alfa: el inspector emite #rrggbbaa y aparece en recientes', async ({ page }) => {
+test('color con alfa: el mezclador emite #rrggbbaa y aparece en recientes', async ({ page }) => {
   await page.keyboard.press('r');
   await drag(page, [100, 100], [220, 180]);
-  // el campo de alfa del RELLENO (el borde añade su propio campo: hay que concretar)
-  const alpha = page.locator('label').filter({ hasText: 'Fill' }).getByRole('spinbutton');
-  await alpha.fill('0.5');
-  await alpha.dispatchEvent('change');
-  // las paletas viven en el popup que abre el selector de color
-  await page.locator('label').filter({ hasText: 'Fill' }).locator('input[type=color]').click();
-  await expect(page.locator('.color-pop .swatch').first()).toHaveAttribute('title', /80$/);
-  // el color con alfa sobrevive a un re-render del inspector: clic en zona vacía
-  // (cierra el popup y pasa el foco al canvas, si no los atajos no llegan a la app)
+  // el alfa del RELLENO: el slider del mezclador (fill dispara input+change → commit a recientes)
+  await swatchOf(page, 'Fill').click();
+  await page.locator('.color-pop .cp-alpha').fill('128');
+  // cerrar y reabrir: la muestra reciente debe pervivir al re-render del inspector
+  // (clic en zona vacía cierra el popup y pasa el foco al canvas, si no los atajos no llegan a la app)
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.click(box.x + 50, box.y + 50);
   await page.keyboard.press('r');
   await drag(page, [300, 100], [420, 180]);
-  await page.locator('label').filter({ hasText: 'Fill' }).locator('input[type=color]').click();
+  await swatchOf(page, 'Fill').click();
   await expect(page.locator('.color-pop .swatch').first()).toHaveAttribute('title', /80$/);
 });
 

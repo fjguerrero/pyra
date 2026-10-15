@@ -48,7 +48,7 @@ type Msg = {
   settings: string; theme: string; theme_system: string; theme_light: string; theme_dark: string; theme_sepia: string; theme_midnight: string; theme_contrast: string;
   node_color: string; frame_color: string; units: string; print_dpi: string;
   language: string; zoom: string; bg: string; bg_grid: string; bg_none: string;
-  alpha: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
+  alpha: string; color_hue: string; recent_colors: string; custom_colors: string; add_color: string; remove_color: string;
   export_menu: string; export_jpeg: string; export_webp: string; export_quality: string;
   tool_brush: string; tool_eraser: string; tool_eyedropper: string; export_asset: string; obj_stroke: string; brush_size: string; brush_pressure: string; brush_opacity: string;
   bevel: string; tool_pen: string; tool_pencil: string; pencil_continuous: string; pencil_smooth: string; pen_curved: string; pen_straight: string; pencil_polygon: string; poly_freehand: string; poly_straight: string; poly_stylized: string; stroke_width: string; stroke_style: string; stroke_solid: string; stroke_dashed: string; stroke_dotted: string; stroke_dashdot: string; no_fill: string; obj_polygon: string; union: string; union_hint: string; flip_h: string; flip_v: string;
@@ -88,7 +88,7 @@ const en: Msg = {
   node_color: 'Node color', frame_color: 'Frame color',
   units: 'Inspector units', print_dpi: 'Print resolution (DPI)',
   language: 'Language', zoom: 'Zoom', bg: 'Background', bg_grid: 'Grid', bg_none: 'Solid',
-  alpha: 'Alpha', recent_colors: 'Recent colors', custom_colors: 'Custom colors', add_color: 'Add current color to custom palette', remove_color: 'Remove color',
+  alpha: 'Alpha', color_hue: 'Hue', recent_colors: 'Recent colors', custom_colors: 'Favorites', add_color: 'Add current color to favorites', remove_color: 'Remove color',
   export_menu: 'Export', export_jpeg: 'Export JPEG', export_webp: 'Export WebP', export_quality: 'Quality (JPEG/WebP)',
     tool_brush: 'Paint brush (B)', tool_eraser: 'Eraser (X)', tool_eyedropper: 'Eyedropper (I)', export_asset: 'Export selection as PNG', obj_stroke: 'Brush stroke',
   bevel: 'Bevel', tool_pen: 'Pen (P)', obj_polygon: 'Polygon', union: 'Union', union_hint: 'Merge selected shapes into one', flip_h: 'Flip horizontal', flip_v: 'Flip vertical', brush_size: 'Size', brush_pressure: 'Pressure', brush_opacity: 'Opacity',
@@ -135,7 +135,7 @@ const es: Partial<Msg> = {
   node_color: 'Color de nodos', frame_color: 'Color de marcos',
   units: 'Unidades del inspector', print_dpi: 'Resolución de impresión (DPI)',
   language: 'Idioma', zoom: 'Zoom', bg: 'Fondo', bg_grid: 'Cuadrícula', bg_none: 'Sólido',
-  alpha: 'Alfa', recent_colors: 'Colores recientes', custom_colors: 'Colores personalizados', add_color: 'Añadir el color actual a la paleta personalizada', remove_color: 'Eliminar color',
+  alpha: 'Alfa', color_hue: 'Tono', recent_colors: 'Colores recientes', custom_colors: 'Favoritos', add_color: 'Añadir el color actual a favoritos', remove_color: 'Eliminar color',
   export_menu: 'Exportar', export_jpeg: 'Exportar JPEG', export_webp: 'Exportar WebP', export_quality: 'Calidad (JPEG/WebP)',
   tool_brush: 'Pincel (B)', tool_eraser: 'Goma de borrar (X)', tool_eyedropper: 'Cuentagotas (I)', export_asset: 'Exportar selección como PNG', obj_stroke: 'Trazo de pincel', brush_size: 'Tamaño', brush_pressure: 'Presión', brush_opacity: 'Opacidad',
   bevel: 'Bisel', tool_pen: 'Lápiz (P)', obj_polygon: 'Polígono', union: 'Unión', union_hint: 'Unir las formas seleccionadas en una sola', flip_h: 'Voltear horizontal', flip_v: 'Voltear vertical',

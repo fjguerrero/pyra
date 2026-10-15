@@ -342,20 +342,22 @@ describe('Property Inspector: campos según lo seleccionado', () => {
     expect(f.api.editObj).not.toHaveBeenCalled();
   });
 
-  it('el color de relleno se edita con un input de color y admite alfa', () => {
+  it('el color de relleno se edita con el mezclador y admite alfa', () => {
     const f = fixture();
     const obj = activePage(f.doc).layers[0].objects[0] as ShapeObj;
     obj.fill = '#ff0000';
     mount(f.doc, obj.id, null, [obj.id], f.view, f.api);
-    const color = document.querySelector<HTMLInputElement>('#inspector-body .color-field input[type=color]')!;
-    expect(color.value).toBe('#ff0000');
-    color.value = '#00ff00';
-    color.dispatchEvent(new Event('input'));
+    document.querySelector<HTMLButtonElement>('#inspector-body .color-field .swatch-btn')!.click();
+    const hex = document.querySelector<HTMLInputElement>('.color-pop .cp-hex')!;
+    expect(hex.value).toBe('#FF0000');
+    hex.value = '#00ff00';
+    hex.dispatchEvent(new Event('change'));
     expect(f.api.editObj).toHaveBeenCalledWith(obj, { fill: '#00ff00' });
 
-    const alpha = document.querySelector<HTMLInputElement>('#inspector-body .color-field input[type=number]')!;
-    alpha.value = '0.5';
-    alpha.dispatchEvent(new Event('change'));
+    const al = document.querySelector<HTMLInputElement>('.color-pop .cp-alpha')!;
+    al.value = '128';
+    al.dispatchEvent(new Event('input'));
+    al.dispatchEvent(new Event('change'));
     expect(f.api.editObj).toHaveBeenLastCalledWith(obj, { fill: '#00ff0080' });
   });
 
