@@ -150,6 +150,9 @@ input[type="range"] { accent-color: var(--accent); }
 .aligngrid { display: grid; grid-template-columns: repeat(3, 40px); gap: 4px; justify-content: start; }
 .aligngrid .iconbtn { width: 40px; height: 30px; border: 1px solid var(--line); background: var(--panel-2); }
 .aligngrid .asep { grid-column: 1 / -1; height: 1px; background: var(--line); margin: 3px 0; }
+.panel-sep { height: 1px; background: var(--line); margin: 9px 2px; }
+.iconbtn:disabled { opacity: 0.35; cursor: default; }
+.iconbtn:disabled:hover { background: var(--panel-2); color: inherit; }
 
 .panel-title {
   font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;

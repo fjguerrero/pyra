@@ -31,6 +31,8 @@ const P: Record<string, string> = {
   plus: 'M12 5v14M5 12h14',
   up: 'M12 19V5m-6 6 6-6 6 6',
   down: 'M12 5v14m-6-6 6 6 6-6',
+  orderUp: 'M12 20v-7m-4 3 4-3 4 3M7 8h10',
+  orderDown: 'M12 4v7m-4-3 4 3 4-3M7 16h10',
   flipH: 'M12 4v16M9 8 5 12l4 4zM15 8l4 4-4 4z',
   flipV: 'M4 12h16M8 9 12 5l4 4zM8 15l4 4 4-4z',
   layers: 'M12 3 3 8l9 5 9-5zM3 13l9 5 9-5',
@@ -44,8 +46,8 @@ const P: Record<string, string> = {
   alignBottom: 'M4 20h16M7 7v9M14 11v5',
   hdist: 'M4 4v16M12 4v16M20 4v16M7 10v4M15 10v4',
   vdist: 'M4 4h16M4 12h16M4 20h16M10 7h4M10 15h4',
-  front: 'M4 4h16M12 20V8m-5 5 5-5 5 5',
-  back: 'M4 20h16M12 4v12m-5-5 5 5 5-5',
+  front: 'M4 4h11M4 4v11M9 9h11v11H9z',
+  back: 'M4 4h11v11H4zM20 9v11M9 20h11',
   check: 'M5 13l4 4L19 7',
 };
 

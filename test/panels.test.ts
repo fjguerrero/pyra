@@ -60,6 +60,12 @@ const clickByAttr = (sel: string, attr: string, value: string): void => {
   b.click();
 };
 
+/** Monta con el primer objeto del fixture seleccionado: alinear/orden/voltear se habilitan. */
+function mountSel(f: { doc: Doc; view: View; api: PanelApi }): void {
+  const id = activePage(f.doc).layers[0].objects[0].id;
+  mount(f.doc, id, null, [id], f.view, f.api);
+}
+
 describe('Alinear: 8 botones reales, uno por cada operación', () => {
   const EXPECTED: [string, string][] = [
     ['left', 'left'],
@@ -84,28 +90,36 @@ describe('Alinear: 8 botones reales, uno por cada operación', () => {
 
   it.each(EXPECTED)('el botón %s invoca align(%s)', (attr, kind) => {
     const f = fixture();
-    mount(f.doc, null, null, [], f.view, f.api);
+    mountSel(f);
     clickByAttr('#align-body', 'data-align', attr);
     expect(f.api.align).toHaveBeenCalledWith(kind);
   });
 
-  it('pulsar un botón de alinear no dispara además la fila de capa que lo contiene', () => {
+  it('sin selección los botones de alinear/orden/voltear están deshabilitados; con selección, no', () => {
     const f = fixture();
     mount(f.doc, null, null, [], f.view, f.api);
+    expect(buttonsIn('#align-body').every((b) => b.disabled)).toBe(true);
+    mountSel(f);
+    expect(buttonsIn('#align-body').every((b) => !b.disabled)).toBe(true);
+  });
+
+  it('pulsar un botón de alinear no dispara además la fila de capa que lo contiene', () => {
+    const f = fixture();
+    mountSel(f);
     clickByAttr('#align-body', 'data-align', 'left');
     expect(f.api.selectLayer).not.toHaveBeenCalled();
   });
 
   it.each(['front', 'up', 'down', 'back'])('el botón de orden %s invoca order(%s)', (kind) => {
     const f = fixture();
-    mount(f.doc, null, null, [], f.view, f.api);
+    mountSel(f);
     clickByAttr('#align-body', 'data-order', kind);
     expect(f.api.order).toHaveBeenCalledWith(kind);
   });
 
   it.each(['h', 'v'])('el botón de voltear %s invoca flip(%s)', (axis) => {
     const f = fixture();
-    mount(f.doc, null, null, [], f.view, f.api);
+    mountSel(f);
     clickByAttr('#align-body', 'data-flip', axis);
     expect(f.api.flip).toHaveBeenCalledWith(axis);
   });

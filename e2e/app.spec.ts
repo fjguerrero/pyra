@@ -1195,6 +1195,39 @@ test('orden de apilado: enviar al fondo y deshacer', async ({ page }) => {
   await expect.poll(xs, { timeout: 5000 }).toEqual(before);
 });
 
+test('orden z por teclado: [ ] mueven un paso e Inicio/Fin llevan a los extremos', async ({ page }) => {
+  const xs = () =>
+    page.evaluate(
+      () =>
+        new Promise<number[]>((resolve) => {
+          const open = indexedDB.open('pyra');
+          open.onsuccess = () => {
+            const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+            req.onsuccess = () => resolve((req.result?.pages?.[0]?.layers?.[0]?.objects ?? []).map((o: any) => o.x));
+            req.onerror = () => resolve([]);
+          };
+          open.onerror = () => resolve([]);
+        }),
+    );
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [180, 180]);
+  await page.keyboard.press('r');
+  await drag(page, [200, 100], [280, 180]);
+  await page.keyboard.press('r');
+  await drag(page, [300, 100], [380, 180]); // A, B, C en ese orden de apilado
+  await expect.poll(xs, { timeout: 5000 }).toHaveLength(3);
+  const [a, b, c] = await xs(); // orden de apilado = orden de dibujo
+  await page.keyboard.press('v');
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + 140, box.y + 140); // clic dentro de A: lo selecciona
+  await page.keyboard.press(']'); // un paso adelante, no hasta el frente
+  await expect.poll(xs, { timeout: 5000 }).toEqual([b, a, c]);
+  await page.keyboard.press('Home'); // al frente de golpe
+  await expect.poll(xs, { timeout: 5000 }).toEqual([b, c, a]);
+  await page.keyboard.press('End'); // al fondo de golpe
+  await expect.poll(xs, { timeout: 5000 }).toEqual([a, b, c]);
+});
+
 test('páginas: crear y eliminar con undo', async ({ page }) => {
   await page.locator('#pages-body [data-act="addpage"]').click();
   await expect(page.locator('#pages-body .row')).toHaveCount(2);

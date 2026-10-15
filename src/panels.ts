@@ -788,29 +788,34 @@ export function renderPanels(
     if (kind === 'hdist') grid.insertAdjacentHTML('beforeend', '<span class="asep"></span>');
     const ab2 = btn('', '', t(titleKey), false, () => api.align(kind), iconName);
     ab2.dataset.align = kind;
+    if (!selectedIds.length) (ab2 as HTMLButtonElement).disabled = true; // sin selección no hay nada que alinear
     grid.appendChild(ab2);
   }
   ab.appendChild(grid);
+  ab.insertAdjacentHTML('beforeend', '<div class="panel-sep"></div>');
   // orden de apilado: frente / un paso arriba / un paso abajo / fondo
   const og = document.createElement('div');
   og.className = 'aligngrid';
   for (const [kind, iconName, titleKey] of [
     ['front', 'front', 'order_front'],
-    ['up', 'up', 'order_up'],
-    ['down', 'down', 'order_down'],
+    ['up', 'orderUp', 'order_up'],
+    ['down', 'orderDown', 'order_down'],
     ['back', 'back', 'order_back'],
   ] as const) {
     const ob = btn('', '', t(titleKey), false, () => api.order(kind), iconName);
     ob.dataset.order = kind;
+    if (!selectedIds.length) (ob as HTMLButtonElement).disabled = true;
     og.appendChild(ob);
   }
   ab.appendChild(og);
+  ab.insertAdjacentHTML('beforeend', '<div class="panel-sep"></div>');
   // voltear espejo (Fireworks: Transform → Flip)
   const fg = document.createElement('div');
   fg.className = 'aligngrid';
   for (const [axis, iconName, titleKey] of [['h', 'flipH', 'flip_h'], ['v', 'flipV', 'flip_v']] as const) {
     const fb = btn('', '', t(titleKey), false, () => api.flip(axis), iconName);
     fb.dataset.flip = axis;
+    if (!selectedIds.length) (fb as HTMLButtonElement).disabled = true;
     fg.appendChild(fb);
   }
   ab.appendChild(fg);

@@ -11,7 +11,7 @@ import { exportSvg } from './svg-export';
 import { bbox, computeAlign, type AlignKind, type Move } from './align';
 import { Renderer } from './render';
 import { DEFAULT_FONT, measureText } from './text';
-import { duplicateCmd, flipCmd, groupCmd, pasteCmd, unionCmd, zOrderCmd } from './commands';
+import { duplicateCmd, flipCmd, groupCmd, pasteCmd, unionCmd } from './commands';
 import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
 import { pngInsertPhys } from './png';
@@ -2243,9 +2243,10 @@ window.addEventListener('keydown', (e) => {
     setTool('line');
   } else if (!mod && (e.key === 't' || e.key === 'T')) {
     setTool('text');
-  } else if (!mod && (e.key === '[' || e.key === ']')) {
-    // [ y ]: grosor de la herramienta activa si la tiene (Sketchbook); si no, z-order.
-    const cur = tool === 'pencil' ? pencil.size : tool === 'polypen' ? poly.width : tool === 'eraser' ? eraser.size : tool === 'brush' ? brush.size : 0;
+  } else if (!mod && (e.key === '[' || e.key === ']' || e.key === 'Home' || e.key === 'End')) {
+    // [ y ]: grosor de la herramienta activa si la tiene (Sketchbook); si no, un paso de z-order.
+    // Inicio/Fin: llevar al frente / al fondo (sin atajo de grosor asociado).
+    const cur = (e.key === '[' || e.key === ']') ? (tool === 'pencil' ? pencil.size : tool === 'polypen' ? poly.width : tool === 'eraser' ? eraser.size : tool === 'brush' ? brush.size : 0) : 0;
     if (cur) {
       const step = cur <= 8 ? 1 : cur <= 32 ? 2 : cur <= 96 ? 4 : 8;
       const next = Math.max(1, Math.min(200, cur + (e.key === ']' ? step : -step)));
@@ -2255,12 +2256,7 @@ window.addEventListener('keydown', (e) => {
       else setBrush({ size: next });
       e.preventDefault();
     } else {
-      const cmd = zOrderCmd(activePage(doc), selectedObjs(), e.key === ']' ? 1 : -1);
-      if (cmd) {
-        history.run(cmd);
-        persist();
-        invalidate();
-      }
+      panelApi.order(e.key === ']' ? 'up' : e.key === '[' ? 'down' : e.key === 'Home' ? 'front' : 'back');
     }
   } else if (!mod && (e.key === 'b' || e.key === 'B')) {
     setTool('brush');
@@ -2316,13 +2312,6 @@ window.addEventListener('keydown', (e) => {
     if (paste) {
       history.run(paste.cmd);
       select(paste.clones[paste.clones.length - 1].id);
-      persist();
-      invalidate();
-    }
-  } else if (e.key === '[' || e.key === ']') {
-    const cmd = zOrderCmd(activePage(doc), selectedObjs(), e.key === ']' ? 1 : -1);
-    if (cmd) {
-      history.run(cmd);
       persist();
       invalidate();
     }
