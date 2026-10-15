@@ -116,6 +116,27 @@ test('eliminar con Supr deja la capa vacía', async ({ page }) => {
   await expect(layerCount(page)).toContainText('· 0');
 });
 
+test('Ctrl+A selecciona todo y Supr lo borra todo', async ({ page }) => {
+  await page.keyboard.press('r');
+  await drag(page, [100, 100], [180, 160]);
+  await page.keyboard.press('r');
+  await drag(page, [220, 100], [300, 160]);
+  await expect(layerCount(page)).toContainText('· 2');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Delete');
+  await expect(layerCount(page)).toContainText('· 0');
+});
+
+test('zoom con + y -: el porcentaje del zoom sube y baja', async ({ page }) => {
+  const zoomNum = page.locator('#zoom-num');
+  await page.keyboard.press('0'); // vista determinista
+  const base = Number(await zoomNum.inputValue());
+  await page.keyboard.press('=');
+  await expect.poll(async () => Number(await zoomNum.inputValue())).toBeGreaterThan(base);
+  await page.keyboard.press('-');
+  await expect.poll(async () => Number(await zoomNum.inputValue())).toBe(base);
+});
+
 test('importar una imagen crea un bitmap seleccionable y movible', async ({ page }) => {
   // PNG 100×100 rojo generado en el propio navegador
   const dataUrl = await page.evaluate(() => {

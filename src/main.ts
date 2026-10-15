@@ -2235,6 +2235,9 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === '0') {
     fitAll(view, activePage(doc), canvas.clientWidth, canvas.clientHeight);
     invalidate();
+  } else if (!mod && (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_')) {
+    // zoom con teclado: +/= acerca, -/_ aleja (el zoom num/range se sincroniza en renderPanels)
+    setZoom(view.zoom * (e.key === '-' || e.key === '_' ? 0.8 : 1.25));
   } else if (e.key === 'Escape') {
     if (!helpModal.hidden) {
       helpModal.hidden = true;
@@ -2306,6 +2309,20 @@ window.addEventListener('keydown', (e) => {
       persist();
       invalidate();
     }
+  } else if (mod && (e.key === 'a' || e.key === 'A')) {
+    e.preventDefault();
+    // Ctrl+A: todo lo de las capas visibles y no bloqueadas (los grupos se expanden como siempre)
+    const ids = activePage(doc).layers.filter((l) => l.visible && !l.locked).flatMap((l) => l.objects.map((o) => o.id));
+    if (ids.length) {
+      selectedIds = ids;
+      selectedId = ids[ids.length - 1];
+      selectedLayerId = null;
+      expandGroups();
+      invalidate();
+    }
+  } else if (mod && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault(); // guardar ya, sin esperar al debounce del autoguardado
+    void saveDoc(doc);
   } else if (mod && (e.key === 'g' || e.key === 'G')) {
     e.preventDefault();
     const objs = selectedObjs();
