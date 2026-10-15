@@ -124,11 +124,11 @@ input[type="range"] { accent-color: var(--accent); }
 .field input[type="range"] { flex: 1; min-width: 0; }
 
 #toolbar {
-  display: flex; flex-direction: column; gap: 2px; padding: 6px 4px;
+  display: flex; flex-direction: column; gap: 3px; padding: 8px 6px;
   background: var(--panel); border-right: 1px solid var(--line);
   position: relative;
 }
-.tsep { height: 1px; background: var(--line); margin: 4px 2px; }
+.tsep { height: 1px; background: var(--line); margin: 6px 4px; }
 #side { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; scrollbar-width: none; background: var(--panel); border-left: 1px solid var(--line); }
 .panel { flex: none; padding: 8px 10px; }
 .panel + .panel { border-top: 1px solid var(--line); }
@@ -175,11 +175,19 @@ input[type="range"] { accent-color: var(--accent); }
 #help-modal code { background: var(--panel-2); border-radius: 4px; padding: 1px 4px; }
 
 .tool {
-  width: 32px; height: 32px; display: grid; place-items: center;
-  border-radius: 6px; color: var(--dim); cursor: pointer; user-select: none;
+  width: 34px; height: 34px; display: grid; place-items: center; position: relative;
+  border-radius: 8px; color: var(--dim); cursor: pointer; user-select: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
+.tool svg { width: 20px; height: 20px; }
 .tool:hover { background: var(--panel-2); color: var(--text); }
-.tool.active { background: var(--accent); color: #fff; }
+/* activo: tinte del acento + barra indicadora, en lugar del relleno plano */
+.tool.active { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); color: var(--accent); }
+.tool.active::before {
+  content: ''; position: absolute; left: -6px; top: 8px; bottom: 8px;
+  width: 2px; border-radius: 1px; background: var(--accent);
+}
+.tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .field { display: flex; align-items: center; gap: 6px; }
 .field span { color: var(--dim); min-width: 52px; }
