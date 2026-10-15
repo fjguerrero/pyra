@@ -89,13 +89,23 @@ test('objeto seleccionado tiene prioridad al manipularlo aunque otro lo tape', a
   await expect(layerCount(page)).toContainText('· 2'); // sigue habiendo dos objetos
 });
 
-test('undo/redo con Ctrl+Z / Ctrl+Shift+Z', async ({ page }) => {
+test('undo/redo con Ctrl+Z / Ctrl+Shift+Z y con los botones de la barra', async ({ page }) => {
+  const undo = page.locator('#undo-btn');
+  const redo = page.locator('#redo-btn');
+  await expect(undo).toBeDisabled(); // al arrancar no hay nada que deshacer
   await page.keyboard.press('r');
   await drag(page, [100, 100], [300, 250]);
   await expect(layerCount(page)).toContainText('· 1');
+  await expect(undo).toBeEnabled();
   await page.keyboard.press('Control+z');
   await expect(layerCount(page)).toContainText('· 0');
+  await expect(redo).toBeEnabled();
   await page.keyboard.press('Control+Shift+z');
+  await expect(layerCount(page)).toContainText('· 1');
+  // los botones hacen lo mismo que los atajos
+  await undo.click();
+  await expect(layerCount(page)).toContainText('· 0');
+  await redo.click();
   await expect(layerCount(page)).toContainText('· 1');
 });
 

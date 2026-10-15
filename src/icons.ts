@@ -48,6 +48,8 @@ const P: Record<string, string> = {
   vdist: 'M4 4h16M4 12h16M4 20h16M10 7h4M10 15h4',
   front: 'M4 4h11M4 4v11M9 9h11v11H9z',
   back: 'M4 4h11v11H4zM20 9v11M9 20h11',
+  undo: 'M8 7L3.5 11.5 8 16M3.5 11.5H15a5.5 5.5 0 0 1 0 11H10',
+  redo: 'M16 7l4.5 4.5L16 16M20.5 11.5H9a5.5 5.5 0 0 0 0 11h5',
   check: 'M5 13l4 4L19 7',
 };
 

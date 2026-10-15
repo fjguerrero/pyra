@@ -2133,6 +2133,30 @@ window.addEventListener('keyup', (e) => {
 });
 window.addEventListener('blur', () => { spaceDown = false; }); // Alt+Tab con Space pulsado: no dejar la mano pegada
 
+// ---- botones de deshacer/rehacer (barra superior) ----
+const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement;
+const redoBtn = document.getElementById('redo-btn') as HTMLButtonElement;
+function undoAction(): void {
+  if (history.undo()) {
+    persist();
+    invalidate();
+  }
+}
+function redoAction(): void {
+  if (history.redo()) {
+    persist();
+    invalidate();
+  }
+}
+function syncHistBtns(): void {
+  undoBtn.disabled = !history.canUndo();
+  redoBtn.disabled = !history.canRedo();
+}
+history.onChange(syncHistBtns);
+undoBtn.addEventListener('click', undoAction);
+redoBtn.addEventListener('click', redoAction);
+syncHistBtns();
+
 window.addEventListener('keydown', (e) => {
   if ((e.target as HTMLElement).tagName === 'INPUT') return;
   const mod = e.ctrlKey || e.metaKey;
@@ -2146,16 +2170,10 @@ window.addEventListener('keydown', (e) => {
   }
   if (mod && e.key === 'z' && !e.shiftKey) {
     e.preventDefault();
-    if (history.undo()) {
-      persist();
-      invalidate();
-    }
+    undoAction();
   } else if (mod && (e.key === 'Z' || (e.key === 'z' && e.shiftKey))) {
     e.preventDefault();
-    if (history.redo()) {
-      persist();
-      invalidate();
-    }
+    redoAction();
   } else if (e.key === 'Delete' || e.key === 'Backspace') {
     // Con la herramienta de nodos y un nodo activo: Supr borra SOLO ese nodo (FreeHand), no el objeto
     if (tool === 'subselect' && activeNode && activeNode.id === selectedId && selectedIds.length === 1) {
