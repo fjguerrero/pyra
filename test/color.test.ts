@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hexToRgba, hsvToRgb, rgbToHsv, rgbaToHex } from '../src/color';
+import { extractPalette, hexToRgba, hsvToRgb, rgbToHsv, rgbaToHex } from '../src/color';
 
 describe('color: conversiones del mezclador', () => {
   it('hex → rgba con y sin alfa', () => {
@@ -24,5 +24,28 @@ describe('color: conversiones del mezclador', () => {
       expect(Math.abs(back.g - g)).toBeLessThan(1);
       expect(Math.abs(back.b - b)).toBeLessThan(1);
     }
+  });
+});
+
+describe('color: extractPalette (median-cut)', () => {
+  const px = (blocks: [string, number][]) => {
+    const d = new Uint8ClampedArray(blocks.reduce((n, [, c]) => n + c, 0) * 4);
+    let i = 0;
+    for (const [hex, n] of blocks) {
+      const c = hexToRgba(hex);
+      for (let k = 0; k < n; k++, i += 4) {
+        d[i] = c.r; d[i + 1] = c.g; d[i + 2] = c.b; d[i + 3] = Math.round(c.a * 255);
+      }
+    }
+    return d;
+  };
+
+  it('dos colores planos opacos → exactamente esos dos', () => {
+    expect(extractPalette(px([['#ff0000', 100], ['#0000ff', 100]]), 2).sort()).toEqual(['#0000ff', '#ff0000']);
+  });
+
+  it('ignora los píxeles transparentes y deduplica', () => {
+    expect(extractPalette(px([['#00ff00', 50], ['#00ff0040', 50]]), 4)).toEqual(['#00ff00']);
+    expect(extractPalette(px([['#ff000040', 40]]), 4)).toEqual([]);
   });
 });

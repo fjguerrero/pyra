@@ -784,6 +784,25 @@ test('menú contextual: clic derecho abre menú y el menú crea/borra la guía',
   await expect.poll(guideCount(page), { timeout: 5000 }).toBe(0);
 });
 
+test('menú contextual: extraer paleta de un bitmap va a Favoritos', async ({ page }) => {
+  const dataUrl = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 60; c.height = 60;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#ff0000'; g.fillRect(0, 0, 30, 60);
+    g.fillStyle = '#0000ff'; g.fillRect(30, 0, 30, 60);
+    return c.toDataURL('image/png');
+  });
+  await page.setInputFiles('#import-file', { name: 'mitad.png', mimeType: 'image/png', buffer: Buffer.from(dataUrl.split(',')[1], 'base64') });
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' }); // el bitmap queda centrado
+  await expect(page.locator('.ctx-menu [data-act="palette"]')).toBeEnabled();
+  await page.click('.ctx-menu [data-act="palette"]');
+  await expect
+    .poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem('pyra:swatches') || '{"custom":[]}').custom ?? []).map((s: { color: string }) => s.color).sort()), { timeout: 5000 })
+    .toEqual(['#0000ff', '#ff0000']);
+});
+
 test('guías: dibujar, mover y redimensionar imantan a la guía manual', async ({ page }) => {
   const box = (await canvas(page).boundingBox())!;
   // calibrar mundo↔pantalla con un rectángulo de tamaño conocido (la vista 'ajustar' depende del viewport)

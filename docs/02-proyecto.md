@@ -166,6 +166,13 @@ Verification: clean `tsc --noEmit`, 314 unit tests, 78 Playwright e2e.
 
 Verification: clean `tsc --noEmit`, 317 unit tests, 78 Playwright e2e.
 
+## Status v1.8 (2026-10-15)
+
+- Palette extraction: right-click a bitmap → "Extract palette" adds up to 8 dominant colors to Favorites in the color mixer (persisted, shown with the checkerboard like any favorite). `extractPalette` in `color.ts` is a plain median-cut over RGBA pixels (transparent ignored); `extractBitmapPalette` in `main.ts` samples the source at 64px with the crop applied and image smoothing off (no muddy edge colors). `ponytail:` notes: ignores eraser holes and sat/bri filters (samples the source); median-cut is fine at sample sizes.
+- e2e: import a two-color PNG, right-click, palette lands in Favorites (exact colors thanks to nearest-neighbor sampling).
+
+Verification: clean `tsc --noEmit`, 319 unit tests, 79 Playwright e2e.
+
 ## Pending
 
 - Technical debt:

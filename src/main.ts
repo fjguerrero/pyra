@@ -16,7 +16,8 @@ import { loadDoc, saveDoc } from './store';
 import { exportFpng, importFpng, downloadBlob } from './export';
 import { pngInsertPhys } from './png';
 import { renderPanels, type BrushPanelArg } from './panels';
-import { addRecent, loadSwatches } from './swatches';
+import { addCustom, addRecent, loadSwatches } from './swatches';
+import { extractPalette } from './color';
 import { icon } from './icons';
 import { LANGS, currentLang, setLang, statusText, t } from './i18n';
 
@@ -1584,6 +1585,23 @@ function deleteSelection(): void {
   invalidate();
 }
 
+/** Extrae la paleta de un bitmap a Favoritos: muestrea 64px con el crop aplicado + median-cut.
+ *  ponytail: ignora goma y filtros sat/bri (muestrea la fuente); añadir si molesta. */
+function extractBitmapPalette(o: BitmapObj): void {
+  const im = new Image();
+  im.onload = () => {
+    const c = o.crop ?? { x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight };
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 64;
+    const cx = cv.getContext('2d')!;
+    cx.imageSmoothingEnabled = false; // sin colores borra en los bordes al escalar
+    cx.drawImage(im, c.x, c.y, c.w, c.h, 0, 0, 64, 64);
+    const sw = loadSwatches();
+    for (const col of extractPalette(cx.getImageData(0, 0, 64, 64).data, 8)) addCustom(sw, col);
+  };
+  im.src = o.src;
+}
+
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   const page = activePage(doc);
@@ -1614,6 +1632,7 @@ canvas.addEventListener('contextmenu', (e) => {
   }
   const objs = selectedObjs();
   const has = objs.length > 0;
+  const bmp = objs.find((o): o is BitmapObj => o.shape === 'bitmap');
   openCtxMenu(e.clientX, e.clientY, [
     { label: t('order_front'), act: 'front', on: has, run: () => panelApi.order('front') },
     { label: t('order_up'), act: 'up', on: has, run: () => panelApi.order('up') },
@@ -1621,6 +1640,7 @@ canvas.addEventListener('contextmenu', (e) => {
     { label: t('order_back'), act: 'back', on: has, run: () => panelApi.order('back') },
     { label: t('ctx_group'), act: 'group', on: objs.length >= 2, run: () => doGroup(false) },
     { label: t('ctx_ungroup'), act: 'ungroup', on: objs.some((o) => o.group), run: () => doGroup(true) },
+    { label: t('ctx_palette'), act: 'palette', on: !!bmp, run: () => bmp && extractBitmapPalette(bmp) },
     { label: t('ctx_delete'), act: 'delete', on: has, run: () => deleteSelection() },
     { label: t('ctx_guide_v'), act: 'guide-v', on: true, run: () => addGuide('v', wx) },
     { label: t('ctx_guide_h'), act: 'guide-h', on: true, run: () => addGuide('h', wy) },
