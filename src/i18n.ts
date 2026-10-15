@@ -500,9 +500,10 @@ export function t(key: keyof Msg): string {
 
 export type MsgKey = keyof Msg;
 
-/** Barra de estado: `120% · selección 30×40 (2 objetos)`. */
-export function statusText(zoomPct: number, selW: number, selH: number, n: number): string {
+/** Barra de estado: `123, 45 · selección 30×40 (2 objetos)`. */
+export function statusText(zoomPct: number, selW: number, selH: number, n: number, cursor?: { x: number; y: number }): string {
   void zoomPct; // el zoom se muestra en su propio control de la barra
-  if (selW <= 0) return '';
-  return `${t('status_selection')} ${Math.round(selW)}×${Math.round(selH)}${n > 1 ? ` (${n} ${t('status_objects')})` : ''}`;
+  const sel = selW > 0 ? `${t('status_selection')} ${Math.round(selW)}×${Math.round(selH)}${n > 1 ? ` (${n} ${t('status_objects')})` : ''}` : '';
+  const cur = cursor ? `${Math.round(cursor.x)}, ${Math.round(cursor.y)}` : '';
+  return [cur, sel].filter(Boolean).join(' · ');
 }

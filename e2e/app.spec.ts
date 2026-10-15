@@ -144,6 +144,13 @@ test('preset 100% en el popup de zoom', async ({ page }) => {
   await expect(page.locator('#zoom-num')).toHaveValue('100');
 });
 
+test('las coordenadas del cursor aparecen en la barra de estado', async ({ page }) => {
+  await page.keyboard.press('0'); // fit: el centro del lienzo cae en el centro de la página
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator('#status-text')).toContainText('640, 400'); // página por defecto 1280×800
+});
+
 test('Ctrl+PageUp/PageDown cambian de página', async ({ page }) => {
   const activeIdx = () =>
     page.evaluate(

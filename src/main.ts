@@ -18,7 +18,7 @@ import { pngInsertPhys } from './png';
 import { renderPanels, type BrushPanelArg } from './panels';
 import { addRecent, loadSwatches } from './swatches';
 import { icon } from './icons';
-import { LANGS, currentLang, setLang, t } from './i18n';
+import { LANGS, currentLang, setLang, statusText, t } from './i18n';
 
 const doc: Doc = (await loadDoc()) ?? newDoc();
 // Color de trazo: el último color usado (lo que pinta el inspector).
@@ -1254,6 +1254,16 @@ canvas.addEventListener('pointermove', (e) => {
   cursorRing.hidden = false;
 });
 canvas.addEventListener('pointerleave', () => { const r = ringEl(); if (r) r.hidden = true; });
+
+// coordenadas del cursor en la barra de estado (en unidades del mundo)
+function statusWithCursor(cursor: { x: number; y: number } | undefined): void {
+  const target = document.getElementById('status-text') ?? document.getElementById('status');
+  if (!target) return;
+  const obj = findObj(activePage(doc), selectedId);
+  target.textContent = statusText(Math.round(view.zoom * 100), obj ? obj.w : 0, obj ? obj.h : 0, selectedIds.length, cursor);
+}
+canvas.addEventListener('pointermove', (e) => statusWithCursor(screenToWorld(view, e.offsetX, e.offsetY)));
+canvas.addEventListener('pointerleave', () => statusWithCursor(undefined));
 
 canvas.addEventListener('pointermove', (e) => {
   if (!drag) {
