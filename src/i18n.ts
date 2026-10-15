@@ -39,7 +39,7 @@ type Msg = {
   remove_glow: string; add_glow: string; glow_hint: string; glow_blur: string; glow_color: string;
   styles: string; save_style: string; save_style_hint: string; delete_style: string;
   align_left: string; align_hcenter: string; align_right: string; align_top: string; align_vcenter: string; align_bottom: string;
-  dist_h: string; dist_v: string; align_hint_multi: string; align_hint_single: string;
+  dist_h: string; dist_v: string; align_hint_multi: string; align_hint_single: string; align_hint_nodes: string;
   order_front: string; order_up: string; order_down: string; order_back: string;
   status_selection: string; status_objects: string;
   obj_rect: string; obj_ellipse: string; obj_line: string; obj_text: string; default_layer: string; default_page: string;
@@ -59,7 +59,7 @@ const en: Msg = {
   order_front: 'Bring to front', order_up: 'Bring forward', order_down: 'Send backward', order_back: 'Send to back',
   tool_pencil: 'Pencil (N)', pencil_continuous: 'Continuous', pencil_smooth: 'Smoothed', pen_curved: 'Curved', pen_straight: 'Straight', pencil_polygon: 'Polygon pencil', poly_freehand: 'Freehand', poly_straight: 'Straight lines', poly_stylized: 'Stylized', stroke_width: 'Stroke width', stroke_style: 'Stroke style', stroke_solid: 'Solid', stroke_dashed: 'Dashed', stroke_dotted: 'Dotted', stroke_dashdot: 'Dash-dot', no_fill: 'No fill',
   preset_pencil: 'Pencil', preset_pen: 'Ink pen', preset_marker: 'Marker', preset_brush: 'Soft brush', brush_stabilizer: 'Stabilizer', brush_taper: 'End taper', eraser_size: 'Eraser size',
-  tool_select: 'Selection (V)', tool_subselect: 'Edit nodes (A): reshape vectors like the FreeHand pointer', tool_rect: 'Rectangle (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Line (L)', tool_text: 'Text (T)',
+  tool_select: 'Selection (V)', tool_subselect: 'Edit nodes (A): reshape vectors like the FreeHand pointer; Shift+click multi-selects nodes to move, delete and align them together', tool_rect: 'Rectangle (R)', tool_ellipse: 'Ellipse (E)', tool_line: 'Line (L)', tool_text: 'Text (T)',
   import_image: 'Import image', export_fpng: 'Export .f.png', export_png: 'Export flat PNG', export_svg: 'Export SVG', fit_zoom: 'Fit zoom (0)', change_lang: 'Change language',
   panel_layers: 'Layers', panel_pages: 'Pages', panel_inspector: 'Properties', panel_align: 'Align',
   layer_opacity: 'Layer opacity', show_layer: 'Show layer', hide_layer: 'Hide layer', unlock_layer: 'Unlock layer', lock_layer: 'Lock layer',
@@ -78,7 +78,7 @@ const en: Msg = {
   remove_glow: 'Remove glow', add_glow: 'Add glow', glow_hint: 'Live glow', glow_blur: 'Glow blur', glow_color: 'Glow color',
   styles: 'Styles', save_style: 'Save style', save_style_hint: 'Save this object\u2019s look as a reusable style', delete_style: 'Delete style',
   align_left: 'Align left', align_hcenter: 'Center horizontally', align_right: 'Align right', align_top: 'Align top', align_vcenter: 'Center vertically', align_bottom: 'Align bottom',
-  dist_h: 'Distribute horizontally', dist_v: 'Distribute vertically', align_hint_multi: 'Distribute spreads the gaps evenly', align_hint_single: 'With 1 object aligns to the page; with 2+, to the group',
+  dist_h: 'Distribute horizontally', dist_v: 'Distribute vertically', align_hint_multi: 'Distribute spreads the gaps evenly', align_hint_single: 'With 1 object aligns to the page; with 2+, to the group', align_hint_nodes: 'With 2+ nodes selected (Shift+click), they align to each other',
   status_selection: 'selection', status_objects: 'objects',
   obj_rect: 'Rectangle', obj_ellipse: 'Ellipse', obj_line: 'Line', obj_text: 'Text', default_layer: 'Layer 1', default_page: 'Page',
   settings: 'Settings', theme: 'Theme', theme_system: 'System', theme_light: 'Light', theme_dark: 'Dark', theme_sepia: 'Sepia', theme_midnight: 'Midnight', theme_contrast: 'Contrast',
@@ -105,7 +105,7 @@ const es: Partial<Msg> = {
   order_front: 'Traer al frente', order_up: 'Traer adelante', order_down: 'Enviar atrás', order_back: 'Enviar al fondo',
   tool_pencil: 'Lápiz (N)', pencil_continuous: 'Continuo', pencil_smooth: 'Suavizado', pen_curved: 'Curvado', pen_straight: 'Recto', pencil_polygon: 'Lápiz de polígonos', poly_freehand: 'A mano alzada', poly_straight: 'Líneas rectas', poly_stylized: 'Estilizado', stroke_width: 'Grosor del trazo', stroke_style: 'Estilo del trazo', stroke_solid: 'Sólido', stroke_dashed: 'Discontinuo', stroke_dotted: 'Punteado', stroke_dashdot: 'Raya-punto', no_fill: 'Sin relleno',
   preset_pencil: 'Lápiz', preset_pen: 'Pluma de tinta', preset_marker: 'Marcador', preset_brush: 'Pincel suave', brush_stabilizer: 'Estabilizador', brush_taper: 'Afinado final', eraser_size: 'Tamaño de goma',
-  tool_select: 'Selección (V)', tool_subselect: 'Editar nodos (A): transforma vectores como el puntero de FreeHand', tool_rect: 'Rectángulo (R)', tool_ellipse: 'Elipse (E)', tool_line: 'Línea (L)', tool_text: 'Texto (T)',
+  tool_select: 'Selección (V)', tool_subselect: 'Editar nodos (A): transforma vectores como el puntero de FreeHand; Mayús+clic multi-selecciona nodos para moverlos, borrarlos y alinearlos juntos', tool_rect: 'Rectángulo (R)', tool_ellipse: 'Elipse (E)', tool_line: 'Línea (L)', tool_text: 'Texto (T)',
   import_image: 'Importar imagen', export_fpng: 'Exportar .f.png', export_png: 'Exportar PNG plano', export_svg: 'Exportar SVG', fit_zoom: 'Zoom ajustar (0)', change_lang: 'Cambiar idioma',
   panel_layers: 'Capas', panel_pages: 'Páginas', panel_inspector: 'Propiedades', panel_align: 'Alinear',
   layer_opacity: 'Opacidad capa', show_layer: 'Mostrar capa', hide_layer: 'Ocultar capa', unlock_layer: 'Desbloquear capa', lock_layer: 'Bloquear capa',
@@ -124,7 +124,7 @@ const es: Partial<Msg> = {
   remove_glow: 'Quitar glow', add_glow: 'Añadir glow', glow_hint: 'Resplandor en vivo', glow_blur: 'Glow desenfoque', glow_color: 'Glow color',
   styles: 'Estilos', save_style: 'Guardar estilo', save_style_hint: 'Guardar el aspecto de este objeto como estilo reutilizable', delete_style: 'Eliminar estilo',
   align_left: 'Alinear a la izquierda', align_hcenter: 'Centrar horizontalmente', align_right: 'Alinear a la derecha', align_top: 'Alinear arriba', align_vcenter: 'Centrar verticalmente', align_bottom: 'Alinear abajo',
-  dist_h: 'Distribuir horizontalmente', dist_v: 'Distribuir verticalmente', align_hint_multi: 'Distribuir reparte el hueco por igual', align_hint_single: 'Con 1 objeto se alinea a la página; con 2+, al grupo',
+  dist_h: 'Distribuir horizontalmente', dist_v: 'Distribuir verticalmente', align_hint_multi: 'Distribuir reparte el hueco por igual', align_hint_single: 'Con 1 objeto se alinea a la página; con 2+, al grupo', align_hint_nodes: 'Con 2+ nodos seleccionados (Mayús+clic), se alinean entre sí',
   status_selection: 'selección', status_objects: 'objetos',
   obj_rect: 'Rectángulo', obj_ellipse: 'Elipse', obj_line: 'Línea', obj_text: 'Texto', default_layer: 'Capa 1', default_page: 'Página',
   settings: 'Configuración', theme: 'Tema', theme_system: 'Sistema', theme_light: 'Claro', theme_dark: 'Oscuro', theme_sepia: 'Sepia', theme_midnight: 'Medianoche', theme_contrast: 'Contraste',
@@ -166,7 +166,7 @@ const zh: Partial<Msg> = {
   remove_glow: '移除光晕', add_glow: '添加光晕', glow_hint: '实时光晕', glow_blur: '光晕模糊', glow_color: '光晕颜色',
   styles: '样式', save_style: '保存样式', save_style_hint: '将此对象的外观保存为可复用样式', delete_style: '删除样式',
   align_left: '左对齐', align_hcenter: '水平居中', align_right: '右对齐', align_top: '顶部对齐', align_vcenter: '垂直居中', align_bottom: '底部对齐',
-  dist_h: '水平分布', dist_v: '垂直分布', align_hint_multi: '分布会平均分配间距', align_hint_single: '1 个对象时对齐页面；2 个以上时对齐所选组',
+  dist_h: '水平分布', dist_v: '垂直分布', align_hint_multi: '分布会平均分配间距', align_hint_single: '1 个对象时对齐页面；2 个以上时对齐所选组', align_hint_nodes: '选中 2 个以上节点（Shift+单击）时，节点相互对齐',
   status_selection: '选中', status_objects: '个对象',
   settings: '设置', theme: '主题', theme_system: '跟随系统', theme_light: '浅色', theme_dark: '深色', theme_sepia: '棕褐', theme_midnight: '午夜', theme_contrast: '高对比',
 };
@@ -191,7 +191,7 @@ const hi: Partial<Msg> = {
   remove_glow: 'ग्लो हटाएँ', add_glow: 'ग्लो जोड़ें', glow_hint: 'लाइव ग्लो', glow_blur: 'ग्लो धुंधलापन', glow_color: 'ग्लो रंग',
   styles: 'स्टाइल', save_style: 'स्टाइल सहेजें', save_style_hint: 'इस ऑब्जेक्ट का रूप दोबारा उपयोग योग्य स्टाइल के रूप में सहेजें', delete_style: 'स्टाइल हटाएँ',
   align_left: 'बाएँ संरेखित करें', align_hcenter: 'क्षैतिज केंद्रित करें', align_right: 'दाएँ संरेखित करें', align_top: 'ऊपर संरेखित करें', align_vcenter: 'ऊर्ध्वाधर केंद्रित करें', align_bottom: 'नीचे संरेखित करें',
-  dist_h: 'क्षैतिज वितरित करें', dist_v: 'ऊर्ध्वाधर वितरित करें', align_hint_multi: 'वितरण अंतराल समान बाँटता है', align_hint_single: '1 ऑब्जेक्ट पर पृष्ठ के साथ; 2+ पर समूह के साथ',
+  dist_h: 'क्षैतिज वितरित करें', dist_v: 'ऊर्ध्वाधर वितरित करें', align_hint_multi: 'वितरण अंतराल समान बाँटता है', align_hint_single: '1 ऑब्जेक्ट पर पृष्ठ के साथ; 2+ पर समूह के साथ', align_hint_nodes: '2+ नोड चयनित (Shift+क्लिक) पर वे आपस में संरेखित होते हैं',
   status_selection: 'चयन', status_objects: 'ऑब्जेक्ट',
   settings: 'सेटिंग्स', theme: 'थीम', theme_system: 'सिस्टम', theme_light: 'हल्का', theme_dark: 'गहरा', theme_sepia: 'सीपिया', theme_midnight: 'मिडनाइट', theme_contrast: 'कंट्रास्ट',
 };

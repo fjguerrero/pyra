@@ -42,7 +42,7 @@ export interface Scene {
   /** Colores configurables de la interfaz de dibujo: nodos de paths y marcos de selección. */
   ui?: { nodeColor: string; frameColor: string };
   /** Herramienta de nodos (estilo FreeHand): vértices del vector seleccionado en coords de mundo. */
-  nodes?: { pts: { x: number; y: number; kind?: 'corner' | 'smooth' | 'cusp' }[]; active?: number; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] };
+  nodes?: { pts: { x: number; y: number; kind?: 'corner' | 'smooth' | 'cusp' }[]; activeList?: number[]; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] };
 }
 
 const WORKSPACE = '#0e1013';
@@ -295,9 +295,10 @@ export class Renderer {
       // FreeHand: los vértices del camino seleccionado con icono por tipo de nodo:
       // cuadrado = esquina, círculo = suave (asa espejada), triángulo = cúspide (asas independientes);
       // el nodo activo (último clickeado/alternado/arrastrado) se pinta en azul
+      const activeSet = new Set(scene.nodes.activeList ?? []);
       for (const [i, p] of scene.nodes.pts.entries()) {
         const sx = p.x * v.zoom + v.panX, sy = p.y * v.zoom + v.panY;
-        ctx.fillStyle = i === scene.nodes.active ? '#0a7cff' : (scene.ui?.nodeColor ?? '#111111');
+        ctx.fillStyle = activeSet.has(i) ? '#0a7cff' : (scene.ui?.nodeColor ?? '#111111');
         if (p.kind === 'smooth') {
           ctx.beginPath();
           ctx.arc(sx, sy, 3, 0, Math.PI * 2);

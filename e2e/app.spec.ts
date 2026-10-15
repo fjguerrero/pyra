@@ -1414,6 +1414,41 @@ test('herramienta de nodos (A): las flechas mueven solo el nodo activo, no el ob
   await expect.poll(field('h'), { timeout: 5000 }).toBeLessThanOrEqual(2);
 });
 
+test('nodos (A): Shift+clic multi-selecciona, las flechas los mueven juntos y Alinear los alinea entre sí', async ({ page }) => {
+  const box = (await canvas(page).boundingBox())!;
+  const at = (x: number, y: number): [number, number] => [box.x + x, box.y + y];
+  const docField = (f: 'x' | 'w') => () =>
+    page.evaluate((field) =>
+      new Promise<number>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve(Number(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.[field] ?? -1));
+          req.onerror = () => resolve(-1);
+        };
+        open.onerror = () => resolve(-1);
+      }), f);
+  await page.keyboard.press('l');
+  await drag(page, [100, 100], [300, 300]); // línea diagonal, queda seleccionada
+  await expect.poll(docField('x'), { timeout: 5000 }).toBeGreaterThan(0); // hasta que el autoguardo escriba
+  const x0 = await docField('x')();
+  const w0 = await docField('w')();
+  await page.keyboard.press('a');
+  await page.keyboard.down('Shift');
+  { const [X, Y] = at(100, 100); await page.mouse.click(X, Y); } // nodo 0 a la multi-selección
+  { const [X, Y] = at(300, 300); await page.mouse.click(X, Y); } // nodo 1 también
+  await page.keyboard.up('Shift');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  // ambos nodos se movieron: el bbox conserva el ancho pero la x avanza 2px
+  await expect.poll(docField('x'), { timeout: 5000 }).toBeCloseTo(x0 + 2, 0);
+  await expect.poll(docField('w'), { timeout: 5000 }).toBeCloseTo(w0, 0);
+  await page.locator('#align-body [data-align="left"]').click(); // alinear los nodos entre sí
+  await expect.poll(docField('w'), { timeout: 5000 }).toBeLessThan(2); // los dos nodos comparten x
+  await page.keyboard.press('Control+z'); // un undo devuelve la línea a su forma
+  await expect.poll(docField('w'), { timeout: 5000 }).toBeCloseTo(w0, 0);
+});
+
 test('insertar nodo en tramo (A): doble clic sobre un tramo añade un vértice; Supr borra solo ese nodo', async ({ page }) => {
   const box = (await canvas(page).boundingBox())!;
   const at = (x: number, y: number): [number, number] => [box.x + x, box.y + y];

@@ -132,9 +132,9 @@ function invalidate(): void {
   dirty = true;
   requestAnimationFrame(() => {
     dirty = false;
-    let nodes: { pts: { x: number; y: number; kind?: 'corner' | 'smooth' | 'cusp' }[]; active?: number; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] } | undefined;
+    let nodes: { pts: { x: number; y: number; kind?: 'corner' | 'smooth' | 'cusp' }[]; activeList?: number[]; readout?: { x: number; y: number; text: string } | null; handles?: { x: number; y: number; vx: number; vy: number }[] } | undefined;
     // el nodo activo solo vive mientras su objeto siga seleccionado (cubre cualquier cambio de selección)
-    if (activeNode && activeNode.id !== selectedId && !selectedIds.includes(activeNode.id)) activeNode = null;
+    if (activeNode && activeNode.id !== selectedId && !selectedIds.includes(activeNode.id)) { activeNode = null; nodeSel = []; }
     if (tool === 'subselect') {
       const o = drag?.mode === 'node' ? drag.obj : findObj(activePage(doc), selectedId);
       const pts = o ? nodePoints(o) : [];
@@ -144,7 +144,7 @@ function invalidate(): void {
         const kind = (i: number): 'corner' | 'smooth' | 'cusp' => ((o as ShapeObj).polyH2?.[i] ? 'cusp' : (o as ShapeObj).polyH?.[i] ? 'smooth' : 'corner');
         nodes = {
           pts: pts.map((p, i) => ({ ...p, kind: o.shape === 'polygon' ? kind(i) : 'corner' })),
-          active: activeNode && activeNode.id === o.id ? activeNode.i : undefined,
+          activeList: activeNode && activeNode.id === o.id ? (nodeSel.length ? nodeSel : [activeNode.i]) : undefined,
           handles: tips.map((t) => ({ x: t.x, y: t.y, vx: polyPoints(o)[t.vi].x, vy: polyPoints(o)[t.vi].y })),
           readout: drag?.mode === 'node' ? nodeReadout(drag.obj, drag.index) : drag?.mode === 'handle' ? handleReadout(drag.obj, drag.index, drag.side) : null,
         };
@@ -212,7 +212,7 @@ type Drag =
   | { mode: 'rotate'; obj: Obj; startRot: number; grabAngle: number }
   | { mode: 'guide'; index: number; startPos: number }
   | { mode: 'erase' }
-  | { mode: 'node'; obj: Obj; index: number; moved: boolean; before: { x: number; y: number; w: number; h: number; points?: { x: number; y: number; p: number }[]; poly?: { x: number; y: number }[]; polyH?: ({ x: number; y: number } | null)[]; lineFrom?: LineFrom } }
+  | { mode: 'node'; obj: Obj; index: number; idxs: number[]; anchor: { x: number; y: number }; startPts: { x: number; y: number }[]; moved: boolean; before: { x: number; y: number; w: number; h: number; points?: { x: number; y: number; p: number }[]; poly?: { x: number; y: number }[]; polyH?: ({ x: number; y: number } | null)[]; lineFrom?: LineFrom } }
   | { mode: 'handle'; obj: ShapeObj; index: number; side: 'out' | 'in'; moved: boolean; before: { polyH?: ({ x: number; y: number } | null)[]; polyH2?: ({ x: number; y: number } | null)[] } }
   | { mode: 'groupresize'; objs: { obj: Obj; start: { x: number; y: number; w: number; h: number } }[]; start: { x: number; y: number; w: number; h: number }; role: HandleRole; grab: { x: number; y: number } };
 
@@ -819,6 +819,8 @@ const tipHit = (px: number, py: number, o: Obj): number =>
   handleTips(o).findIndex((t) => Math.abs(px - (t.x * view.zoom + view.panX)) <= 6 && Math.abs(py - (t.y * view.zoom + view.panY)) <= 6);
 /** Nodo activo de la herramienta de nodos: el último clickeado/alternado/arrastrado, para resaltarlo. */
 let activeNode: { id: string; i: number } | null = null;
+/** Selección múltiple de nodos (Shift+clic): índices dentro del objeto de activeNode; vacío = solo el activo. */
+let nodeSel: number[] = [];
 /** Alt+clic o doble clic en un vértice de polígono: cicla el tipo de nodo (FreeHand):
  * esquina → suave (asa espejada sobre la tangente media, ~1/3 del tramo) → cúspide (segunda asa
  * naciendo espejada, luego cada lado se arrastra independiente = curva doble configurable) → esquina. */
@@ -897,6 +899,36 @@ function nodeReadout(o: Obj, i: number): { x: number; y: number; text: string } 
   const dx = b.x - a.x, dy = b.y - a.y;
   const ang = (Math.atan2(-dy, dx) * 180 / Math.PI + 360) % 360;
   return { x: b.x, y: b.y, text: `${ang.toFixed(1)}° ${Math.hypot(dx, dy).toFixed(1)}` };
+}
+
+/** Alinear/distribuir entre sí los nodos multi-seleccionados de un solo objeto. */
+function alignNodes(o: Obj, kind: AlignKind): void {
+  const idxs = nodeSel;
+  const pts = nodePoints(o);
+  if (idxs.length < 2 || idxs.some((i) => !pts[i])) return;
+  const from = idxs.map((i) => ({ ...pts[i] }));
+  const to = from.map((p) => ({ ...p }));
+  const xs = from.map((p) => p.x), ys = from.map((p) => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  if (kind === 'left' || kind === 'hcenter' || kind === 'right') {
+    const tx = kind === 'left' ? minX : kind === 'right' ? maxX : (minX + maxX) / 2;
+    for (const p of to) p.x = tx;
+  } else if (kind === 'top' || kind === 'vcenter' || kind === 'bottom') {
+    const ty = kind === 'top' ? minY : kind === 'bottom' ? maxY : (minY + maxY) / 2;
+    for (const p of to) p.y = ty;
+  } else if (kind === 'hdist' || kind === 'vdist') {
+    if (idxs.length < 3) return;
+    const key: 'x' | 'y' = kind === 'hdist' ? 'x' : 'y';
+    const lo = key === 'x' ? minX : minY, hi = key === 'x' ? maxX : maxY;
+    const order = to.map((_, k) => k).sort((a, b) => to[a][key] - to[b][key]);
+    order.forEach((k, j) => { to[k][key] = lo + ((hi - lo) * j) / (order.length - 1); });
+  } else return;
+  history.run({
+    label: `alinear nodos ${kind}`,
+    do: () => idxs.forEach((i, k) => setNode(o, i, to[k])),
+    undo: () => idxs.forEach((i, k) => setNode(o, i, from[k])),
+  });
+  persist();
 }
 
 function hoverCursor(px: number, py: number, wx: number, wy: number): string {
@@ -1050,9 +1082,30 @@ canvas.addEventListener('pointerdown', (e) => {
     }
     if (sel && vi >= 0) {
       const s = sel as ShapeObj; // con nodo al hit solo llegan objetos con puntos/poly/extremos
+      const same = !!activeNode && activeNode.id === sel.id;
+      if (e.shiftKey) {
+        // Shift+clic: alternar el nodo en el conjunto de multi-selección (estilo Inkscape); sin arrastre
+        const cur = same ? (nodeSel.length ? [...nodeSel] : [activeNode!.i]) : [];
+        if (cur.includes(vi)) {
+          cur.splice(cur.indexOf(vi), 1);
+          nodeSel = cur;
+          activeNode = cur.length ? { id: sel.id, i: cur[cur.length - 1] } : null;
+        } else {
+          cur.push(vi);
+          nodeSel = cur;
+          activeNode = { id: sel.id, i: vi };
+        }
+        invalidate();
+        return;
+      }
+      // Clic normal sobre un nodo ya seleccionado: conserva el conjunto y los mueve a todos a la vez
+      if (!same || !nodeSel.includes(vi)) nodeSel = [vi];
       activeNode = { id: sel.id, i: vi };
+      const pts = nodePoints(sel);
       drag = {
-        mode: 'node', obj: sel, index: vi, moved: false,
+        mode: 'node', obj: sel, index: vi, idxs: [...nodeSel],
+        anchor: { ...pts[vi] }, startPts: nodeSel.map((i) => ({ ...pts[i] })),
+        moved: false,
         before: { x: s.x, y: s.y, w: s.w, h: s.h, points: s.points?.map((q) => ({ ...q })), poly: s.poly?.map((q) => ({ ...q })), polyH: s.polyH?.map((h) => (h ? { ...h } : null)), lineFrom: s.lineFrom },
       };
       canvas.style.cursor = 'move';
@@ -1373,7 +1426,10 @@ canvas.addEventListener('pointermove', (e) => {
       const sp = snapPoint(wx, wy, boxes, { width: pg.width, height: pg.height, guides: pg.guides }, 6 / view.zoom);
       guides = sp.guides; nx = sp.x; ny = sp.y;
     } else guides = [];
-    setNode(drag.obj, drag.index, { x: nx, y: ny });
+    // Mover todos los nodos seleccionados a la vez: el imán afecta al nodo principal y el delta se propaga
+    const dObj = drag.obj, dIdxs = drag.idxs, dStart = drag.startPts;
+    const ddx = nx - drag.anchor.x, ddy = ny - drag.anchor.y;
+    dIdxs.forEach((i, k) => setNode(dObj, i, { x: dStart[k].x + ddx, y: dStart[k].y + ddy }));
     drag.moved = true;
     invalidate();
     return;
@@ -1852,7 +1908,17 @@ const panelApi = {
     }
     invalidate();
   },
+  alignMode(): 'nodes' | 'objs' {
+    return tool === 'subselect' && !!activeNode && activeNode.id === selectedId && nodeSel.length >= 2 ? 'nodes' : 'objs';
+  },
   align(kind: AlignKind): void {
+    if (tool === 'subselect' && activeNode && activeNode.id === selectedId && nodeSel.length >= 2) {
+      // multi-selección de nodos activa: los botones alinean los nodos entre sí
+      const o = findObj(activePage(doc), activeNode.id);
+      if (o) alignNodes(o, kind);
+      invalidate();
+      return;
+    }
     const page = activePage(doc);
     const moves: Move[] = computeAlign(selectedObjs(), kind, { width: page.width, height: page.height });
     if (moves.length) {
@@ -2097,11 +2163,15 @@ window.addEventListener('keydown', (e) => {
       if (o && (o.shape === 'polygon' || o.shape === 'stroke')) {
         const s = o as ShapeObj;
         const before = geoSnap(s);
-        const ok = s.shape === 'polygon' ? polyDeleteVertex(s, activeNode.i) : strokeDeletePoint(s, activeNode.i);
+        // borra de golpe todo el conjunto multi-seleccionado (descendente para no desplazar índices)
+        const idxs = [...(nodeSel.length ? nodeSel : [activeNode.i])].sort((a, b) => b - a);
+        let ok = false;
+        for (const i of idxs) if (s.shape === 'polygon' ? polyDeleteVertex(s, i) : strokeDeletePoint(s, i)) ok = true;
         if (ok) {
           const after = geoSnap(s);
           history.record({ label: 'eliminar nodo', do: () => geoRestore(s, after), undo: () => geoRestore(s, before) });
           activeNode = null;
+          nodeSel = [];
           persist();
           invalidate();
         }
@@ -2264,13 +2334,14 @@ window.addEventListener('keydown', (e) => {
     // mueven SOLO ese nodo; sin nodo activo siguen moviendo el objeto entero.
     if (tool === 'subselect' && activeNode && activeNode.id === selectedId) {
       const o = findObj(activePage(doc), activeNode.id);
-      const i = activeNode.i;
-      const p0 = o ? nodePoints(o)[i] : undefined;
-      if (!p0 || !o) return;
+      if (!o) return;
+      const idxs = nodeSel.length ? nodeSel : [activeNode.i];
+      const pts = nodePoints(o);
+      const from = idxs.map((i) => ({ ...pts[i] }));
       history.run({
         label: 'mover nodo',
-        do: () => setNode(o, i, { x: p0.x + dx, y: p0.y + dy }),
-        undo: () => setNode(o, i, p0),
+        do: () => idxs.forEach((i, k) => setNode(o, i, { x: from[k].x + dx, y: from[k].y + dy })),
+        undo: () => idxs.forEach((i, k) => setNode(o, i, from[k])),
       });
       persist();
       invalidate();

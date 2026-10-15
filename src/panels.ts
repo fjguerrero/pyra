@@ -44,6 +44,7 @@ export interface PanelApi {
   moveLayer(layerId: string, delta: number): void;
   reorderLayer(layerId: string, targetId: string, mode: 'before' | 'after' | 'child'): void;
   align(kind: AlignKind): void;
+  alignMode?(): 'nodes' | 'objs';
   order(kind: 'front' | 'up' | 'down' | 'back'): void;
   flip(axis: 'h' | 'v'): void;
   union(): void;
@@ -820,7 +821,7 @@ export function renderPanels(
   }
   const hint = document.createElement('div');
   hint.className = 'hint';
-  hint.textContent = selectedIds.length >= 3 ? t('align_hint_multi') : t('align_hint_single');
+  hint.textContent = api.alignMode?.() === 'nodes' ? t('align_hint_nodes') : selectedIds.length >= 3 ? t('align_hint_multi') : t('align_hint_single');
   ab.appendChild(hint);
 
   // ---- Capas: completas (visibilidad, bloqueo, opacidad, orden, crear, borrar) ----

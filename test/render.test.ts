@@ -410,8 +410,8 @@ describe('Renderer.draw: cinta de trazo sin puntos blancos', () => {
     expect(ops.some((o) => o.op === 'fillRect' && o.args[0] === 87.5)).toBe(true); // esquina: cuadrado
   });
 
-  it('el nodo activo (nodes.active) se pinta en azul y los demás en negro', () => {
-    const s = scene({ selectedId: 'x', nodes: { pts: [{ x: 10, y: 10 }, { x: 50, y: 10 }], active: 1 } });
+  it('los nodos seleccionados (nodes.activeList) se pintan en azul y los demás en negro', () => {
+    const s = scene({ selectedId: 'x', nodes: { pts: [{ x: 10, y: 10 }, { x: 50, y: 10 }], activeList: [1] } });
     const ops = draw(s);
     const styles = styleOrder(ops, 'fillStyle');
     expect(styles).toContain('#0a7cff');
@@ -442,7 +442,7 @@ describe('polígono con nodos Bézier (polyH)', () => {
 
 describe('colores configurables de la interfaz (scene.ui)', () => {
   it('scene.ui.nodeColor pinta los nodos con ese color; el nodo activo sigue en azul', () => {
-    const s = scene({ selectedId: 'x', nodes: { pts: [{ x: 10, y: 10 }, { x: 50, y: 10 }], active: 1 }, ui: { nodeColor: '#ff00aa', frameColor: '#4f8cff' } });
+    const s = scene({ selectedId: 'x', nodes: { pts: [{ x: 10, y: 10 }, { x: 50, y: 10 }], activeList: [1] }, ui: { nodeColor: '#ff00aa', frameColor: '#4f8cff' } });
     const styles = styleOrder(draw(s), 'fillStyle');
     expect(styles).toContain('#ff00aa');
     expect(styles.lastIndexOf('#0a7cff')).toBeGreaterThan(styles.lastIndexOf('#ff00aa'));
