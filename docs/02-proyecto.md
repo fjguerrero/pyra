@@ -146,6 +146,15 @@ Verification: clean `tsc --noEmit`, 297 unit tests, 68 Playwright e2e.
 
 Verification: clean `tsc --noEmit`, 312 unit tests, 76 Playwright e2e.
 
+## Status v1.6 (2026-10-15)
+
+- Inline rename (Fireworks-style): double-clicking a layer, page or style name turns the label into an in-place `input` (no dialog). Enter/blur commit (undoable via `editLayer`/`renamePage`/`renameStyle`, panel rebuilds), Esc restores the label. One shared `inlineRename` helper in `panels.ts`.
+- Context menu on right-click replaces the old direct guide create/delete: z-order (to front / forward / backward / to back), group/ungroup, delete, and "Add vertical/horizontal guide"; right-clicking an existing guide offers "Delete guide" instead. Right-clicking an object selects it (and its group) before opening the menu. Menu items carry a stable `data-act` (language-independent, used by e2e); inapplicable items are disabled. Manual guides moved into the menu per user decision.
+- Shared helpers in `main.ts`: `addGuide`, `doGroup` (also used by `Ctrl+G`/`Ctrl+Shift+G`) and `deleteSelection` (also used by `Supr`) — the keyboard and the menu now route through the same code. `pointerdown` ignores button 2.
+- Help text updated (es/en) for the context menu and inline rename.
+
+Verification: clean `tsc --noEmit`, 314 unit tests, 78 Playwright e2e.
+
 ## Pending
 
 - Technical debt:
