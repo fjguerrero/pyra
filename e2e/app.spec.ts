@@ -477,7 +477,22 @@ test('degradado multi-parada: añadir parada abre el editor con 3 filas y se pue
   await expect(page.locator('input[data-stop-pos]')).toHaveCount(0);
   await page.locator('#inspector-body button', { hasText: 'Add stop' }).click();
   await expect(page.locator('input[data-stop-pos]')).toHaveCount(3);
-  await expect(page.locator('input[data-stop-color]')).toHaveCount(3);
+  await expect(page.locator('button[data-stop-color]')).toHaveCount(3);
+  // el color de una parada usa el mezclador: admite alfa (#rrggbbaa)
+  await page.locator('button[data-stop-color="0"]').click();
+  await page.locator('.color-pop .cp-alpha').fill('128');
+  await expect.poll(() =>
+    page.evaluate(() =>
+      new Promise<string | null>((resolve) => {
+        const open = indexedDB.open('pyra');
+        open.onsuccess = () => {
+          const req = open.result.transaction('documents', 'readonly').objectStore('documents').get('doc');
+          req.onsuccess = () => resolve(req.result?.pages?.[0]?.layers?.[0]?.objects?.[0]?.gradient?.stops?.[0]?.c ?? null);
+          req.onerror = () => resolve(null);
+        };
+        open.onerror = () => resolve(null);
+      }))).toMatch(/80$/);
+  await page.keyboard.press('Escape');
   await page.locator('button[data-stop-del="1"]').dispatchEvent('click');
   await expect(page.locator('input[data-stop-pos]')).toHaveCount(2); // nunca baja de 2 paradas
   await expect(page.locator('button[data-stop-del]')).toHaveCount(0);
@@ -1443,13 +1458,9 @@ test('edición multi-objeto: el inspector cambia el relleno de todos los selecci
   await page.keyboard.press('Escape');
   await drag(page, [50, 40], [620, 260]); // marco sobre ambos (B llega a x≈577 en pantalla)
   await expect(page.locator('#status')).toContainText('2 objects');
-  const fillInput = page.locator('label').filter({ hasText: 'Fill' }).locator('input[type=color]').first();
-  await expect(fillInput).toBeVisible();
-  await fillInput.evaluate((el: HTMLInputElement) => {
-    el.value = '#ff0000';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  await expect(swatchOf(page, 'Fill')).toBeVisible();
+  await setColor(page, 'Fill', '#ff0000');
+  await page.keyboard.press('Escape'); // cerrar el mezclador para que Ctrl+Z llegue a la app
   await expect.poll(docFills(page), { timeout: 5000 }).toEqual(['#ff0000', '#ff0000']);
   await page.keyboard.press('Control+z'); // un solo undo revierte los dos
   await expect.poll(docFills(page), { timeout: 5000 }).toEqual(['#4f8cff', '#4f8cff']);

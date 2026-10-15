@@ -145,11 +145,8 @@ const ALIGN_BUTTONS: [AlignKind, string, 'align_left' | 'align_hcenter' | 'align
 ];
 
 // ---- Colores: mezclador estilo Fireworks (campo HSV + tono + alfa + hex) con recientes/favoritos ----
-function colorField(label: string, value: string, onSet: (v: string) => void): void {
-  const insp = $('inspector-body');
-  const wrap = document.createElement('label');
-  wrap.className = 'field color-field';
-  wrap.innerHTML = `<span>${label}</span>`;
+/** Botón-muestra que abre el mezclador; pinta el color sobre tablero de transparencia. */
+function swatchInput(value: string, onPick: (c: string, commit: boolean) => void): HTMLButtonElement {
   const sw = document.createElement('button');
   sw.type = 'button';
   sw.className = 'swatch-btn';
@@ -161,11 +158,19 @@ function colorField(label: string, value: string, onSet: (v: string) => void): v
   sw.addEventListener('click', () =>
     openColorPop(sw, sw.dataset.color || '#000000', (c, commit) => {
       paint(c);
-      onSet(c);
+      onPick(c, commit);
       if (commit) addRecent(loadSwatches(), c); // commit = al soltar sliders o elegir muestra
     }),
   );
-  wrap.appendChild(sw);
+  return sw;
+}
+
+function colorField(label: string, value: string, onSet: (v: string) => void): void {
+  const insp = $('inspector-body');
+  const wrap = document.createElement('label');
+  wrap.className = 'field color-field';
+  wrap.innerHTML = `<span>${label}</span>`;
+  wrap.appendChild(swatchInput(value, (c, commit) => { if (commit) onSet(c); }));
   insp.appendChild(wrap);
 }
 
@@ -196,6 +201,14 @@ function openColorPop(anchor: HTMLElement, initial: string, pick: (c: string, co
   const hsv0 = rgbToHsv(rgba0.r, rgba0.g, rgba0.b);
   let h = hsv0.h, s = hsv0.s, v = hsv0.v, a = rgba0.a;
   const cur = (): string => rgbaToHex({ ...hsvToRgb(h, s, v), a });
+  // un solo commit por valor: al cerrar el popup, el input HEX en foco dispara un
+  // change extra (blur) que duplicaría la entrada de historial (y su undo no revertiría)
+  let lastCommitted = (initial || '#000000').toLowerCase();
+  const commit = (c: string): void => {
+    if (c.toLowerCase() === lastCommitted) return;
+    lastCommitted = c.toLowerCase();
+    pick(c, true);
+  };
 
   const loadState = (c: string): void => {
     const rg = hexToRgba(c);
@@ -256,7 +269,7 @@ function openColorPop(anchor: HTMLElement, initial: string, pick: (c: string, co
   sv.addEventListener('pointermove', (e) => {
     if (e.buttons) dragSv(e);
   });
-  sv.addEventListener('pointerup', () => pick(cur(), true));
+  sv.addEventListener('pointerup', () => commit(cur()));
   hue.value = String(Math.round(h));
   al.value = String(Math.round(a * 255));
   hue.addEventListener('input', () => {
@@ -264,13 +277,13 @@ function openColorPop(anchor: HTMLElement, initial: string, pick: (c: string, co
     render();
     pick(cur(), false);
   });
-  hue.addEventListener('change', () => pick(cur(), true));
+  hue.addEventListener('change', () => commit(cur()));
   al.addEventListener('input', () => {
     a = Number(al.value) / 255;
     render();
     pick(cur(), false);
   });
-  al.addEventListener('change', () => pick(cur(), true));
+  al.addEventListener('change', () => commit(cur()));
   hexIn.addEventListener('change', () => {
     const raw = hexIn.value.trim();
     if (!/^#?(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw)) {
@@ -279,7 +292,7 @@ function openColorPop(anchor: HTMLElement, initial: string, pick: (c: string, co
     }
     loadState(raw);
     render();
-    pick(cur(), true);
+    commit(cur());
   });
 
   const refresh = (): void => {
@@ -288,7 +301,7 @@ function openColorPop(anchor: HTMLElement, initial: string, pick: (c: string, co
     swatchPalette(pal, cur(), (c) => {
       loadState(c);
       render();
-      pick(c, true);
+      commit(c);
     }, refresh);
   };
   render();
@@ -770,14 +783,13 @@ export function renderPanels(
                 ns[i].p = Math.max(0, Math.min(1, Number(pos.value) / 100));
                 api.editObj(obj, { gradient: { ...g, stops: ns } });
               });
-              const col = document.createElement('input');
-              col.type = 'color'; col.value = st.c;
-              col.dataset.stopColor = String(i);
-              col.addEventListener('change', () => {
+              const col = swatchInput(st.c, (v, commit) => {
+                if (!commit) return;
                 const ns = stops.map((x) => ({ ...x }));
-                ns[i].c = col.value;
+                ns[i].c = v;
                 api.editObj(obj, { gradient: { ...g, stops: ns } });
               });
+              col.dataset.stopColor = String(i);
               row.append(pos, col);
               if (stops.length > 2) {
                 const del = document.createElement('button');
